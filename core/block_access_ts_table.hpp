@@ -17,7 +17,8 @@ namespace bwgraph{
     static_assert(sizeof(BlockAccessTSEntry)==64);
     class BlockAccessTimestampTable{
     public:
-        inline void store_block_id(uint8_t thread_id, uint64_t block_id){table[thread_id].accessed_block_id.store(block_id);}
+        inline void store_block_access(uint8_t thread_id, uint64_t block_id){table[thread_id].accessed_block_id.store(block_id);}
+        inline void release_block_access(uint8_t thread_id){table[thread_id].accessed_block_id.store(BAD_BLOCK_ID);}
         bool is_safe(uint8_t thread_id, uint64_t block_id){
             for(uint8_t i=0; i<WORKER_THREAD_NUM; i++){
                 if(i==thread_id){

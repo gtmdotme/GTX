@@ -10,6 +10,7 @@
 #include "exceptions.hpp"
 #include "types.hpp"
 #include "block_access_ts_table.hpp"
+#include "commit_manager.hpp"
 namespace bwgraph{
     class ROTransaction;
     class RWTransaction;
@@ -19,7 +20,7 @@ namespace bwgraph{
     public:
 #if USING_ARRAY_TABLE
         BwGraph(std::string block_path = "",size_t _max_block_size = 1ul << 32,
-            std::string wal_path = ""): block_manager(block_path,_max_block_size), vertex_index(block_manager),txn_tables(this){
+            std::string wal_path = ""): block_manager(block_path,_max_block_size), vertex_index(block_manager),txn_tables(this)/*,commit_manager(txn_tables)*/{
     }
 #else
         BwGraph(std::string block_path = "",size_t _max_block_size = 1ul << 32,
@@ -38,8 +39,7 @@ namespace bwgraph{
 #else
         ConcurrentTransactionTables txn_tables;
 #endif
-        //Commit Manager
-        //Block Access and TS table
+        CommitManager commit_manager;
         BlockAccessTimestampTable block_access_ts_table;
         friend class ROTransaction;
         friend class RWTransaction;

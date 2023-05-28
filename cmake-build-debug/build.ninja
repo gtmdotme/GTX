@@ -109,6 +109,13 @@ build CMakeFiles/bwgraph_lib.dir/core/bwgraph.cpp.o: CXX_COMPILER__bwgraph_lib_D
   OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph_lib.dir/core
 
+build CMakeFiles/bwgraph_lib.dir/core/commit_manager.cpp.o: CXX_COMPILER__bwgraph_lib_Debug /home/zhou822/BwGraph_v2/core/commit_manager.cpp || cmake_object_order_depends_target_bwgraph_lib
+  DEP_FILE = CMakeFiles/bwgraph_lib.dir/core/commit_manager.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core
+  OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/bwgraph_lib.dir/core
+
 
 # =============================================================================
 # Link build statements for STATIC_LIBRARY target bwgraph_lib
@@ -117,7 +124,7 @@ build CMakeFiles/bwgraph_lib.dir/core/bwgraph.cpp.o: CXX_COMPILER__bwgraph_lib_D
 #############################################
 # Link the static library libbwgraph_lib.a
 
-build libbwgraph_lib.a: CXX_STATIC_LIBRARY_LINKER__bwgraph_lib_Debug CMakeFiles/bwgraph_lib.dir/core/block.cpp.o CMakeFiles/bwgraph_lib.dir/core/transaction_tables.cpp.o CMakeFiles/bwgraph_lib.dir/core/bw_index.cpp.o CMakeFiles/bwgraph_lib.dir/core/bwgraph.cpp.o
+build libbwgraph_lib.a: CXX_STATIC_LIBRARY_LINKER__bwgraph_lib_Debug CMakeFiles/bwgraph_lib.dir/core/block.cpp.o CMakeFiles/bwgraph_lib.dir/core/transaction_tables.cpp.o CMakeFiles/bwgraph_lib.dir/core/bw_index.cpp.o CMakeFiles/bwgraph_lib.dir/core/bwgraph.cpp.o CMakeFiles/bwgraph_lib.dir/core/commit_manager.cpp.o
   LANGUAGE_COMPILE_FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined
   OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
   POST_BUILD = :

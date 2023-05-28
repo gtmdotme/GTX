@@ -3,6 +3,8 @@
 #include "core/transaction_tables.hpp"
 #include "core/block.hpp"
 #include "core/bw_index.hpp"
+#include "core/commit_manager.hpp"
+#include "core/block_access_ts_table.hpp"
 using namespace bwgraph;
 int main() {
     bwgraph::BlockManager manager("", 1e+11);
@@ -13,5 +15,7 @@ int main() {
     DeltaLabelBlock label_block;
     std::cout<<sizeof(label_block)<<std::endl;
     std::cout<<sizeof(VertexIndexBucket)<<std::endl;
+    std::cout<<sizeof(CommitManager)<<std::endl;
+    std::cout<<sizeof(BlockAccessTimestampTable)<<std::endl;
     return 0;
 }

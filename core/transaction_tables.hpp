@@ -19,7 +19,7 @@ namespace bwgraph {
 #define TXN_TABLE_TEST true
     class BwGraph;
     struct touched_block_entry{
-        touched_block_entry(int64_t vertex_id, label_t label, uint64_t input_ts):block_id(generate_block_id(vertex_id,label), consolidation_ts(input_ts)){
+        touched_block_entry(int64_t vertex_id, label_t label, uint64_t input_ts):block_id(generate_block_id(vertex_id,label)), consolidation_ts(input_ts){
         }
         touched_block_entry(uint64_t input_id, uint64_t input_ts):block_id(input_id),consolidation_ts(input_ts){}
         uint64_t block_id;
@@ -307,6 +307,9 @@ namespace bwgraph {
         inline void reduce_op_count(uint64_t txn_id,int64_t op_count){
             uint8_t thread_id = bwgraph::get_threadID(txn_id);
             tables[thread_id].reduce_op_count(txn_id, op_count);
+        }
+        inline void commit_txn(){
+
         }
 
     private:

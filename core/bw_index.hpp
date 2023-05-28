@@ -14,7 +14,8 @@ namespace bwgraph {
     class BlockManager;
     struct BwLabelEntry {
         BwLabelEntry(){}
-        EdgeDeltaBlockState state=EdgeDeltaBlockState::NORMAL;
+        //EdgeDeltaBlockState state=EdgeDeltaBlockState::NORMAL;
+        std::atomic<EdgeDeltaBlockState>state = EdgeDeltaBlockState::NORMAL;
         std::atomic_bool valid=false;
         label_t label;//label starts from 1
         uintptr_t block_ptr=0;//todo::check if we can directly use raw pointer

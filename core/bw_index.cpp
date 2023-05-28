@@ -62,6 +62,7 @@ namespace bwgraph{
                     auto new_edge_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_label_block->label_entries[current_offset].block_ptr);
                     new_edge_delta_block->fill_metadata(owner_id,0,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER);
                     current_label_block->label_entries[current_offset].delta_chain_index = new std::vector<AtomicDeltaOffset>(new_edge_delta_block->get_delta_chain_num());
+                    current_label_block->label_entries[current_offset].state=EdgeDeltaBlockState::NORMAL;
                     current_label_block->label_entries[current_offset].valid=true;
                     return &current_label_block->label_entries[current_offset];
                 }else{//if allocation failed, someone else must have allocated a new entry, re-loop and re-observe what's going on by not changing current block and continue
@@ -82,6 +83,7 @@ namespace bwgraph{
                     auto new_edge_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(new_block->label_entries[0].block_ptr);
                     new_edge_delta_block->fill_metadata(owner_id,0,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER);
                     new_block->label_entries[0].delta_chain_index = new std::vector<AtomicDeltaOffset>(new_edge_delta_block->get_delta_chain_num());
+                    new_block->label_entries[0].state=EdgeDeltaBlockState::NORMAL;
                     new_block->label_entries[0].valid=true;
                     if(current_label_block->next_ptr.compare_exchange_strong(current_next_ptr,new_next_ptr)){
                         return &new_block->label_entries[0];
