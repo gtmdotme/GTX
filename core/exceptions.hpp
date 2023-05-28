@@ -49,5 +49,10 @@ namespace bwgraph {
             return "Label Block should not have a next pointer unless all its entries are set";
         }
     };
+class BlockSafeAccessException: public std::exception{
+    virtual const char *what() const throw() {
+        return "the current thread should only check is_safe() iff it is accessing the block already";
+    }
+};
 }
 #endif //BWGRAPH_V2_EXCEPTIONS_HPP

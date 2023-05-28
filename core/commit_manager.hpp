@@ -1,0 +1,8 @@
+//
+// Created by zhou822 on 5/28/23.
+//
+
+#ifndef BWGRAPH_V2_COMMIT_MANAGER_HPP
+#define BWGRAPH_V2_COMMIT_MANAGER_HPP
+
+#endif //BWGRAPH_V2_COMMIT_MANAGER_HPP

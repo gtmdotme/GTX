@@ -52,7 +52,7 @@ namespace bwgraph {
             return index_entries[vid%BUCKET_SIZE];
         }
         inline void allocate_vertex_index_entry(int64_t vid){
-            
+
             index_entries[vid%BUCKET_SIZE].valid=true;
         }
     private:
@@ -73,7 +73,7 @@ namespace bwgraph {
     class VertexIndex{
     public:
         const size_t bucket_size = BUCKET_SIZE;
-        VertexIndex(BlockManager& input_block_manager):block_manager(input_block_manager),global_vertex_id(1){
+        VertexIndex(BlockManager& input_block_manager):global_vertex_id(1),block_manager(input_block_manager){
             auto new_bucket_ptr = block_manager.alloc(size_to_order(sizeof(VertexIndexBucket)));
             bucket_index[0].allocate_block(block_manager.convert<VertexIndexBucket>(new_bucket_ptr));
             bucket_index[0].make_valid();
@@ -92,7 +92,7 @@ namespace bwgraph {
             return new_id;
         }
         inline VertexIndexEntry& get_vertex_index_entry(int64_t vid){
-            bucket_index[vid/BUCKET_SIZE].get_index_bucket_ptr()->get_vertex_index_entry(vid);
+            return bucket_index[vid/BUCKET_SIZE].get_index_bucket_ptr()->get_vertex_index_entry(vid);
         }
     private:
         std::atomic_int64_t global_vertex_id;

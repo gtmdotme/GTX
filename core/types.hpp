@@ -58,5 +58,12 @@ namespace bwgraph
         CAUSE_OVERFLOW,
         ALREADY_OVERFLOW
     };
+    enum class Txn_Operation_Response : uint8_t
+    {
+        SUCCESS,
+        READER_WAIT,
+        WRITER_WAIT,
+        FAIL
+    };
 }
 #endif //BWGRAPH_V2_TYPES_HPP

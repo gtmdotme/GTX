@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <atomic>
 #include <vector>
+#include <unordered_set>
+#include <map>
 #include "graph_global.hpp"
 #include "exceptions.hpp"
 #include "../Libraries/parallel_hashmap/phmap.h"
@@ -17,32 +19,34 @@ namespace bwgraph {
 #define TXN_TABLE_TEST true
     class BwGraph;
     struct touched_block_entry{
-        touched_block_entry(int64_t vertex_id, label_t label):block_id(generate_block_id(vertex_id,label)){
+        touched_block_entry(int64_t vertex_id, label_t label, uint64_t input_ts):block_id(generate_block_id(vertex_id,label), consolidation_ts(input_ts)){
         }
+        touched_block_entry(uint64_t input_id, uint64_t input_ts):block_id(input_id),consolidation_ts(input_ts){}
         uint64_t block_id;
+        uint64_t consolidation_ts;//a safety mark, to check if scan is needed
     };
     struct alignas(64) txn_table_entry {
-        txn_table_entry() {
+        txn_table_entry():txn_id(0),op_count(0) {
             status.store(IN_PROGRESS);
         };
 
-        txn_table_entry(uint64_t new_txn_id) : txn_id(new_txn_id) {
+        txn_table_entry(uint64_t new_txn_id) : txn_id(new_txn_id),op_count(0) {
             status.store(IN_PROGRESS);
         }
 
         txn_table_entry(const txn_table_entry &other) {
             txn_id.store(other.txn_id.load());
-            status.store(other.status);
-            op_count.store(other.op_count);
+            status.store(other.status.load());
+            op_count.store(other.op_count.load());
         }
 
         txn_table_entry &operator=(const txn_table_entry &other) {
             txn_id.store(other.txn_id.load());
-            status.store(other.status);
-            op_count.store(other.op_count);
+            status.store(other.status.load());
+            op_count.store(other.op_count.load());
             return *this;
         }
-
+        //we do not eagerly delete entries, just check if the next entry has op_count == 0.
         inline bool reduce_op_count(int64_t num) {
             if (op_count.fetch_sub(num) == num) {
                 return true;
@@ -68,7 +72,8 @@ namespace bwgraph {
         std::atomic_int64_t op_count;
 #if USING_ARRAY_TABLE
         std::vector<touched_block_entry> touched_blocks;
-        char padding[16];
+       //std::map<touched_block_entry,LockOffsetCache> touched_blocks;
+       // char padding[16];
 #else
         char padding[40];
 #endif
@@ -91,7 +96,7 @@ namespace bwgraph {
             return local_table.if_contains(txn_id,[&status_result](typename Map::value_type& pair){status_result=pair.second->status.load();});
         }
         void reduce_op_count(uint64_t txn_id,int64_t op_count){
-            entry_ptr ptr;
+            entry_ptr ptr=nullptr;
 #if TXN_TABLE_TEST
             if(!local_table.if_contains(txn_id,[&ptr](typename Map::value_type& pair){ ptr = pair.second;})){
                 std::cerr<<"panic"<<std::endl;
@@ -123,10 +128,16 @@ namespace bwgraph {
                 throw TransactionTableMissingEntryException();
             }
 #endif
+            //todo:: do not commit txn in the table with no wrties?
+            if(!op_count){
+                local_table.erase(ptr->txn_id);
+                delete ptr;
+                return;
+            }
             ptr->op_count = op_count;
             ptr->status.store(commit_ts);
         }
-        void abort_txn(entry_ptr ptr, uint64_t op_count){
+        inline void abort_txn(entry_ptr ptr, uint64_t op_count){
             if(!op_count){
                 local_table.erase(ptr->txn_id);
                 delete ptr;
@@ -174,6 +185,10 @@ namespace bwgraph {
             ptr->op_count.store(op_count);
             ptr->status.store(commit_ts);
         }
+        inline void commit_txn_with_no_writes(entry_ptr ptr){
+            uint8_t thread_id = get_threadID(ptr->txn_id);
+            tables[thread_id].commit_txn(ptr,0,0);
+        }
         inline void abort_txn(entry_ptr ptr, uint64_t op_count){
             uint8_t thread_id = get_threadID(ptr->txn_id);
             tables[thread_id].abort_txn(ptr,op_count);
@@ -191,13 +206,30 @@ namespace bwgraph {
     public:
         ArrayTransactionTable():offset(0),bwGraph(nullptr),txn_tables(nullptr){}
         ArrayTransactionTable(BwGraph* source_graph, ArrayTransactionTables* all_tables):offset(0),bwGraph(source_graph),txn_tables(all_tables){}
-        bool get_status(uint64_t txn_id, uint64_t& status_result){
+        inline bool get_status(uint64_t txn_id, uint64_t& status_result){
+#if TXN_TABLE_TEST
             uint64_t index = get_local_txn_id(txn_id)%Per_Thread_Table_Size;
+            uint64_t to_compare_index = txn_id % Per_Thread_Table_Size;
+            if(index!=to_compare_index){
+                throw std::runtime_error("error, should not use this approach");
+            }
+#else
+            uint64_t index =txn_id % Per_Thread_Table_Size;
+#endif
+
             status_result= local_table[index].status.load();
             return local_table[index].txn_id == txn_id;
         }
-        void reduce_op_count(uint64_t txn_id,int64_t op_count){
+        inline void reduce_op_count(uint64_t txn_id,int64_t op_count){
+#if TXN_TABLE_TEST
             uint64_t index = get_local_txn_id(txn_id)%Per_Thread_Table_Size;
+            uint64_t to_compare_index = txn_id % Per_Thread_Table_Size;
+            if(index!=to_compare_index){
+                throw std::runtime_error("error, should not use this approach");
+            }
+#else
+            uint64_t index =txn_id % Per_Thread_Table_Size;
+#endif
 #if TXN_TABLE_TEST
             if(local_table[index].status.load()==IN_PROGRESS){
                 throw new std::runtime_error("error, try to reduce operation count of an in progress transaction");
@@ -209,7 +241,15 @@ namespace bwgraph {
             local_table[index].reduce_op_count(op_count);
         }
         inline entry_ptr put_entry(uint64_t txn_id){
+#if TXN_TABLE_TEST
             uint64_t index = get_local_txn_id(txn_id)%Per_Thread_Table_Size;
+            uint64_t to_compare_index = txn_id % Per_Thread_Table_Size;
+            if(index!=to_compare_index){
+                throw std::runtime_error("error, should not use this approach");
+            }
+#else
+            uint64_t index =txn_id % Per_Thread_Table_Size;
+#endif
 #if TXN_TABLE_TEST
             //assert(!local_table[index].txn_id.load());
             if(local_table[index].op_count.load()){
@@ -264,12 +304,13 @@ namespace bwgraph {
             uint8_t thread_id = bwgraph::get_threadID(txn_id);
             return tables[thread_id].get_status(txn_id,status_result);
         }
-        void reduce_op_count(uint64_t txn_id,int64_t op_count){
+        inline void reduce_op_count(uint64_t txn_id,int64_t op_count){
             uint8_t thread_id = bwgraph::get_threadID(txn_id);
             tables[thread_id].reduce_op_count(txn_id, op_count);
         }
 
     private:
+
         std::array<ArrayTransactionTable,WORKER_THREAD_NUM> tables;
     };
 }//namespace bwgraph

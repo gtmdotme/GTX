@@ -46,8 +46,8 @@ namespace bwgraph{
     inline uint64_t generate_block_id(int64_t vertex_id, label_t label){
         return (static_cast<uint64_t>(label)<<48)|static_cast<uint64_t>(vertex_id);
     }
-    inline std::pair<int64_t, uint16_t> decompose_block_id(uint64_t block_id){
-        return std::pair<int64_t,uint16_t>((block_id&VERTEX_ID_MASK),(static_cast<uint16_t>(block_id>>48)));
+    inline std::pair<int64_t, label_t> decompose_block_id(uint64_t block_id){
+        return std::pair<int64_t,label_t>((block_id&VERTEX_ID_MASK),(static_cast<label_t>(block_id>>48)));
     }
 }
 #endif //BWGRAPH_V2_UTILS_HPP

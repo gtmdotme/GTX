@@ -12,5 +12,6 @@ int main() {
     std::cout<<sizeof(EdgeDeltaBlockHeader)<<std::endl;
     DeltaLabelBlock label_block;
     std::cout<<sizeof(label_block)<<std::endl;
+    std::cout<<sizeof(VertexIndexBucket)<<std::endl;
     return 0;
 }
