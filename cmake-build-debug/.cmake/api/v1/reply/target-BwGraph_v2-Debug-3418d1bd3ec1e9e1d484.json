@@ -11,7 +11,6 @@
 		"commands" : 
 		[
 			"add_executable",
-			"target_link_directories",
 			"target_link_libraries"
 		],
 		"files" : 
@@ -26,19 +25,13 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 9,
+				"line" : 12,
 				"parent" : 0
 			},
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 10,
-				"parent" : 0
-			},
-			{
-				"command" : 2,
-				"file" : 0,
-				"line" : 11,
+				"line" : 14,
 				"parent" : 0
 			}
 		]
@@ -49,21 +42,29 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-g -fdiagnostics-color=always"
+					"fragment" : "-ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always"
 				}
 			],
 			"defines" : 
 			[
 				{
-					"backtrace" : 3,
+					"backtrace" : 2,
 					"define" : "TBB_USE_DEBUG"
 				}
 			],
 			"includes" : 
 			[
 				{
-					"backtrace" : 3,
+					"backtrace" : 2,
 					"path" : "/home/zhou822/BwGraph_v2/parallel_hashmap"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/zhou822/BwGraph_v2/public"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/zhou822/BwGraph_v2/core"
 				}
 			],
 			"language" : "CXX",
@@ -84,8 +85,12 @@
 	"dependencies" : 
 	[
 		{
-			"backtrace" : 3,
+			"backtrace" : 2,
 			"id" : "parallel_hashmap_lib::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "bwgraph_lib::@6890427a1f51a3e7e1df"
 		}
 	],
 	"id" : "BwGraph_v2::@6890427a1f51a3e7e1df",
@@ -94,7 +99,7 @@
 		"commandFragments" : 
 		[
 			{
-				"fragment" : "-g",
+				"fragment" : "-ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined",
 				"role" : "flags"
 			},
 			{
@@ -103,21 +108,17 @@
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "-L/home/zhou822/BwGraph_v2/core",
-				"role" : "libraryPath"
-			},
-			{
-				"fragment" : "-Wl,-rpath,/home/zhou822/BwGraph_v2/core",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 3,
 				"fragment" : "/usr/lib/x86_64-linux-gnu/libtbb.so.12.5",
 				"role" : "libraries"
 			},
 			{
-				"backtrace" : 3,
+				"backtrace" : 2,
 				"fragment" : "libparallel_hashmap_lib.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "libbwgraph_lib.a",
 				"role" : "libraries"
 			}
 		],

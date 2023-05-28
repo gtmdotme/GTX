@@ -17,5 +17,9 @@
 //for array txn table only
 #define NO_TXN_ENTRY 0
 #define Per_Thread_Table_Size 32
+//block allocation
+#define DEFAULT_EDGE_DELTA_BLOCK_ORDER 8
+#define BUCKET_SIZE 536870912
+#define BUCKET_NUM 8
 
 #endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

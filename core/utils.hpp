@@ -14,15 +14,25 @@
 #define Not_TS_ID_MASK 0x7FFFFFFFFFFFFFFF
 #define VERTEX_ID_MASK 0x0000FFFFFFFFFFFF
 namespace bwgraph{
+    inline order_t size_to_order(size_t size)
+    {
+        order_t order = (order_t)((size & (size - 1)) != 0);
+        while (size > 1)
+        {
+            order += 1;
+            size >>= 1;
+        }
+        return order;
+    }
     inline bool is_txn_id(uint64_t txnID){
         if((txnID&TS_ID_MASK)){
             return true;
         }
         return false;
     }
-    inline int32_t get_threadID(uint64_t txnID){
+    inline uint8_t get_threadID(uint64_t txnID){
         //return (txnID >> 56)&(~TS_ID_MASK);
-        return (int32_t) ((txnID&Not_TS_ID_MASK)>>56);
+        return static_cast<uint8_t>(((txnID&Not_TS_ID_MASK)>>56));
     }
     //first bit tells it is a txn id
     //next 7 bits tell the thread id

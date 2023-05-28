@@ -16,7 +16,8 @@
 					"targetIndexes" : 
 					[
 						0,
-						1
+						1,
+						2
 					]
 				}
 			],
@@ -32,7 +33,8 @@
 					"targetIndexes" : 
 					[
 						0,
-						1
+						1,
+						2
 					]
 				}
 			],
@@ -41,14 +43,21 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "BwGraph_v2::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-BwGraph_v2-Debug-58c148220c04620deb30.json",
+					"jsonFile" : "target-BwGraph_v2-Debug-3418d1bd3ec1e9e1d484.json",
 					"name" : "BwGraph_v2",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
+					"id" : "bwgraph_lib::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-bwgraph_lib-Debug-ec759c52e3cf849b05ea.json",
+					"name" : "bwgraph_lib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
 					"id" : "parallel_hashmap_lib::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-parallel_hashmap_lib-Debug-846cc04421b9a58375cb.json",
+					"jsonFile" : "target-parallel_hashmap_lib-Debug-6371e0bc658591256cc9.json",
 					"name" : "parallel_hashmap_lib",
 					"projectIndex" : 0
 				}

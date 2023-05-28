@@ -51,7 +51,7 @@ build cmake_object_order_depends_target_parallel_hashmap_lib: phony || CMakeFile
 
 build CMakeFiles/parallel_hashmap_lib.dir/Libraries/parallel_hashmap/something.cpp.o: CXX_COMPILER__parallel_hashmap_lib_Debug /home/zhou822/BwGraph_v2/Libraries/parallel_hashmap/something.cpp || cmake_object_order_depends_target_parallel_hashmap_lib
   DEP_FILE = CMakeFiles/parallel_hashmap_lib.dir/Libraries/parallel_hashmap/something.cpp.o.d
-  FLAGS = -g -fdiagnostics-color=always
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
   INCLUDES = -I/home/zhou822/BwGraph_v2/parallel_hashmap
   OBJECT_DIR = CMakeFiles/parallel_hashmap_lib.dir
   OBJECT_FILE_DIR = CMakeFiles/parallel_hashmap_lib.dir/Libraries/parallel_hashmap
@@ -65,12 +65,58 @@ build CMakeFiles/parallel_hashmap_lib.dir/Libraries/parallel_hashmap/something.c
 # Link the static library libparallel_hashmap_lib.a
 
 build libparallel_hashmap_lib.a: CXX_STATIC_LIBRARY_LINKER__parallel_hashmap_lib_Debug CMakeFiles/parallel_hashmap_lib.dir/Libraries/parallel_hashmap/something.cpp.o
-  LANGUAGE_COMPILE_FLAGS = -g
+  LANGUAGE_COMPILE_FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined
   OBJECT_DIR = CMakeFiles/parallel_hashmap_lib.dir
   POST_BUILD = :
   PRE_LINK = :
   TARGET_FILE = libparallel_hashmap_lib.a
   TARGET_PDB = parallel_hashmap_lib.a.dbg
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target bwgraph_lib
+
+
+#############################################
+# Order-only phony target for bwgraph_lib
+
+build cmake_object_order_depends_target_bwgraph_lib: phony || CMakeFiles/bwgraph_lib.dir
+
+build CMakeFiles/bwgraph_lib.dir/core/block.cpp.o: CXX_COMPILER__bwgraph_lib_Debug /home/zhou822/BwGraph_v2/core/block.cpp || cmake_object_order_depends_target_bwgraph_lib
+  DEP_FILE = CMakeFiles/bwgraph_lib.dir/core/block.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core
+  OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/bwgraph_lib.dir/core
+
+build CMakeFiles/bwgraph_lib.dir/core/transaction_tables.cpp.o: CXX_COMPILER__bwgraph_lib_Debug /home/zhou822/BwGraph_v2/core/transaction_tables.cpp || cmake_object_order_depends_target_bwgraph_lib
+  DEP_FILE = CMakeFiles/bwgraph_lib.dir/core/transaction_tables.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core
+  OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/bwgraph_lib.dir/core
+
+build CMakeFiles/bwgraph_lib.dir/core/bw_index.cpp.o: CXX_COMPILER__bwgraph_lib_Debug /home/zhou822/BwGraph_v2/core/bw_index.cpp || cmake_object_order_depends_target_bwgraph_lib
+  DEP_FILE = CMakeFiles/bwgraph_lib.dir/core/bw_index.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core
+  OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
+  OBJECT_FILE_DIR = CMakeFiles/bwgraph_lib.dir/core
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target bwgraph_lib
+
+
+#############################################
+# Link the static library libbwgraph_lib.a
+
+build libbwgraph_lib.a: CXX_STATIC_LIBRARY_LINKER__bwgraph_lib_Debug CMakeFiles/bwgraph_lib.dir/core/block.cpp.o CMakeFiles/bwgraph_lib.dir/core/transaction_tables.cpp.o CMakeFiles/bwgraph_lib.dir/core/bw_index.cpp.o
+  LANGUAGE_COMPILE_FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined
+  OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
+  POST_BUILD = :
+  PRE_LINK = :
+  TARGET_FILE = libbwgraph_lib.a
+  TARGET_PDB = bwgraph_lib.a.dbg
 
 # =============================================================================
 # Object build statements for EXECUTABLE target BwGraph_v2
@@ -79,13 +125,13 @@ build libparallel_hashmap_lib.a: CXX_STATIC_LIBRARY_LINKER__parallel_hashmap_lib
 #############################################
 # Order-only phony target for BwGraph_v2
 
-build cmake_object_order_depends_target_BwGraph_v2: phony || cmake_object_order_depends_target_parallel_hashmap_lib
+build cmake_object_order_depends_target_BwGraph_v2: phony || cmake_object_order_depends_target_bwgraph_lib cmake_object_order_depends_target_parallel_hashmap_lib
 
 build CMakeFiles/BwGraph_v2.dir/main.cpp.o: CXX_COMPILER__BwGraph_v2_Debug /home/zhou822/BwGraph_v2/main.cpp || cmake_object_order_depends_target_BwGraph_v2
   DEFINES = -DTBB_USE_DEBUG
   DEP_FILE = CMakeFiles/BwGraph_v2.dir/main.cpp.o.d
-  FLAGS = -g -fdiagnostics-color=always
-  INCLUDES = -I/home/zhou822/BwGraph_v2/parallel_hashmap
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2/parallel_hashmap -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core
   OBJECT_DIR = CMakeFiles/BwGraph_v2.dir
   OBJECT_FILE_DIR = CMakeFiles/BwGraph_v2.dir
 
@@ -97,10 +143,9 @@ build CMakeFiles/BwGraph_v2.dir/main.cpp.o: CXX_COMPILER__BwGraph_v2_Debug /home
 #############################################
 # Link the executable BwGraph_v2
 
-build BwGraph_v2: CXX_EXECUTABLE_LINKER__BwGraph_v2_Debug CMakeFiles/BwGraph_v2.dir/main.cpp.o | /usr/lib/x86_64-linux-gnu/libtbb.so.12.5 libparallel_hashmap_lib.a || libparallel_hashmap_lib.a
-  FLAGS = -g
-  LINK_LIBRARIES = -Wl,-rpath,/home/zhou822/BwGraph_v2/core  /usr/lib/x86_64-linux-gnu/libtbb.so.12.5  libparallel_hashmap_lib.a
-  LINK_PATH = -L/home/zhou822/BwGraph_v2/core
+build BwGraph_v2: CXX_EXECUTABLE_LINKER__BwGraph_v2_Debug CMakeFiles/BwGraph_v2.dir/main.cpp.o | /usr/lib/x86_64-linux-gnu/libtbb.so.12.5 libparallel_hashmap_lib.a libbwgraph_lib.a || libbwgraph_lib.a libparallel_hashmap_lib.a
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined
+  LINK_LIBRARIES = /usr/lib/x86_64-linux-gnu/libtbb.so.12.5  libparallel_hashmap_lib.a  libbwgraph_lib.a
   OBJECT_DIR = CMakeFiles/BwGraph_v2.dir
   POST_BUILD = :
   PRE_LINK = :
@@ -133,6 +178,8 @@ build rebuild_cache: phony CMakeFiles/rebuild_cache.util
 # =============================================================================
 # Target aliases.
 
+build bwgraph_lib: phony libbwgraph_lib.a
+
 build parallel_hashmap_lib: phony libparallel_hashmap_lib.a
 
 # =============================================================================
@@ -143,7 +190,7 @@ build parallel_hashmap_lib: phony libparallel_hashmap_lib.a
 #############################################
 # Folder: /home/zhou822/BwGraph_v2/cmake-build-debug
 
-build all: phony libparallel_hashmap_lib.a BwGraph_v2
+build all: phony libparallel_hashmap_lib.a libbwgraph_lib.a BwGraph_v2
 
 # =============================================================================
 # Built-in targets

@@ -38,7 +38,8 @@ namespace bwgraph
         SUCCESS,
         LOCK_INHERIT,
         DEADLOCK,
-        CONFLICT
+        CONFLICT,
+        UNCLEAR
     };
     enum class Vertex_Index_Entry_State:uint8_t {
         FREE,
@@ -49,7 +50,7 @@ namespace bwgraph
         NORMAL,
         OVERFLOW,
         CONSOLIDATION,
-        VALIDATION,
+       // VALIDATION,
         INSTALLATION
     };
     enum class EdgeDeltaInstallResult:uint8_t{

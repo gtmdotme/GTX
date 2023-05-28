@@ -176,7 +176,7 @@ namespace bwgraph
         constexpr static size_t FILE_TRUNC_SIZE = 1ul << 30; // 1GB
     };
 
-    class BlockManagerLibc
+ /*   class BlockManagerLibc
     {
     public:
         constexpr static uintptr_t NULLPOINTER = UINTPTR_MAX;
@@ -199,6 +199,6 @@ namespace bwgraph
                 return nullptr;
             return reinterpret_cast<T *>(block);
         }
-    };
+    };*/
 }//namespace bwgraph
 #endif //BWGRAPH_V2_BLOCK_MANAGER_HPP

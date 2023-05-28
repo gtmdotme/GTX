@@ -15,8 +15,13 @@
 
 namespace bwgraph {
 #define TXN_TABLE_TEST true
-
-    struct txn_table_entry {
+    class BwGraph;
+    struct touched_block_entry{
+        touched_block_entry(int64_t vertex_id, label_t label):block_id(generate_block_id(vertex_id,label)){
+        }
+        uint64_t block_id;
+    };
+    struct alignas(64) txn_table_entry {
         txn_table_entry() {
             status.store(IN_PROGRESS);
         };
@@ -26,13 +31,13 @@ namespace bwgraph {
         }
 
         txn_table_entry(const txn_table_entry &other) {
-            txn_id = other.txn_id;
+            txn_id.store(other.txn_id.load());
             status.store(other.status);
             op_count.store(other.op_count);
         }
 
         txn_table_entry &operator=(const txn_table_entry &other) {
-            txn_id = other.txn_id;
+            txn_id.store(other.txn_id.load());
             status.store(other.status);
             op_count.store(other.op_count);
             return *this;
@@ -58,11 +63,11 @@ namespace bwgraph {
             status.store(ABORT);
         }
 
-        uint64_t txn_id;
+        std::atomic_uint64_t txn_id;
         std::atomic_uint64_t status;
         std::atomic_int64_t op_count;
 #if USING_ARRAY_TABLE
-        std::vector<uint64_t> touched_blocks;
+        std::vector<touched_block_entry> touched_blocks;
         char padding[16];
 #else
         char padding[40];
@@ -130,7 +135,11 @@ namespace bwgraph {
             ptr->op_count.store(op_count);
             ptr->status.store(ABORT);
         }
+        inline uint64_t generate_txn_id(uint8_t thread_id){
+            return generate_txnID(thread_id,offset++);
+        }
     private:
+        uint64_t offset;
         Map local_table;
     };
     class ConcurrentTransactionTables {
@@ -143,15 +152,15 @@ namespace bwgraph {
             }
         }
         inline bool get_status(uint64_t txn_id,uint64_t& status_result){
-            int32_t thread_id = get_threadID(txn_id);
+            uint8_t thread_id = get_threadID(txn_id);
             return tables[thread_id].get_status(txn_id,status_result);
         }
         inline void reduce_op_count(uint64_t txn_id,int64_t op_count){
-            int32_t thread_id = get_threadID(txn_id);
+            uint8_t thread_id = get_threadID(txn_id);
             tables[thread_id].reduce_op_count(txn_id, op_count);
         }
         inline entry_ptr put_entry(uint64_t txn_id){
-            int32_t thread_id = get_threadID(txn_id);
+            uint8_t thread_id = get_threadID(txn_id);
             return tables[thread_id].put_entry(txn_id);
         }
         //only read-write transactions are stored in the table, if a read-write transaction commits, it must has op_count>0
@@ -166,21 +175,102 @@ namespace bwgraph {
             ptr->status.store(commit_ts);
         }
         inline void abort_txn(entry_ptr ptr, uint64_t op_count){
-            int32_t thread_id = get_threadID(ptr->txn_id);
+            uint8_t thread_id = get_threadID(ptr->txn_id);
             tables[thread_id].abort_txn(ptr,op_count);
         }
 
     private:
         std::vector<ConcurrentTransactionTable>tables;
     };
-    class ArrayTransactionTables;
-    struct touched_block_entry{
-        touched_block_entry(int64_t vertex_id, label_t label):block_id(generate_block_id(vertex_id,label)){
-        }
-        uint64_t block_id;
-    };
-    class ArrayTransactionTable{
 
+    //now we program the array based transaction tables
+    class ArrayTransactionTables;
+
+    using Array = std::array<txn_table_entry,Per_Thread_Table_Size>;
+    class ArrayTransactionTable{
+    public:
+        ArrayTransactionTable():offset(0),bwGraph(nullptr),txn_tables(nullptr){}
+        ArrayTransactionTable(BwGraph* source_graph, ArrayTransactionTables* all_tables):offset(0),bwGraph(source_graph),txn_tables(all_tables){}
+        bool get_status(uint64_t txn_id, uint64_t& status_result){
+            uint64_t index = get_local_txn_id(txn_id)%Per_Thread_Table_Size;
+            status_result= local_table[index].status.load();
+            return local_table[index].txn_id == txn_id;
+        }
+        void reduce_op_count(uint64_t txn_id,int64_t op_count){
+            uint64_t index = get_local_txn_id(txn_id)%Per_Thread_Table_Size;
+#if TXN_TABLE_TEST
+            if(local_table[index].status.load()==IN_PROGRESS){
+                throw new std::runtime_error("error, try to reduce operation count of an in progress transaction");
+            }
+            if(local_table[index].op_count.load()<op_count){
+                throw new std::runtime_error("error, reduce op count is greater than remaining op count");
+            }
+#endif
+            local_table[index].reduce_op_count(op_count);
+        }
+        inline entry_ptr put_entry(uint64_t txn_id){
+            uint64_t index = get_local_txn_id(txn_id)%Per_Thread_Table_Size;
+#if TXN_TABLE_TEST
+            //assert(!local_table[index].txn_id.load());
+            if(local_table[index].op_count.load()){
+                throw TransactionTableOpCountException();
+            }
+#endif
+            local_table[index].txn_id.store(txn_id);
+            local_table[index].status.store(IN_PROGRESS);
+            return &local_table[index];
+        }
+        inline void commit_txn(entry_ptr ptr, uint64_t op_count, uint64_t commit_ts){
+            ptr->op_count.store(op_count);
+            ptr->status.store(commit_ts);
+        }
+        inline void abort_txn(entry_ptr ptr, uint64_t op_count){
+            ptr->op_count.store(op_count);
+            ptr->status.store(ABORT);
+        }
+        inline void set_bwgraph(BwGraph* source_graph){
+            bwGraph = source_graph;
+        }
+        inline void set_txn_tables(ArrayTransactionTables* all_tables){
+            txn_tables = all_tables;
+        }
+        void eager_clean(uint64_t index);
+        inline uint64_t generate_txn_id(uint8_t thread_id){
+            uint64_t index = offset%Per_Thread_Table_Size;
+            if(local_table[index].op_count.load()){
+                eager_clean(index);
+            }
+            uint64_t new_txn_id = bwgraph::generate_txnID(thread_id,offset);
+            offset++;
+            return new_txn_id;
+        }
+        //put_entry, abort and commit txn don't need to be accessed by other threads
+    private:
+        void lazy_update_block(uintptr_t block_ptr);
+        uint64_t offset;
+        Array local_table;
+        BwGraph* bwGraph;
+        ArrayTransactionTables* txn_tables;
+    };
+    class ArrayTransactionTables{
+    public:
+        ArrayTransactionTables(BwGraph* source_graph){
+            for(int i=0; i<WORKER_THREAD_NUM;i++){
+                tables[i].set_bwgraph(source_graph);
+                tables[i].set_txn_tables(this);
+            }
+        }
+        inline bool get_status(uint64_t txn_id,uint64_t& status_result){
+            uint8_t thread_id = bwgraph::get_threadID(txn_id);
+            return tables[thread_id].get_status(txn_id,status_result);
+        }
+        void reduce_op_count(uint64_t txn_id,int64_t op_count){
+            uint8_t thread_id = bwgraph::get_threadID(txn_id);
+            tables[thread_id].reduce_op_count(txn_id, op_count);
+        }
+
+    private:
+        std::array<ArrayTransactionTable,WORKER_THREAD_NUM> tables;
     };
 }//namespace bwgraph
 
