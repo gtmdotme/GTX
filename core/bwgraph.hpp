@@ -29,16 +29,17 @@ namespace bwgraph{
 #endif
         ROTransaction begin_read_only_transaction();
         RWTransaction begin_read_write_transaction();
-
-
+        inline VertexIndexEntry& get_vertex_index_entry(int64_t vid){
+            return vertex_index.get_vertex_index_entry(vid);
+        }
+        inline BlockManager& get_block_manager(){return block_manager;}
+        inline BlockAccessTimestampTable& get_block_access_ts_table(){return block_access_ts_table;}
+        inline CommitManager& get_commit_manager(){return commit_manager;}
+        inline TxnTables & get_txn_tables(){return txn_tables;}
     private:
         BlockManager block_manager;
         VertexIndex vertex_index;
-#if USING_ARRAY_TABLE
-        ArrayTransactionTables txn_tables;
-#else
-        ConcurrentTransactionTables txn_tables;
-#endif
+        TxnTables txn_tables;
         CommitManager commit_manager;
         BlockAccessTimestampTable block_access_ts_table;
         friend class ROTransaction;

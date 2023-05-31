@@ -54,5 +54,20 @@ class BlockSafeAccessException: public std::exception{
         return "the current thread should only check is_safe() iff it is accessing the block already";
     }
 };
+class LabelEntryMissingException : public std::exception{
+    virtual const char *what() const throw() {
+        return "If a transaction wrote to a label's block that label's entry should exist";
+    }
+};
+class EdgeIteratorNoBlockToReadException : public std::exception{
+    virtual const char *what() const throw() {
+        return "If an edge delta block exists, there is at least one block that the current transaction can read";
+    }
+};
+class LazyUpdateAbortException: public std::exception{
+    virtual const char *what() const throw() {
+        return "Lazy update will only update abort deltas during consolidation's installation phase. All other scenarios shall return ABORT";
+    }
+};
 }
 #endif //BWGRAPH_V2_EXCEPTIONS_HPP

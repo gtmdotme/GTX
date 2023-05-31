@@ -18,6 +18,7 @@
 namespace bwgraph {
 #define TXN_TABLE_TEST true
     class BwGraph;
+    class GarbageBlockQueue;
     struct touched_block_entry{
         touched_block_entry(int64_t vertex_id, label_t label, uint64_t input_ts):block_id(generate_block_id(vertex_id,label)), consolidation_ts(input_ts){
         }
@@ -275,7 +276,9 @@ namespace bwgraph {
             txn_tables = all_tables;
         }
         void eager_clean(uint64_t index);
-        inline uint64_t generate_txn_id(uint8_t thread_id){
+        inline void set_thread_id(uint8_t id){thread_id=id;}
+
+        inline uint64_t generate_txn_id(){
             uint64_t index = offset%Per_Thread_Table_Size;
             if(local_table[index].op_count.load()){
                 eager_clean(index);
@@ -284,18 +287,23 @@ namespace bwgraph {
             offset++;
             return new_txn_id;
         }
+        //a necessary function for worker thread setup
+        inline void set_garbage_queue(GarbageBlockQueue* input_queue);
         //put_entry, abort and commit txn don't need to be accessed by other threads
     private:
         void lazy_update_block(uintptr_t block_ptr);
+        uint8_t thread_id;
         uint64_t offset;
         Array local_table;
         BwGraph* bwGraph;
         ArrayTransactionTables* txn_tables;
+        GarbageBlockQueue* thread_local_garbage_queue;
     };
     class ArrayTransactionTables{
     public:
         ArrayTransactionTables(BwGraph* source_graph){
-            for(int i=0; i<WORKER_THREAD_NUM;i++){
+            for(uint8_t i=0; i<WORKER_THREAD_NUM;i++){
+                tables[i].set_thread_id(i);
                 tables[i].set_bwgraph(source_graph);
                 tables[i].set_txn_tables(this);
             }
@@ -316,6 +324,13 @@ namespace bwgraph {
 
         std::array<ArrayTransactionTable,WORKER_THREAD_NUM> tables;
     };
+
+# if USING_ARRAY_TABLE
+    using TxnTables = ArrayTransactionTables;
+#else
+    using TxnTables = ConcurrentTransactionTables;
+#endif
+
 }//namespace bwgraph
 
 #endif //BWGRAPH_V2_TRANSACTION_TABLES_HPP

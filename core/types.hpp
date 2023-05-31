@@ -9,13 +9,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <atomic>
-
+#include <unordered_map>
 namespace bwgraph
 {
     using label_t = uint16_t;
     using vertex_t = uint64_t;
     using order_t = uint8_t;
     using timestamp_t = uint64_t;
+    using lazy_update_map = std::unordered_map<uint64_t,int32_t>;//txn local cache for lazy update
 
     enum class VertexDeltaType : uint8_t
     {

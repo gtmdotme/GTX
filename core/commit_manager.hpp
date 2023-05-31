@@ -29,6 +29,7 @@ namespace bwgraph{
 
         }
 #else
+        inline uint64_t get_current_read_ts(){return global_read_epoch.load();}
         inline void txn_commit(entry_ptr txn_entry);
         void server_loop();//server loops to commit
 #endif

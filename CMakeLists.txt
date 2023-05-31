@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -We
 find_package(TBB REQUIRED PATHS /tmp/my_installed_onetbb/lib/cmake/TBB)
 add_library(parallel_hashmap_lib STATIC Libraries/parallel_hashmap/something.cpp)
 target_include_directories(parallel_hashmap_lib PUBLIC parallel_hashmap)
-add_library(bwgraph_lib STATIC core/block.cpp core/transaction_tables.cpp core/bw_index.cpp core/bw_transaction.hpp core/bwgraph.cpp core/bwgraph.hpp core/commit_manager.hpp core/edge_delta_block_state_protection.hpp core/block_access_ts_table.hpp core/previous_version_garbage_queue.hpp core/spin_latch.hpp core/commit_manager.cpp)
+add_library(bwgraph_lib STATIC core/block.cpp core/transaction_tables.cpp core/bw_index.cpp core/bw_transaction.hpp core/bwgraph.cpp core/bwgraph.hpp core/commit_manager.hpp core/edge_delta_block_state_protection.hpp core/block_access_ts_table.hpp core/previous_version_garbage_queue.hpp core/spin_latch.hpp core/commit_manager.cpp core/edge_iterator.hpp)
 target_include_directories(bwgraph_lib PUBLIC public core)
 add_executable(BwGraph_v2 main.cpp ) #core/types.hpp core/block_manager.hpp core/utils.hpp core/block.hpp core/exceptions.hpp core/transaction_tables.cpp core/transaction_tables.hpp core/graph_global.hpp Libraries/parallel_hashmap/something.cpp
 #target_link_directories(BwGraph_v2 PUBLIC core/ )

@@ -53,7 +53,9 @@ namespace bwgraph{
             }
             return current_state;
         }
-
+        inline static void release_protection(uint8_t thread_id,BlockAccessTimestampTable& block_ts_table){
+            block_ts_table.release_block_access(thread_id);
+        }
     };
 }
 #endif //BWGRAPH_V2_EDGE_DELTA_BLOCK_STATE_PROTECTION_HPP

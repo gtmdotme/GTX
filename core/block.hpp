@@ -92,7 +92,7 @@ namespace bwgraph{
         EdgeDeltaType delta_type;
         // timestamp_t creation_ts;
         std::atomic_uint64_t  creation_ts;
-        uint64_t invalidate_ts;
+        std::atomic_uint64_t invalidate_ts;//todo: think a bit more about whether it needs to be atomic
         uint32_t data_length;
         uint32_t data_offset;//where its data entry is at
         uint32_t previous_offset;//todo:the delta chain chains all deltas of the same filter lock together
@@ -292,6 +292,11 @@ namespace bwgraph{
                 previous_edge_delta->is_last_delta=false;
             }
             return;
+        }
+        inline bool is_overflow_offset(uint64_t current_offset){
+            uint32_t data_size = (uint32_t)(current_offset>>32);
+            uint32_t delta_size = (uint32_t)(current_offset&SIZE2MASK);
+            return get_size()<(data_size+delta_size);
         }
         //it is only used during consolidation
         std::pair<EdgeDeltaInstallResult,uint32_t> append_edge_delta(int64_t toID, uint64_t txnID, EdgeDeltaType type, char*edge_data, int data_size, uint32_t previous_delta_offset){

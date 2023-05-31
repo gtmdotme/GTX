@@ -28,6 +28,11 @@ namespace bwgraph{
     public:
         //implement constructor
 
+        //transaction graph operations
+        Txn_Operation_Response put_edge(int64_t src, int64_t dst, label_t label, std::string_view edge_data);
+        std::pair<Txn_Operation_Response,std::string_view> get_edge(int64_t src, int64_t dst, label_t label);
+
+
     private:
         const uint64_t local_txn_id;
         const uint64_t read_timestamp;

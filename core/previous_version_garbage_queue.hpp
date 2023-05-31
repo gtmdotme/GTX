@@ -47,6 +47,9 @@ namespace bwgraph{
                 }
             }
         }
+        void register_entry(uintptr_t block_ptr, order_t order, uint64_t updated_ts){
+            previous_versions_queue.emplace(block_ptr,order,updated_ts);
+        }
     private:
         std::priority_queue<PreviousVersionBlockEntry> previous_versions_queue;
         BlockManager* block_manager;

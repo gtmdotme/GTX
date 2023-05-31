@@ -65,7 +65,7 @@ namespace bwgraph {
         inline void allocate_block(VertexIndexBucket* input_bucket_ptr){
             index_bucket_ptr = input_bucket_ptr;
         }
-        inline VertexIndexBucket* get_index_bucket_ptr(){return index_bucket_ptr;}
+        inline VertexIndexBucket* get_index_bucket_ptr(){return index_bucket_ptr;}//index bucket ptr should never be null when invoked
         inline void make_valid(){valid.store(true);}
     private:
         std::atomic_bool valid = false;

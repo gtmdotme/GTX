@@ -12,6 +12,7 @@
 //transaction states
 #define ABORT 0x7FFFFFFFFFFFFFFF
 #define IN_PROGRESS 0
+#define MAX_TS 0x6FFFFFFFFFFFFFFF
 //transaction table states
 #define USING_ARRAY_TABLE true
 //for array txn table only
