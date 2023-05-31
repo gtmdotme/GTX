@@ -28,14 +28,14 @@ namespace bwgraph {
         inline uint8_t get_offset(){
             return offset.load();
         }
-        inline void fill_information(int64_t input_vid,BlockManager* input_block_mgr_ptr){
+        inline void fill_information(vertex_t input_vid,BlockManager* input_block_mgr_ptr){
             owner_id= input_vid;
             block_manager=input_block_mgr_ptr;
         }
         //reader will locate a corresponding label entry if it exists, otherwise it returns false
         bool reader_lookup_label(label_t target_label,  BwLabelEntry*& target_entry);
         BwLabelEntry* writer_lookup_label(label_t target_label);
-        int64_t owner_id;
+        vertex_t owner_id;
         std::atomic_uint8_t offset=0;
         BlockManager* block_manager;
         //BwLabelEntry label_entries[BW_LABEL_BLOCK_SIZE];
@@ -49,10 +49,10 @@ namespace bwgraph {
     };
     class VertexIndexBucket{
     public:
-        inline VertexIndexEntry& get_vertex_index_entry(int64_t vid){
+        inline VertexIndexEntry& get_vertex_index_entry(vertex_t vid){
             return index_entries[vid%BUCKET_SIZE];
         }
-        inline void allocate_vertex_index_entry(int64_t vid){
+        inline void allocate_vertex_index_entry(vertex_t vid){
 
             index_entries[vid%BUCKET_SIZE].valid=true;
         }
@@ -79,7 +79,7 @@ namespace bwgraph {
             bucket_index[0].allocate_block(block_manager.convert<VertexIndexBucket>(new_bucket_ptr));
             bucket_index[0].make_valid();
         }
-        inline int64_t get_next_vid(){
+        inline vertex_t get_next_vid(){
             auto new_id =  global_vertex_id.fetch_add(1);
             auto bucket_id = new_id / BUCKET_SIZE;
             if(!(new_id%BUCKET_SIZE)){
@@ -92,11 +92,11 @@ namespace bwgraph {
             }
             return new_id;
         }
-        inline VertexIndexEntry& get_vertex_index_entry(int64_t vid){
+        inline VertexIndexEntry& get_vertex_index_entry(vertex_t vid){
             return bucket_index[vid/BUCKET_SIZE].get_index_bucket_ptr()->get_vertex_index_entry(vid);
         }
     private:
-        std::atomic_int64_t global_vertex_id;
+        std::uint64_t global_vertex_id;
         std::array<BucketPointer,BUCKET_NUM>bucket_index;
         BlockManager& block_manager;
     };

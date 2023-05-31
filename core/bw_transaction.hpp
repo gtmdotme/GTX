@@ -9,6 +9,7 @@
 //#include <map>
 #include "bw_index.hpp"
 #include "transaction_tables.hpp"
+#include "edge_iterator.hpp"
 namespace bwgraph{
     struct LockOffsetCache{
         LockOffsetCache(uint64_t input_ts, int32_t input_size):consolidation_ts(input_ts),delta_chain_num(input_size){}
@@ -18,7 +19,7 @@ namespace bwgraph{
 
         uint64_t consolidation_ts;
         int32_t delta_chain_num;
-        std::unordered_set<int64_t>already_modified_edges;
+        std::unordered_set<vertex_t>already_modified_edges;
         std::map<int32_t,uint32_t>updated_delta_chain_head_offsets;
     };
     class ROTransaction{
@@ -29,19 +30,25 @@ namespace bwgraph{
         //implement constructor
 
         //transaction graph operations
-        Txn_Operation_Response put_edge(int64_t src, int64_t dst, label_t label, std::string_view edge_data);
-        std::pair<Txn_Operation_Response,std::string_view> get_edge(int64_t src, int64_t dst, label_t label);
+        Txn_Operation_Response put_edge(vertex_t src, vertex_t dst, label_t label, std::string_view edge_data);
+        vertex_t create_vertex();
+        Txn_Operation_Response update_vertex(vertex_t src, std::string_view vertex_data);
+        Txn_Operation_Response delete_vertex(vertex_t src);
 
-
+        std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label);
+        std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label);
+        std::string_view get_vertex(vertex_t src);
+        void abort();
+        bool commit();
+        //Txn_Operation_Response delete(vertex_t src, vertex_t dst, label_t label);
     private:
+        void consolidation();
+        bool validation();
+        void eager_abort();
         const uint64_t local_txn_id;
         const uint64_t read_timestamp;
         entry_ptr self_entry;
-#if USING_ARRAY_TABLE
-        ArrayTransactionTables& txn_tables;
-#else
-        ConcurrentTransactionTables& txn_tables;
-#endif
+        TxnTables& txn_tables;
         std::unordered_map<uint64_t,int32_t>lazy_update_records;
         std::map<uint64_t, LockOffsetCache>cached_delta_chain_offsets;//at commit time do a merge
         int32_t op_count=0;

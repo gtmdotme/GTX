@@ -29,7 +29,7 @@ namespace bwgraph{
 #endif
         ROTransaction begin_read_only_transaction();
         RWTransaction begin_read_write_transaction();
-        inline VertexIndexEntry& get_vertex_index_entry(int64_t vid){
+        inline VertexIndexEntry& get_vertex_index_entry(vertex_t vid){
             return vertex_index.get_vertex_index_entry(vid);
         }
         inline BlockManager& get_block_manager(){return block_manager;}

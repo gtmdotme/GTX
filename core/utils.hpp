@@ -46,8 +46,8 @@ namespace bwgraph{
     inline uint64_t generate_block_id(int64_t vertex_id, label_t label){
         return (static_cast<uint64_t>(label)<<48)|static_cast<uint64_t>(vertex_id);
     }
-    inline std::pair<int64_t, label_t> decompose_block_id(uint64_t block_id){
-        return std::pair<int64_t,label_t>((block_id&VERTEX_ID_MASK),(static_cast<label_t>(block_id>>48)));
+    inline std::pair<vertex_t, label_t> decompose_block_id(uint64_t block_id){
+        return std::pair<vertex_t,label_t>((block_id&VERTEX_ID_MASK),(static_cast<label_t>(block_id>>48)));
     }
     inline void record_lazy_update_record(lazy_update_map* txn_lazy_update_records, uint64_t original_txn_id){
         auto emplace_result = txn_lazy_update_records->try_emplace(original_txn_id,1);

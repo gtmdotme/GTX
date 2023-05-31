@@ -20,9 +20,9 @@ namespace bwgraph {
     class BwGraph;
     class GarbageBlockQueue;
     struct touched_block_entry{
-        touched_block_entry(int64_t vertex_id, label_t label, uint64_t input_ts):block_id(generate_block_id(vertex_id,label)), consolidation_ts(input_ts){
+        touched_block_entry(vertex_t vertex_id, label_t label, uint64_t input_ts):block_id(generate_block_id(vertex_id,label)), consolidation_ts(input_ts){
         }
-        touched_block_entry(uint64_t input_id, uint64_t input_ts):block_id(input_id),consolidation_ts(input_ts){}
+        touched_block_entry(vertex_t input_id, uint64_t input_ts):block_id(input_id),consolidation_ts(input_ts){}
         uint64_t block_id;
         uint64_t consolidation_ts;//a safety mark, to check if scan is needed
     };
