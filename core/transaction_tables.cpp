@@ -74,7 +74,7 @@ namespace bwgraph{
             //if it refers to labeled edge block
             if(target_vid_label_pair.second){
                 //label block never gets deleted because we can reuse it
-                DeltaLabelBlock* target_label_block = bwGraph->get_block_manager().convert<DeltaLabelBlock>(index_entry.edge_label_block_ptr.load());
+                EdgeLabelBlock* target_label_block = bwGraph->get_block_manager().convert<EdgeLabelBlock>(index_entry.edge_label_block_ptr.load());
                 BwLabelEntry* target_label_entry;
                 if(target_label_block->reader_lookup_label(target_vid_label_pair.second,target_label_entry)){
                     //if the block is under overflow or installation states, we know another thread is doing consolidation work so it will lazy update our transaction!

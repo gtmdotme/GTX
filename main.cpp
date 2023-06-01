@@ -12,7 +12,7 @@ int main() {
     std::cout << "Hello, World! " <<ptr<< std::endl;
     std::cout<<sizeof(ArrayTransactionTables)<<std::endl;
     std::cout<<sizeof(EdgeDeltaBlockHeader)<<std::endl;
-    DeltaLabelBlock label_block;
+    EdgeLabelBlock label_block;
     std::cout<<sizeof(label_block)<<std::endl;
     std::cout<<sizeof(VertexIndexBucket)<<std::endl;
     std::cout<<sizeof(CommitManager)<<std::endl;

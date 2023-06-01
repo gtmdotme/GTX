@@ -26,6 +26,8 @@ namespace bwgraph {
         uint64_t block_id;
         uint64_t consolidation_ts;//a safety mark, to check if scan is needed
     };
+
+#if USING_ARRAY_TABLE
     struct alignas(64) txn_table_entry {
         txn_table_entry():txn_id(0),op_count(0) {
             status.store(IN_PROGRESS);
@@ -71,17 +73,60 @@ namespace bwgraph {
         std::atomic_uint64_t txn_id;
         std::atomic_uint64_t status;
         std::atomic_int64_t op_count;
-#if USING_ARRAY_TABLE
         std::vector<touched_block_entry> touched_blocks;
        //std::map<touched_block_entry,LockOffsetCache> touched_blocks;
-       // char padding[16];
-#else
-        char padding[40];
-#endif
+       // char padding[16]
     };
+    static_assert(sizeof(txn_table_entry) == 64);
+#else
+    struct txn_table_entry {
+        txn_table_entry():txn_id(0),op_count(0) {
+            status.store(IN_PROGRESS);
+        };
+
+        txn_table_entry(uint64_t new_txn_id) : txn_id(new_txn_id),op_count(0) {
+            status.store(IN_PROGRESS);
+        }
+
+        txn_table_entry(const txn_table_entry &other) {
+            txn_id.store(other.txn_id.load());
+            status.store(other.status.load());
+            op_count.store(other.op_count.load());
+        }
+
+        txn_table_entry &operator=(const txn_table_entry &other) {
+            txn_id.store(other.txn_id.load());
+            status.store(other.status.load());
+            op_count.store(other.op_count.load());
+            return *this;
+        }
+        //we do not eagerly delete entries, just check if the next entry has op_count == 0.
+        inline bool reduce_op_count(int64_t num) {
+            if (op_count.fetch_sub(num) == num) {
+                return true;
+            }
+#if TXN_TABLE_TEST
+            if (op_count.load() < 0) {
+                throw TransactionTableOpCountException();
+            }
+#endif
+            return false;
+        }
+
+        inline void commit(uint64_t ts) {
+            status.store(ts);
+        }
+
+        inline void abort() {
+            status.store(ABORT);
+        }
+
+        std::atomic_uint64_t txn_id;
+        std::atomic_uint64_t status;
+        std::atomic_int64_t op_count;
+#endif
 
     using entry_ptr = txn_table_entry *;
-    static_assert(sizeof(txn_table_entry) == 64);
     using Map = phmap::parallel_flat_hash_map<
             uint64_t,
             entry_ptr ,

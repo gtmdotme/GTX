@@ -23,7 +23,7 @@ namespace bwgraph {
         std::vector<AtomicDeltaOffset>* delta_chain_index=nullptr;//this needs to be a pointer!
     };
 
-    class DeltaLabelBlock {
+    class EdgeLabelBlock {
     public:
         inline uint8_t get_offset(){
             return offset.load();
@@ -96,7 +96,7 @@ namespace bwgraph {
             return bucket_index[vid/BUCKET_SIZE].get_index_bucket_ptr()->get_vertex_index_entry(vid);
         }
     private:
-        std::uint64_t global_vertex_id;
+        std::atomic_uint64_t global_vertex_id;
         std::array<BucketPointer,BUCKET_NUM>bucket_index;
         BlockManager& block_manager;
     };

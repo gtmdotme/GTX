@@ -69,5 +69,10 @@ class LazyUpdateAbortException: public std::exception{
         return "Lazy update will only update abort deltas during consolidation's installation phase. All other scenarios shall return ABORT";
     }
 };
+class GraphNullPointerException : public std::exception{
+    virtual const char *what() const throw() {
+        return "graph is having null pointers at a locations where it should not happen";
+    }
+};
 }
 #endif //BWGRAPH_V2_EXCEPTIONS_HPP

@@ -6,7 +6,7 @@
 #include "utils.hpp"
 #include "block.hpp"
 namespace bwgraph{
-    bool DeltaLabelBlock::reader_lookup_label(bwgraph::label_t target_label, bwgraph::BwLabelEntry *&target_entry) {
+    bool EdgeLabelBlock::reader_lookup_label(bwgraph::label_t target_label, bwgraph::BwLabelEntry *&target_entry) {
         uint8_t current_offset=0;
         do{
             current_offset = offset.load();
@@ -26,16 +26,16 @@ namespace bwgraph{
             if(current_offset!=BW_LABEL_BLOCK_SIZE){
                 throw LabelBlockPointerException();
             }
-            return block_manager->convert<DeltaLabelBlock>(next_ptr)->reader_lookup_label(target_label,target_entry);
+            return block_manager->convert<EdgeLabelBlock>(next_ptr)->reader_lookup_label(target_label,target_entry);
         }else{
             return false;
         }
     }
     //todo: double check this function
     //will always succeed
-    BwLabelEntry *DeltaLabelBlock::writer_lookup_label(bwgraph::label_t target_label) {
+    BwLabelEntry *EdgeLabelBlock::writer_lookup_label(bwgraph::label_t target_label) {
         //loop until we observe concurrent updates
-        DeltaLabelBlock* current_label_block = this;
+        EdgeLabelBlock* current_label_block = this;
         while(true){
             uint8_t current_offset=0;
             //loop check the current block
@@ -72,9 +72,9 @@ namespace bwgraph{
                 auto current_next_ptr = current_label_block->next_ptr.load();
                 //allocate new block and install using CAS
                 if(!current_next_ptr){
-                    order_t new_order = size_to_order(sizeof(DeltaLabelBlock));
+                    order_t new_order = size_to_order(sizeof(EdgeLabelBlock));
                     uintptr_t new_next_ptr = block_manager->alloc(new_order);
-                    auto new_block =  block_manager->convert<DeltaLabelBlock>(new_next_ptr);
+                    auto new_block =  block_manager->convert<EdgeLabelBlock>(new_next_ptr);
                     new_block->offset=1;
                     new_block->block_manager = block_manager;
                     new_block->label_entries[0].label = target_label;
@@ -92,11 +92,11 @@ namespace bwgraph{
                         delete new_block->label_entries[0].delta_chain_index;
                         block_manager->free(new_block->label_entries[0].block_ptr,DEFAULT_EDGE_DELTA_BLOCK_ORDER);
                         block_manager->free(new_next_ptr,new_order);
-                        current_label_block =  block_manager->convert<DeltaLabelBlock>(current_label_block->next_ptr.load());
+                        current_label_block =  block_manager->convert<EdgeLabelBlock>(current_label_block->next_ptr.load());
                         continue;
                     }
                 }else{
-                    current_label_block = block_manager->convert<DeltaLabelBlock>(current_label_block->next_ptr.load());
+                    current_label_block = block_manager->convert<EdgeLabelBlock>(current_label_block->next_ptr.load());
                     continue;
                 }
             }
