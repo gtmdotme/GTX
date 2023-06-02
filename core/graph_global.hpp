@@ -24,4 +24,5 @@
 #define BUCKET_NUM 8
 #define BAD_BLOCK_ID 0
 #define USING_WAL false
+#define USING_PESSIMISTIC_MODE true
 #endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

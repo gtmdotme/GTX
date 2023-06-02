@@ -4,7 +4,8 @@
 #include "../core/bw_transaction.hpp"
 #include "../core/edge_delta_block_state_protection.hpp"
 using namespace bwgraph;
-
+//pessimistic mode
+#if USING_PESSIMISTIC_MODE
 Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label_t label, std::string_view edge_data){
     //locate the vertex;
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
@@ -22,9 +23,19 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
             throw GraphNullPointerException();
         }
         auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
-        
+        //if the block is already overflow, return and wait
+        if(current_block->already_overflow()){
+            BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+            return Txn_Operation_Response::WRITER_WAIT;
+        }
+        auto* delta_chains_index = target_label_entry->delta_chain_index;
+        const char* data = edge_data.data();
+        int32_t total_delta_chain_num = current_block->get_delta_chain_num();
+       // auto touched_block_offset_emplace = cached_delta_chain_offsets.try_emplace(block_id,)
     }else{
 
     }
 
 }
+
+#endif

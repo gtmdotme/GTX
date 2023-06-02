@@ -74,5 +74,10 @@ class GraphNullPointerException : public std::exception{
         return "graph is having null pointers at a locations where it should not happen";
     }
 };
+class DeltaChainReclaimException:public std::exception{
+    virtual const char *what() const throw() {
+        return "consolidation did not capture all my in progress deltas";
+    }
+};
 }
 #endif //BWGRAPH_V2_EXCEPTIONS_HPP

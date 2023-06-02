@@ -55,5 +55,8 @@ namespace bwgraph{
             emplace_result.first->second++;
         }
     }
+    inline delta_chain_id calculate_owner_delta_chain_id(vertex_t vid, int32_t delta_chain_num){
+        return vid%delta_chain_num;
+    }
 }
 #endif //BWGRAPH_V2_UTILS_HPP

@@ -12,17 +12,97 @@
 #include "edge_iterator.hpp"
 #include "previous_version_garbage_queue.hpp"
 #include "types.hpp"
+#include <set>
 namespace bwgraph{
     struct LockOffsetCache{
         LockOffsetCache(uint64_t input_ts, int32_t input_size):consolidation_ts(input_ts),delta_chain_num(input_size){}
         inline bool is_outdated(uint64_t current_consolidation_ts){
             return current_consolidation_ts != consolidation_ts;
         }
+        inline bool is_same_version(timestamp_t current_consolidation_ts){
+            return current_consolidation_ts==consolidation_ts;
+        }
 
+#if PESSIMISTIC_DELTA_BLOCK
+        /*
+         * invoked under pessimistic mode after the state protection is grabbed.
+         * Reclaim the locks according to the new block delta chain structure. Return false upon conflict
+         */
+        bool reclaim_delta_chain_lock(uint64_t new_consolidation_ts, EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry, uint64_t txn_id, uint64_t txn_read_ts, uint64_t current_block_offset){
+            delta_chain_num = current_block->get_delta_chain_num();//todo: check if we can update delta chain num directly in place
+            std::set<delta_chain_id_t> to_reclaim_locks;//use set because we want a deterministic order of reclaiming locks
+            already_updated_delta_chain_head_offsets.clear();
+            consolidation_ts = new_consolidation_ts;
+            for(auto it = already_modified_edges.begin();it!=already_modified_edges.end();it++){
+                to_reclaim_locks.emplace(calculate_owner_delta_chain_id(*it,delta_chain_num));
+                already_updated_delta_chain_head_offsets.try_emplace(*it,0);
+            }
+            //our new solution: reclaim offsets first
+
+            std::set<delta_chain_id_t> already_reclaimed_locks;
+            bool to_abort = false;
+            for(auto it = to_reclaim_locks.begin();it!=to_reclaim_locks.end();it++){
+                bool lock_result = current_block->try_set_protection_on_delta_chain(*it);
+                if(lock_result){
+                    already_reclaimed_locks.emplace(*it);
+                    auto& delta_chain_index_entry = current_label_entry->delta_chain_index->at(*it);
+                    BaseEdgeDelta* current_delta_chain_head = current_block->get_edge_delta(delta_chain_index_entry.get_offset());
+                    uint64_t current_delta_chain_head_ts = current_delta_chain_head->creation_ts.load();
+                    //because lock and offset are bind together
+#if EDGE_DELTA_TEST
+                    if(is_txn_id(current_delta_chain_head_ts)){
+                        throw LazyUpdateException();//how can we have the lock while the delta chain head is in-progress?
+                    }
+#endif
+                    if(current_delta_chain_head_ts>txn_read_ts){
+                        to_abort=true;
+                        break;
+                    }
+                }else{
+                    to_abort=true;
+                    break;
+                }
+            }
+            if(to_abort){
+                for(auto it = already_reclaimed_locks.begin();it!=already_reclaimed_locks.end();it++){
+                   // current_block->release_protection(it);
+                   current_block->release_protection_delta_chain(*it);
+                }
+                return false;
+            }
+            //reconstruct offsets
+            return true;
+        }
+
+        //reconstruct all private transaction delta chain heads
+        void reconstruct_offsets(int32_t new_lock_size, EdgeDeltaBlockHeader* current_block, uint64_t txn_id, uint64_t current_block_offset){
+            size_t delta_chains_to_reclaim_num = already_updated_delta_chain_head_offsets.size();//the total number of delta chains we want to reclaim
+            std::unordered_set<delta_chain_id_t>settled_delta_chains(delta_chains_to_reclaim_num);
+            uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_block_offset);
+            auto current_delta = current_block->get_edge_delta(current_delta_offset);
+            while(settled_delta_chains.size()<delta_chains_to_reclaim_num){
+                if(current_delta_offset==0){
+                    throw DeltaChainReclaimException();
+                }
+                if(current_delta->creation_ts.load()==txn_id){
+                    delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(current_delta->toID,delta_chain_num);
+                    auto emplace_result = settled_delta_chains.emplace(delta_chain_id);
+                    if(emplace_result.second){
+                        already_updated_delta_chain_head_offsets[delta_chain_id]=current_delta_offset;
+                        //todo: add a check here
+                    }
+                }
+                current_delta++;
+                current_delta_offset-=ENTRY_DELTA_SIZE;
+            }
+        }
+#else //if optimistic mode
+
+#endif //if pessimistic mode
         uint64_t consolidation_ts;
         int32_t delta_chain_num;
         std::unordered_set<vertex_t>already_modified_edges;
-        std::map<int32_t,uint32_t>updated_delta_chain_head_offsets;
+        std::map<delta_chain_id_t ,uint32_t>already_updated_delta_chain_head_offsets;
     };
     struct validation_to_revise_entry{
         validation_to_revise_entry(int32_t input_delta_id, uint32_t input_offset):/*block_id(input_id),*/delta_chain_id(input_delta_id),original_offset(input_offset){}

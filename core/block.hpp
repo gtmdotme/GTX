@@ -103,6 +103,9 @@ namespace bwgraph{
     };
     class EdgeDeltaBlockHeader{
     public:
+        inline static uint32_t get_delta_offset_from_combined_offset(uint64_t input_offset){
+            return static_cast<uint32_t>(input_offset&SIZE2MASK);
+        }
         //metadata accessor:
         inline timestamp_t get_creation_time(){
             return creation_time;
@@ -127,6 +130,9 @@ namespace bwgraph{
         }
         inline int32_t get_delta_chain_num(){
             return delta_chain_num;
+        }
+        inline bool already_overflow(){
+            return is_overflow_offset(combined_offsets.load());
         }
         //metadata modifier
         inline void fill_metadata(vertex_t input_owner_id, timestamp_t input_creation_time, uintptr_t input_prev_pointer, int32_t input_order){
@@ -212,6 +218,7 @@ namespace bwgraph{
             uint32_t latest_delta_chain_head_offset = target_chain_index_entry.get_offset();
             uint32_t raw_delta_chain_offset = latest_delta_chain_head_offset&UNLOCK_MASK;
             BaseEdgeDelta* delta_chain_head = nullptr;
+            //todo: also check lock?
             if(raw_delta_chain_offset){
                 delta_chain_head = get_edge_delta(raw_delta_chain_offset);
                 uint64_t original_ts = delta_chain_head->creation_ts.load();
@@ -250,13 +257,21 @@ namespace bwgraph{
                 return Delta_Chain_Lock_Response::CONFLICT;
             }
         }
-        void release_protection(vertex_t vid){
+       inline void release_protection(vertex_t vid){
             int32_t delta_chain_id = get_delta_chain_id(vid);
             auto& current_entry = delta_chains_index->at(delta_chain_id);
             current_entry.release_lock();
         }
-        bool try_set_protection(vertex_t vid){
+       inline void release_protection_delta_chain(delta_chain_id_t id){
+            auto& current_entry = delta_chains_index->at(id);
+            current_entry.release_lock();
+        }
+       inline bool try_set_protection(vertex_t vid){
             int32_t delta_chain_id = get_delta_chain_id(vid);
+            auto& current_entry = delta_chains_index->at(delta_chain_id);
+            return current_entry.try_set_lock();
+        }
+        inline bool try_set_protection_on_delta_chain(delta_chain_id_t delta_chain_id){
             auto& current_entry = delta_chains_index->at(delta_chain_id);
             return current_entry.try_set_lock();
         }

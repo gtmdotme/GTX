@@ -17,7 +17,7 @@ namespace bwgraph
     using order_t = uint8_t;
     using timestamp_t = uint64_t;
     using lazy_update_map = std::unordered_map<uint64_t,int32_t>;//txn local cache for lazy update
-
+    using delta_chain_id_t = int32_t;
     enum class VertexDeltaType : uint8_t
     {
         // TODO: need to be revisited
