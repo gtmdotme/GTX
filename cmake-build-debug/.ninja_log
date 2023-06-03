@@ -38,3 +38,12 @@
 3	1814	1685582761303355161	CMakeFiles/bwgraph_lib.dir/core/transaction_tables.cpp.o	e89850f8d5c8ed12
 1814	1882	1685582761371354910	libbwgraph_lib.a	4bc65eaee93f7b30
 1882	1970	1685582761459354585	BwGraph_v2	d5044b6819b490b2
+3	858	1685814195033494978	CMakeFiles/bwgraph_lib.dir/core/commit_manager.cpp.o	1a06cf516c26fbc9
+2	1282	1685814195457493377	CMakeFiles/bwgraph_lib.dir/core/block.cpp.o	d5d12b2d73e2163
+3	1371	1685814195545493045	CMakeFiles/bwgraph_lib.dir/core/bw_index.cpp.o	5ce698d72da3e39f
+3	1545	1685814195721492380	CMakeFiles/bwgraph_lib.dir/core/bwgraph.cpp.o	a0d30ec6d73d6663
+4	1904	1685814196077491036	CMakeFiles/bwgraph_lib.dir/src/bw_transaction.cpp.o	5c8a95d2658a419c
+2	2150	1685814196321490115	CMakeFiles/bwgraph_lib.dir/core/transaction_tables.cpp.o	e89850f8d5c8ed12
+2150	2244	1685814196417489752	libbwgraph_lib.a	4bc65eaee93f7b30
+4	2307	1685814196481489511	CMakeFiles/BwGraph_v2.dir/main.cpp.o	ad22242a4daedbcd
+2308	2411	1685814196585489119	BwGraph_v2	d5044b6819b490b2

@@ -44,6 +44,10 @@ namespace bwgraph{
         inline uint32_t get_offset(){
             return delta_offset.load();
         }
+        //return the offset ignoring lock bit
+        inline uint32_t get_raw_offset(){
+            return delta_offset.load()&UNLOCK_MASK;
+        }
         inline void update_offset(uint32_t offset){
             delta_offset.store(offset);
         }
@@ -87,6 +91,16 @@ namespace bwgraph{
     public:
         inline bool lazy_update(uint64_t original_txn_id,uint64_t status){
             return creation_ts.compare_exchange_strong(original_txn_id,status);
+        }
+        //eager abort should always succeed
+        inline void eager_abort(uint64_t original_txn_id = 0){
+#if EDGE_DELTA_TEST
+            if(!creation_ts.compare_exchange_strong(original_txn_id,ABORT)){
+                throw EagerAbortException();//eager update should always succeed here
+            }
+#else
+            creation_ts.store(ABORT);
+#endif
         }
         vertex_t toID;
         EdgeDeltaType delta_type;
@@ -145,6 +159,11 @@ namespace bwgraph{
         }
         //get a specific delta
         BaseEdgeDelta *get_edge_delta(uint32_t entry_offset){
+#if EDGE_DELTA_TEST
+            if(entry_offset>=LOCK_MASK){
+                throw std::runtime_error("error, the offset is not raw offset");
+            }
+#endif
             return (BaseEdgeDelta*) ((uint8_t*)this+(1ul<<order)-entry_offset);
         }
         //todo:review this function

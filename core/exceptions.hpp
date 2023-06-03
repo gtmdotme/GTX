@@ -79,5 +79,10 @@ class DeltaChainReclaimException:public std::exception{
         return "consolidation did not capture all my in progress deltas";
     }
 };
+class EagerAbortException:public std::exception{
+    virtual const char *what() const throw() {
+        return "eager abort should never fail";
+    }
+};
 }
 #endif //BWGRAPH_V2_EXCEPTIONS_HPP

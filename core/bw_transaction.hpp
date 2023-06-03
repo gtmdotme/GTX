@@ -28,17 +28,17 @@ namespace bwgraph{
          * invoked under pessimistic mode after the state protection is grabbed.
          * Reclaim the locks according to the new block delta chain structure. Return false upon conflict
          */
-        bool reclaim_delta_chain_lock(uint64_t new_consolidation_ts, EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry, uint64_t txn_id, uint64_t txn_read_ts, uint64_t current_block_offset){
+        bool reclaim_delta_chain_lock(EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry, uint64_t txn_id, uint64_t txn_read_ts, uint64_t current_block_offset){
             delta_chain_num = current_block->get_delta_chain_num();//todo: check if we can update delta chain num directly in place
             std::set<delta_chain_id_t> to_reclaim_locks;//use set because we want a deterministic order of reclaiming locks
             already_updated_delta_chain_head_offsets.clear();
-            consolidation_ts = new_consolidation_ts;
+            consolidation_ts = current_label_entry->consolidation_time.load();
             for(auto it = already_modified_edges.begin();it!=already_modified_edges.end();it++){
                 to_reclaim_locks.emplace(calculate_owner_delta_chain_id(*it,delta_chain_num));
                 already_updated_delta_chain_head_offsets.try_emplace(*it,0);
             }
             //our new solution: reclaim offsets first
-
+            reconstruct_offsets(current_block,txn_id,current_block_offset);
             std::set<delta_chain_id_t> already_reclaimed_locks;
             bool to_abort = false;
             for(auto it = to_reclaim_locks.begin();it!=to_reclaim_locks.end();it++){
@@ -46,7 +46,7 @@ namespace bwgraph{
                 if(lock_result){
                     already_reclaimed_locks.emplace(*it);
                     auto& delta_chain_index_entry = current_label_entry->delta_chain_index->at(*it);
-                    BaseEdgeDelta* current_delta_chain_head = current_block->get_edge_delta(delta_chain_index_entry.get_offset());
+                    BaseEdgeDelta* current_delta_chain_head = current_block->get_edge_delta(delta_chain_index_entry.get_raw_offset());
                     uint64_t current_delta_chain_head_ts = current_delta_chain_head->creation_ts.load();
                     //because lock and offset are bind together
 #if EDGE_DELTA_TEST
@@ -74,8 +74,8 @@ namespace bwgraph{
             return true;
         }
 
-        //reconstruct all private transaction delta chain heads
-        void reconstruct_offsets(int32_t new_lock_size, EdgeDeltaBlockHeader* current_block, uint64_t txn_id, uint64_t current_block_offset){
+        //reconstruct all private transaction delta chain heads: assume we already computed which delta chains need to be reclaimed, delta chain num is also updated
+        void reconstruct_offsets(EdgeDeltaBlockHeader* current_block, uint64_t txn_id, uint64_t current_block_offset){
             size_t delta_chains_to_reclaim_num = already_updated_delta_chain_head_offsets.size();//the total number of delta chains we want to reclaim
             std::unordered_set<delta_chain_id_t>settled_delta_chains(delta_chains_to_reclaim_num);
             uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_block_offset);
@@ -88,8 +88,16 @@ namespace bwgraph{
                     delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(current_delta->toID,delta_chain_num);
                     auto emplace_result = settled_delta_chains.emplace(delta_chain_id);
                     if(emplace_result.second){
+#if EDGE_DELTA_TEST
+                        if( already_updated_delta_chain_head_offsets[delta_chain_id]!=0){
+                            throw std::runtime_error("error, updating wrong entry");
+                        }
+                        auto to_check_delta = current_block->get_edge_delta(current_delta_offset);
+                        if(to_check_delta!=current_delta){
+                            throw std::runtime_error("pointer arithmetic is wrong");
+                        }
+#endif
                         already_updated_delta_chain_head_offsets[delta_chain_id]=current_delta_offset;
-                        //todo: add a check here
                     }
                 }
                 current_delta++;
@@ -99,6 +107,58 @@ namespace bwgraph{
 #else //if optimistic mode
 
 #endif //if pessimistic mode
+
+        /*
+         * function invoked only after protection is grabbed and offset is not overflowing
+         * when possible, use the cached offset to abort. If timestamps are different, use scan to abort.
+         */
+        int64_t eager_abort(EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry, uint64_t txn_id,uint64_t current_block_offset){
+            int64_t total_abort_count=0;
+            //use offset cache to eager abort
+            if(current_label_entry->consolidation_time.load()==consolidation_ts){
+                for(auto it = already_updated_delta_chain_head_offsets.begin();it!=already_updated_delta_chain_head_offsets.end();it++){
+                    uint32_t current_delta_offset = it->second;
+                    auto current_delta = current_block->get_edge_delta(current_delta_offset);
+                    while(current_delta_offset>0){
+                        if(current_delta->creation_ts.load()==txn_id){
+#if EDGE_DELTA_TEST
+                            current_delta->eager_abort(txn_id);
+#else
+                            current_delta->eager_abort();
+#endif
+                            total_abort_count++;
+                        }else{//reach the committed delta
+#if EDGE_DELTA_TEST
+                            if(current_delta->creation_ts.load()==ABORT|| is_txn_id(current_delta->creation_ts.load())){
+                                throw LazyUpdateAbortException();//our delta chain should only contain our deltas linked to committed delta chain or no delta
+                            }
+#endif
+                            break;
+                        }
+                        current_delta_offset = current_delta->previous_offset;
+                        current_delta = current_block->get_edge_delta(current_delta_offset);
+                    }
+                }
+            }else{//use scan to abort
+                uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_block_offset);
+                auto current_delta = current_block->get_edge_delta(current_delta_offset);
+                while(current_delta_offset>0){
+                    //todo:: also lazy update for others?
+                    if(current_delta->creation_ts.load()==txn_id){
+#if EDGE_DELTA_TEST
+                        current_delta->eager_abort(txn_id);
+#else
+                        current_delta->eager_abort();
+#endif
+                        total_abort_count++;
+                    }
+                    current_delta_offset-=ENTRY_DELTA_SIZE;
+                    current_delta++;
+                }
+            }
+            return total_abort_count;
+        }
+
         uint64_t consolidation_ts;
         int32_t delta_chain_num;
         std::unordered_set<vertex_t>already_modified_edges;
