@@ -34,8 +34,9 @@ namespace bwgraph{
             already_updated_delta_chain_head_offsets.clear();
             consolidation_ts = current_label_entry->consolidation_time.load();
             for(auto it = already_modified_edges.begin();it!=already_modified_edges.end();it++){
-                to_reclaim_locks.emplace(calculate_owner_delta_chain_id(*it,delta_chain_num));
-                already_updated_delta_chain_head_offsets.try_emplace(*it,0);
+                delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(*it,delta_chain_num);
+                to_reclaim_locks.emplace(delta_chain_id);
+                already_updated_delta_chain_head_offsets.try_emplace(delta_chain_id,0);//initialize entries
             }
             //our new solution: reclaim offsets first
             reconstruct_offsets(current_block,txn_id,current_block_offset);
@@ -50,10 +51,10 @@ namespace bwgraph{
                     uint64_t current_delta_chain_head_ts = current_delta_chain_head->creation_ts.load();
                     //because lock and offset are bind together
 #if EDGE_DELTA_TEST
-                    if(is_txn_id(current_delta_chain_head_ts)){
+                    if(is_txn_id(current_delta_chain_head_ts)||current_delta_chain_head_ts==ABORT){
                         throw LazyUpdateException();//how can we have the lock while the delta chain head is in-progress?
                     }
-#endif
+#endif//endif EDGE_DELTA_TEST
                     if(current_delta_chain_head_ts>txn_read_ts){
                         to_abort=true;
                         break;
@@ -96,7 +97,7 @@ namespace bwgraph{
                         if(to_check_delta!=current_delta){
                             throw std::runtime_error("pointer arithmetic is wrong");
                         }
-#endif
+#endif //endif EDGE_DELTA_TEST
                         already_updated_delta_chain_head_offsets[delta_chain_id]=current_delta_offset;
                     }
                 }
@@ -104,9 +105,40 @@ namespace bwgraph{
                 current_delta_offset-=ENTRY_DELTA_SIZE;
             }
         }
-#else //if optimistic mode
+
+#else //else if optimistic mode
 
 #endif //if pessimistic mode
+//Delta chain cache functions: under pessimistic mode these can only be invoked after the locks are acquired. So they are lock caches as well.
+//Each non-zero delta chain cache entry corresponds to a lock under this mode. The exception is when the lock is granted but the block overflows. But in this
+//we will not cache the update to the edge.
+        /*
+        * if the delta chain offset is cached, return the cached offset
+        * Otherwise create a cache entry to cache the delta chain offset and return 0
+        */
+        inline uint32_t ensure_delta_chain_cache(int64_t vid){
+            delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(vid,delta_chain_num);
+            auto emplace_result = already_updated_delta_chain_head_offsets.try_emplace(delta_chain_id,0);
+            return emplace_result.first->second;//either 0 or cached offset
+        }
+        /*
+         * check whether this edge has already been modified by the current transaction
+         * if so return the cached offset, otherwise return 0
+         */
+        inline uint32_t is_edge_already_locked(vertex_t vid){
+            if(already_modified_edges.find(vid)!=already_modified_edges.end()){
+                delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(vid,delta_chain_num);
+                return already_updated_delta_chain_head_offsets[delta_chain_id];
+            }
+            return 0;
+        }
+        /*
+         * after a write to the delta chain, cache the most recent txn local head
+         */
+        inline void cache_vid_offset(vertex_t vid, uint32_t new_offset){
+            already_modified_edges.emplace(vid);
+            already_updated_delta_chain_head_offsets[calculate_owner_delta_chain_id(vid,delta_chain_num)]=new_offset;
+        }
 
         /*
          * function invoked only after protection is grabbed and offset is not overflowing
@@ -164,6 +196,7 @@ namespace bwgraph{
         std::unordered_set<vertex_t>already_modified_edges;
         std::map<delta_chain_id_t ,uint32_t>already_updated_delta_chain_head_offsets;
     };
+    //it is used to cache the validation the current transaction did to each delta chain of each block.
     struct validation_to_revise_entry{
         validation_to_revise_entry(int32_t input_delta_id, uint32_t input_offset):/*block_id(input_id),*/delta_chain_id(input_delta_id),original_offset(input_offset){}
         // int64_t block_id;
@@ -196,7 +229,7 @@ namespace bwgraph{
 
     private:
         //handle the scenario that block becomes overflow
-        void consolidation(BwLabelEntry& current_label_entry, uint64_t block_id);
+        void consolidation(BwLabelEntry* current_label_entry, EdgeDeltaBlockHeader* current_block, uint64_t block_id);
         //validation delta chain writes before commit
         bool validation();
         //eagerly abort my deltas. If a transaction validated for a block, then the block enters Installation phase, this txn will not eager abort for that block.
@@ -209,7 +242,24 @@ namespace bwgraph{
         void abort_all_my_deltas_using_cache();//todo: finish signature
 
         //allocate space in the current block for delta
-        EdgeDeltaInstallResult allocate_delta(EdgeDeltaBlockHeader* current_block, int32_t data_size);
+        EdgeDeltaInstallResult allocate_delta(EdgeDeltaBlockHeader* current_block, int32_t data_size){
+            uint32_t block_size = current_block->get_size();
+            uint64_t original_block_offset = current_block->allocate_space_for_new_delta(data_size);
+            uint32_t original_data_offset = static_cast<uint32_t>(original_block_offset>>32);
+            uint32_t original_delta_offset = static_cast<uint32_t>(original_block_offset&SIZE2MASK);
+            uint32_t new_data_offset = original_data_offset+data_size;
+            uint32_t new_delta_offset = original_delta_offset+ENTRY_DELTA_SIZE;
+            current_data_offset = original_delta_offset;//grow from left to right;
+            current_delta_offset = new_delta_offset; //grow from right to left
+            if((new_delta_offset+new_data_offset)>block_size){
+                if(original_delta_offset+original_data_offset<=block_size){
+                    return EdgeDeltaInstallResult::CAUSE_OVERFLOW;
+                }else{
+                    return EdgeDeltaInstallResult::ALREADY_OVERFLOW;
+                }
+            }
+            return EdgeDeltaInstallResult::SUCCESS;
+        }
         //scan the previous block for an edge delta
         std::string_view scan_previous_block_find_edge(EdgeDeltaBlockHeader* previous_block, vertex_t vid);
 
@@ -253,7 +303,7 @@ namespace bwgraph{
         TxnTables& txn_tables;
         CommitManager& commit_manager;
         lazy_update_map lazy_update_records;
-        std::map<uint64_t, LockOffsetCache>cached_delta_chain_offsets;//store cache the blocks accessed
+        std::map<uint64_t, LockOffsetCache>per_block_cached_delta_chain_offsets;//store cache the blocks accessed
         int64_t op_count=0;
         BlockManager& block_manager;
         GarbageBlockQueue& per_thread_garbage_queue;

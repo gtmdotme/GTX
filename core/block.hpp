@@ -166,7 +166,6 @@ namespace bwgraph{
 #endif
             return (BaseEdgeDelta*) ((uint8_t*)this+(1ul<<order)-entry_offset);
         }
-        //todo:review this function
         //read operation: this can either be the current delta chain head or start from transaction's own deltas
         BaseEdgeDelta* get_visible_target_delta_using_delta_chain(uint32_t offset, vertex_t dst, uint64_t txn_read_ts, std::unordered_map<uint64_t, int32_t>&lazy_update_records, uint64_t txn_id){
             BaseEdgeDelta* current_delta;
@@ -230,6 +229,11 @@ namespace bwgraph{
                                                    uint64_t txn_read_ts,
                                                    uint32_t current_offset,
                                                    uint64_t original_ts);
+        Delta_Chain_Lock_Response lock_inheritance_on_delta_chain(delta_chain_id_t delta_chain_id,
+                                                   std::unordered_map<uint64_t, int32_t> *lazy_update_map_ptr,
+                                                   uint64_t txn_read_ts,
+                                                   uint32_t current_offset,
+                                                   uint64_t original_ts);
         //try to set the lock, eagerlly try lock_inheritance
         Delta_Chain_Lock_Response set_protection(vertex_t vid,std::unordered_map<uint64_t, int32_t>* lazy_update_map_ptr, uint64_t txn_read_ts ){
             int32_t delta_chain_id = get_delta_chain_id(vid);
@@ -276,6 +280,50 @@ namespace bwgraph{
                 return Delta_Chain_Lock_Response::CONFLICT;
             }
         }
+        Delta_Chain_Lock_Response set_protection_on_delta_chain(delta_chain_id_t delta_chain_id,std::unordered_map<uint64_t, int32_t>* lazy_update_map_ptr, uint64_t txn_read_ts ){
+            auto& target_chain_index_entry = delta_chains_index->at(delta_chain_id);
+            uint32_t latest_delta_chain_head_offset = target_chain_index_entry.get_offset();
+            uint32_t raw_delta_chain_offset = latest_delta_chain_head_offset&UNLOCK_MASK;
+            BaseEdgeDelta* delta_chain_head = nullptr;
+            //todo: also check lock?
+            if(raw_delta_chain_offset){
+                delta_chain_head = get_edge_delta(raw_delta_chain_offset);
+                uint64_t original_ts = delta_chain_head->creation_ts.load();
+                if(is_txn_id(original_ts)){
+#if EDGE_DELTA_TEST
+                    if(!(latest_delta_chain_head_offset&LOCK_MASK)){
+                        throw DeltaLockException();
+                    }
+#endif
+                    auto temporary_result = lock_inheritance_on_delta_chain(delta_chain_id,lazy_update_map_ptr,txn_read_ts,raw_delta_chain_offset,original_ts);
+                    if(temporary_result==Delta_Chain_Lock_Response::LOCK_INHERIT||temporary_result==Delta_Chain_Lock_Response::CONFLICT){
+                        return temporary_result;
+                    }
+                }else if(original_ts>txn_read_ts){
+                    return Delta_Chain_Lock_Response::CONFLICT;
+                }
+            }
+            if(target_chain_index_entry.try_set_lock()){
+                latest_delta_chain_head_offset = target_chain_index_entry.get_offset();
+                raw_delta_chain_offset = latest_delta_chain_head_offset&UNLOCK_MASK;
+                if(raw_delta_chain_offset){
+                    delta_chain_head = get_edge_delta(raw_delta_chain_offset);
+#if EDGE_DELTA_TEST
+                    if(is_txn_id(delta_chain_head->creation_ts.load())){
+                        throw LazyUpdateException();
+                    }
+#endif
+                    //most recent update is concurrent: we must abort
+                    if(delta_chain_head->creation_ts.load()>txn_read_ts){
+                        target_chain_index_entry.release_lock();
+                        return Delta_Chain_Lock_Response::CONFLICT;
+                    }
+                }
+                return Delta_Chain_Lock_Response::SUCCESS;
+            }else{
+                return Delta_Chain_Lock_Response::CONFLICT;
+            }
+        }
        inline void release_protection(vertex_t vid){
             int32_t delta_chain_id = get_delta_chain_id(vid);
             auto& current_entry = delta_chains_index->at(delta_chain_id);
@@ -291,6 +339,11 @@ namespace bwgraph{
             return current_entry.try_set_lock();
         }
         inline bool try_set_protection_on_delta_chain(delta_chain_id_t delta_chain_id){
+#if EDGE_DELTA_TEST
+            if(delta_chain_id>=delta_chain_num){
+                throw DeltaChainNumberException();
+            }
+#endif
             auto& current_entry = delta_chains_index->at(delta_chain_id);
             return current_entry.try_set_lock();
         }
@@ -303,7 +356,7 @@ namespace bwgraph{
             return combined_offsets.fetch_add(to_atomic);
         }
         //delta append
-        void append_edge_delta(vertex_t toID, uint64_t txnID, EdgeDeltaType type, char*edge_data, int data_size, uint32_t previous_delta_offset, uint32_t current_delta_offset, uint32_t current_data_offset){
+        void append_edge_delta(vertex_t toID, uint64_t txnID, EdgeDeltaType type, const char*edge_data, int data_size, uint32_t previous_delta_offset, uint32_t current_delta_offset, uint32_t current_data_offset){
             BaseEdgeDelta* edgeDelta=(get_edge_delta(current_delta_offset));
             edgeDelta->toID = toID;
             edgeDelta->delta_type = type;
@@ -333,7 +386,7 @@ namespace bwgraph{
             return get_size()<(data_size+delta_size);
         }
         //it is only used during consolidation
-        std::pair<EdgeDeltaInstallResult,uint32_t> append_edge_delta(vertex_t toID, uint64_t txnID, EdgeDeltaType type, char*edge_data, int data_size, uint32_t previous_delta_offset){
+        std::pair<EdgeDeltaInstallResult,uint32_t> append_edge_delta(vertex_t toID, uint64_t txnID, EdgeDeltaType type, const char*edge_data, int data_size, uint32_t previous_delta_offset){
             //allocate space for new delta installation
             uint32_t size = get_size();
             uint64_t originalOffset = allocate_space_for_new_delta(data_size);

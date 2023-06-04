@@ -44,45 +44,65 @@ namespace bwgraph {
             return "lazy update exception";
         }
     };
-    class LabelBlockPointerException: public std::exception{
+
+    class LabelBlockPointerException : public std::exception {
         virtual const char *what() const throw() {
             return "Label Block should not have a next pointer unless all its entries are set";
         }
     };
-class BlockSafeAccessException: public std::exception{
-    virtual const char *what() const throw() {
-        return "the current thread should only check is_safe() iff it is accessing the block already";
-    }
-};
-class LabelEntryMissingException : public std::exception{
-    virtual const char *what() const throw() {
-        return "If a transaction wrote to a label's block that label's entry should exist";
-    }
-};
-class EdgeIteratorNoBlockToReadException : public std::exception{
-    virtual const char *what() const throw() {
-        return "If an edge delta block exists, there is at least one block that the current transaction can read";
-    }
-};
-class LazyUpdateAbortException: public std::exception{
-    virtual const char *what() const throw() {
-        return "Lazy update will only update abort deltas during consolidation's installation phase. All other scenarios shall return ABORT";
-    }
-};
-class GraphNullPointerException : public std::exception{
-    virtual const char *what() const throw() {
-        return "graph is having null pointers at a locations where it should not happen";
-    }
-};
-class DeltaChainReclaimException:public std::exception{
-    virtual const char *what() const throw() {
-        return "consolidation did not capture all my in progress deltas";
-    }
-};
-class EagerAbortException:public std::exception{
-    virtual const char *what() const throw() {
-        return "eager abort should never fail";
-    }
-};
+
+    class BlockSafeAccessException : public std::exception {
+        virtual const char *what() const throw() {
+            return "the current thread should only check is_safe() iff it is accessing the block already";
+        }
+    };
+
+    class LabelEntryMissingException : public std::exception {
+        virtual const char *what() const throw() {
+            return "If a transaction wrote to a label's block that label's entry should exist";
+        }
+    };
+
+    class EdgeIteratorNoBlockToReadException : public std::exception {
+        virtual const char *what() const throw() {
+            return "If an edge delta block exists, there is at least one block that the current transaction can read";
+        }
+    };
+
+    class LazyUpdateAbortException : public std::exception {
+        virtual const char *what() const throw() {
+            return "Lazy update will only update abort deltas during consolidation's installation phase. All other scenarios shall return ABORT";
+        }
+    };
+
+    class GraphNullPointerException : public std::exception {
+        virtual const char *what() const throw() {
+            return "graph is having null pointers at a locations where it should not happen";
+        }
+    };
+
+    class DeltaChainReclaimException : public std::exception {
+        virtual const char *what() const throw() {
+            return "consolidation did not capture all my in progress deltas";
+        }
+    };
+
+    class EagerAbortException : public std::exception {
+        virtual const char *what() const throw() {
+            return "eager abort should never fail";
+        }
+    };
+
+    class DeltaChainNumberException : public std::exception {
+        virtual const char *what() const throw() {
+            return "total delta chain number mismatch";
+        }
+    };
+
+    class BlockStateException : public std::exception {
+        virtual const char *what() const throw() {
+            return "block state protocol exception";
+        }
+    };
 }
 #endif //BWGRAPH_V2_EXCEPTIONS_HPP
