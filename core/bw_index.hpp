@@ -34,7 +34,7 @@ namespace bwgraph {
         }
         //reader will locate a corresponding label entry if it exists, otherwise it returns false
         bool reader_lookup_label(label_t target_label,  BwLabelEntry*& target_entry);
-        BwLabelEntry* writer_lookup_label(label_t target_label);
+        BwLabelEntry* writer_lookup_label(label_t target_label, TxnTables* txn_tables);
         vertex_t owner_id;
         std::atomic_uint8_t offset=0;
         BlockManager* block_manager;

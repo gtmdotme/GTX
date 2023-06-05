@@ -120,6 +120,9 @@ namespace bwgraph{
         inline static uint32_t get_delta_offset_from_combined_offset(uint64_t input_offset){
             return static_cast<uint32_t>(input_offset&SIZE2MASK);
         }
+        inline vertex_t get_owner_id(){
+            return owner_id;
+        }
         //metadata accessor:
         inline timestamp_t get_creation_time(){
             return creation_time;
@@ -149,13 +152,14 @@ namespace bwgraph{
             return is_overflow_offset(combined_offsets.load());
         }
         //metadata modifier
-        inline void fill_metadata(vertex_t input_owner_id, timestamp_t input_creation_time, uintptr_t input_prev_pointer, int32_t input_order){
+        inline void fill_metadata(vertex_t input_owner_id, timestamp_t input_creation_time, uintptr_t input_prev_pointer, int32_t input_order, TxnTables* txn_table_ptr){
             owner_id = input_owner_id;
             creation_time = input_creation_time;
             prev_pointer = input_prev_pointer;
             order = input_order;
             //define a function that determines how many delta chains it has:
             delta_chain_num = 1ul << ((order == DEFAULT_EDGE_DELTA_BLOCK_ORDER)?0:(order-DEFAULT_EDGE_DELTA_BLOCK_ORDER-1));//index takes less than 1% in storage
+            txn_tables = txn_table_ptr;
         }
         //get a specific delta
         BaseEdgeDelta *get_edge_delta(uint32_t entry_offset){
@@ -386,7 +390,7 @@ namespace bwgraph{
             return get_size()<(data_size+delta_size);
         }
         //it is only used during consolidation
-        std::pair<EdgeDeltaInstallResult,uint32_t> append_edge_delta(vertex_t toID, uint64_t txnID, EdgeDeltaType type, const char*edge_data, int data_size, uint32_t previous_delta_offset){
+        std::pair<EdgeDeltaInstallResult,uint32_t> append_edge_delta(vertex_t toID, timestamp_t creation_ts, EdgeDeltaType type, const char*edge_data, int data_size, uint32_t previous_delta_offset){
             //allocate space for new delta installation
             uint32_t size = get_size();
             uint64_t originalOffset = allocate_space_for_new_delta(data_size);
@@ -411,7 +415,7 @@ namespace bwgraph{
             BaseEdgeDelta* edgeDelta=(get_edge_delta(newEntryOffset));
             edgeDelta->toID = toID;
             edgeDelta->delta_type = type;
-            edgeDelta->creation_ts  = txnID;//todo in the future we need to handle checking txn id and ts
+            edgeDelta->creation_ts  = creation_ts;//it is guaranteed a ts
             edgeDelta->data_length = data_size;
             edgeDelta->data_offset = originalDataOffset;
             edgeDelta->is_last_delta=true;
@@ -440,11 +444,7 @@ namespace bwgraph{
         int32_t delta_chain_num;
         //std::vector<Atomic_Delta_Offset>delta_chains_index;
         std::vector<AtomicDeltaOffset>* delta_chains_index;//point to the secondary index vector stored outside the block
-#if USING_ARRAY_TABLE
-        ArrayTransactionTables* txn_tables;
-#else
-        ConcurrentTransactionTables* txn_tables;
-#endif
+        TxnTables* txn_tables;
         char padding[8];//todo check whether this is actually needed
         char data[0];
     };

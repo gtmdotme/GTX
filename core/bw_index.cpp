@@ -33,7 +33,7 @@ namespace bwgraph{
     }
     //todo: double check this function
     //will always succeed
-    BwLabelEntry *EdgeLabelBlock::writer_lookup_label(bwgraph::label_t target_label) {
+    BwLabelEntry *EdgeLabelBlock::writer_lookup_label(bwgraph::label_t target_label, TxnTables* txn_tables) {
         //loop until we observe concurrent updates
         EdgeLabelBlock* current_label_block = this;
         while(true){
@@ -60,7 +60,7 @@ namespace bwgraph{
                     //todo:: should we also set up a base edge delta block?
                     current_label_block->label_entries[current_offset].block_ptr = block_manager->alloc(DEFAULT_EDGE_DELTA_BLOCK_ORDER);
                     auto new_edge_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_label_block->label_entries[current_offset].block_ptr);
-                    new_edge_delta_block->fill_metadata(owner_id,0,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER);
+                    new_edge_delta_block->fill_metadata(owner_id,0,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER,txn_tables);
                     current_label_block->label_entries[current_offset].delta_chain_index = new std::vector<AtomicDeltaOffset>(new_edge_delta_block->get_delta_chain_num());
                     current_label_block->label_entries[current_offset].state=EdgeDeltaBlockState::NORMAL;
                     current_label_block->label_entries[current_offset].valid=true;
@@ -81,7 +81,7 @@ namespace bwgraph{
                     //todo:: allocate a block as well maybe?
                     new_block->label_entries[0].block_ptr =block_manager->alloc(DEFAULT_EDGE_DELTA_BLOCK_ORDER);
                     auto new_edge_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(new_block->label_entries[0].block_ptr);
-                    new_edge_delta_block->fill_metadata(owner_id,0,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER);
+                    new_edge_delta_block->fill_metadata(owner_id,0,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER,txn_tables);
                     new_block->label_entries[0].delta_chain_index = new std::vector<AtomicDeltaOffset>(new_edge_delta_block->get_delta_chain_num());
                     new_block->label_entries[0].state=EdgeDeltaBlockState::NORMAL;
                     new_block->label_entries[0].valid=true;

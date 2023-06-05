@@ -104,5 +104,10 @@ namespace bwgraph {
             return "block state protocol exception";
         }
     };
+    class ConsolidationException: public std::exception{
+        virtual const char *what() const throw() {
+            return "error took place during consolidation";
+        }
+    };
 }
 #endif //BWGRAPH_V2_EXCEPTIONS_HPP

@@ -81,6 +81,27 @@ namespace bwgraph{
             while(!block_ts_table.is_safe(thread_id,block_id));
 #endif
         }
+        inline static void install_shared_state(EdgeDeltaBlockState new_state, BwLabelEntry* target_label_entry ){
+#if STATE_PROTECTION_TEST
+            if(new_state==EdgeDeltaBlockState::CONSOLIDATION){
+                auto current_state = EdgeDeltaBlockState::OVERFLOW;
+                if(target_label_entry->state.compare_exchange_strong(current_state,new_state)){
+                    return;
+                }else{
+                    throw BlockStateException();
+                }
+            }else if(new_state==EdgeDeltaBlockState::NORMAL){
+                auto current_state = EdgeDeltaBlockState::INSTALLATION;
+                if(target_label_entry->state.compare_exchange_strong(current_state,new_state)){
+                    return;
+                }else{
+                    throw BlockStateException();
+                }
+            }
+#else
+            target_label_entry->state.store(new_state);
+#endif
+        }
     };
 }
 #endif //BWGRAPH_V2_EDGE_DELTA_BLOCK_STATE_PROTECTION_HPP

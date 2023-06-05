@@ -14,6 +14,7 @@
 #include "types.hpp"
 #include <set>
 namespace bwgraph{
+#define CONSOLIDATION_TEST true
     struct LockOffsetCache{
         LockOffsetCache(uint64_t input_ts, int32_t input_size):consolidation_ts(input_ts),delta_chain_num(input_size){}
         inline bool is_outdated(uint64_t current_consolidation_ts){
@@ -293,6 +294,16 @@ namespace bwgraph{
                     txn_tables.reduce_op_count(it->first,it->second);
                 }
             }
+        }
+
+        //consolidation heuristics
+        /*
+         * use approximate lifespan of the current block to estimate how long the block served us, may need to adjust numbers
+         */
+        inline uint64_t calculate_nw_block_size_from_lifespan(uint64_t delta_storage_size,uint64_t lifespan, uint64_t min_lifespan_threshold){
+            lifespan = (lifespan > min_lifespan_threshold)?lifespan:min_lifespan_threshold;
+            uint64_t ratio = std::max(500/lifespan, static_cast<uint64_t>(2));
+            return delta_storage_size*ratio + sizeof(EdgeDeltaBlockHeader);
         }
 
         //txn local fields
