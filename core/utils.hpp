@@ -56,7 +56,7 @@ namespace bwgraph{
         }
     }
     inline delta_chain_id_t calculate_owner_delta_chain_id(vertex_t vid, int32_t delta_chain_num){
-        return vid%delta_chain_num;
+        return static_cast<delta_chain_id_t>(vid%delta_chain_num);
     }
     inline uint64_t combine_offset(uint32_t delta_offset, uint32_t data_offset){
         return static_cast<uint64_t>(delta_offset)+ (static_cast<uint64_t>(data_offset)<<32);

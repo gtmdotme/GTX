@@ -142,7 +142,7 @@ namespace bwgraph{
         inline uint32_t get_size(){
             return (uint32_t)((1ul<<order)-sizeof (EdgeDeltaBlockHeader));
         }
-        int32_t get_order(){
+        order_t get_order(){
             return order;
         }
         inline int32_t get_delta_chain_num(){
@@ -152,7 +152,7 @@ namespace bwgraph{
             return is_overflow_offset(combined_offsets.load());
         }
         //metadata modifier
-        inline void fill_metadata(vertex_t input_owner_id, timestamp_t input_creation_time, uintptr_t input_prev_pointer, int32_t input_order, TxnTables* txn_table_ptr){
+        inline void fill_metadata(vertex_t input_owner_id, timestamp_t input_creation_time, uintptr_t input_prev_pointer, order_t input_order, TxnTables* txn_table_ptr){
             owner_id = input_owner_id;
             creation_time = input_creation_time;
             prev_pointer = input_prev_pointer;
@@ -440,12 +440,12 @@ namespace bwgraph{
         std::atomic_uint64_t  combined_offsets;
         timestamp_t creation_time;
         uintptr_t prev_pointer;
-        int32_t order;
-        int32_t delta_chain_num;
         //std::vector<Atomic_Delta_Offset>delta_chains_index;
         std::vector<AtomicDeltaOffset>* delta_chains_index;//point to the secondary index vector stored outside the block
         TxnTables* txn_tables;
-        char padding[8];//todo check whether this is actually needed
+        int32_t delta_chain_num;
+        order_t order;
+        char padding[11];//todo check whether this is actually needed
         char data[0];
     };
     //todo:: do something about delta flags, we need to care a bit more about deletion.

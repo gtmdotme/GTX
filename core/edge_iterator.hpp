@@ -19,9 +19,14 @@ namespace bwgraph {
      */
     class EdgeDeltaIterator {
     public:
+        EdgeDeltaIterator(){}//empty iterator
+        //when iterator ends, need to exit the block protection
+        ~EdgeDeltaIterator(){
+            block_access_ts_table->release_block_access(get_threadID(txn_id));
+        }
         //give the current block, determine what to read
-        EdgeDeltaIterator(EdgeDeltaBlockHeader* input_block, timestamp_t input_ts, uint64_t input_id, bool has_deltas, uint32_t input_offset, BwGraph& source_graph, lazy_update_map* lazy_update_record_ptr):current_delta_block(input_block),
-        txn_read_ts(input_ts),txn_id(input_id), txn_has_deltas(has_deltas),current_delta_offset(input_offset),txn_tables(source_graph.get_txn_tables()),block_manager(source_graph.get_block_manager()), txn_lazy_update_records(lazy_update_record_ptr){
+        EdgeDeltaIterator(EdgeDeltaBlockHeader* input_block, timestamp_t input_ts, uint64_t input_id, bool has_deltas, uint32_t input_offset, BwGraph& source_graph, lazy_update_map* lazy_update_record_ptr, BlockAccessTimestampTable* access_table):current_delta_block(input_block),
+        txn_read_ts(input_ts),txn_id(input_id),current_delta_offset(input_offset),txn_tables(&source_graph.get_txn_tables()),block_manager(&source_graph.get_block_manager()), txn_lazy_update_records(lazy_update_record_ptr), block_access_ts_table(access_table){
             if(txn_read_ts>=current_delta_block->get_creation_time()||has_deltas){
                 read_current_block = true;
                 current_delta = current_delta_block->get_edge_delta(current_delta_offset);
@@ -32,7 +37,7 @@ namespace bwgraph {
                 if(!read_current_block){
                     while(txn_read_ts<current_delta_block->get_creation_time()){
                         if(current_delta_block->get_previous_ptr()){
-                            current_delta_block = block_manager.convert<EdgeDeltaBlockHeader>(current_delta_block->get_previous_ptr());
+                            current_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_delta_block->get_previous_ptr());
                         }else{
                             throw EdgeIteratorNoBlockToReadException();
                         }
@@ -54,7 +59,7 @@ namespace bwgraph {
                     uint64_t original_ts = current_delta->creation_ts.load();
                     if(is_txn_id(original_ts)){
                         uint64_t status=0;
-                        if(txn_tables.get_status(original_ts,status)){
+                        if(txn_tables->get_status(original_ts,status)){
                             if(status == IN_PROGRESS){
                                 current_delta_offset-=ENTRY_DELTA_SIZE;
                                 current_delta++;
@@ -90,7 +95,7 @@ namespace bwgraph {
                 read_current_block=false;
                 while(txn_read_ts<current_delta_block->get_creation_time()){
                     if(current_delta_block->get_previous_ptr()){
-                        current_delta_block = block_manager.convert<EdgeDeltaBlockHeader>(current_delta_block->get_previous_ptr());
+                        current_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_delta_block->get_previous_ptr());
                     }else{
                         throw EdgeIteratorNoBlockToReadException();
                     }
@@ -117,14 +122,15 @@ namespace bwgraph {
         EdgeDeltaBlockHeader *current_delta_block;
         timestamp_t txn_read_ts;
         uint64_t txn_id;
-        bool txn_has_deltas;//whether this txn has deltas in the current delta block
+        //bool txn_has_deltas;//whether this txn has deltas in the current delta block
         uint32_t current_delta_offset;
         bool read_current_block = false;
         bool read_previous_block = false;
         BaseEdgeDelta* current_delta = nullptr;
-        TxnTables& txn_tables;
-        BlockManager& block_manager;
+        TxnTables* txn_tables;
+        BlockManager* block_manager;
         lazy_update_map* txn_lazy_update_records;
+        BlockAccessTimestampTable* block_access_ts_table;//necessary at destructor, need to release the protection
     };
 
 }

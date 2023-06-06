@@ -109,5 +109,25 @@ namespace bwgraph {
             return "error took place during consolidation";
         }
     };
+    class TransactionReadException: public std::exception{
+        virtual const char *what() const throw() {
+            return "reader transaction observes anomaly";
+        }
+    };
+    class LockReleaseException: public std::exception{
+        virtual const char *what() const throw() {
+            return "lock releasing is encountering error";
+        }
+    };
+    class DeltaChainOffsetException: public std::exception{
+        virtual const char *what() const throw() {
+            return "inconsistent delta chain offset cache encountered";
+        }
+    };
+    class ValidationException: public std::exception{
+        virtual const char *what() const throw() {
+            return "anomaly encountered during validation";
+        }
+    };
 }
 #endif //BWGRAPH_V2_EXCEPTIONS_HPP

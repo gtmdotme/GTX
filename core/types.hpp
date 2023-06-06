@@ -66,5 +66,10 @@ namespace bwgraph
         WRITER_WAIT,
         FAIL
     };
+    enum class ReclaimDeltaChainResult: uint8_t {
+        SUCCESS,
+        RETRY,
+        FAIL
+    };
 }
 #endif //BWGRAPH_V2_TYPES_HPP

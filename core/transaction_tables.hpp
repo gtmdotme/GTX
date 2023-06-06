@@ -266,6 +266,7 @@ namespace bwgraph {
             status_result= local_table[index].status.load();
             return local_table[index].txn_id == txn_id;
         }
+        //reduce op_count no longer deletes entry, it only reduces op_count to 0 at most. And an entry with no op_count becomes a candidate for new entry.
         inline void reduce_op_count(uint64_t txn_id,int64_t op_count){
 #if TXN_TABLE_TEST
             uint64_t index = get_local_txn_id(txn_id)%Per_Thread_Table_Size;
@@ -361,10 +362,14 @@ namespace bwgraph {
             uint8_t thread_id = bwgraph::get_threadID(txn_id);
             tables[thread_id].reduce_op_count(txn_id, op_count);
         }
-        inline void commit_txn(){
-
+        inline void commit_txn(entry_ptr ptr, uint64_t op_count, uint64_t commit_ts){
+            ptr->op_count.store(op_count);
+            ptr->status.store(commit_ts);
         }
-
+        inline void abort_txn(entry_ptr ptr, uint64_t op_count){
+            ptr->op_count.store(op_count);
+            ptr->status.store(ABORT);
+        }
     private:
 
         std::array<ArrayTransactionTable,WORKER_THREAD_NUM> tables;

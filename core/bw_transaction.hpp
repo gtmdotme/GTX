@@ -12,9 +12,11 @@
 #include "edge_iterator.hpp"
 #include "previous_version_garbage_queue.hpp"
 #include "types.hpp"
+#include "edge_delta_block_state_protection.hpp"
 #include <set>
 namespace bwgraph{
 #define CONSOLIDATION_TEST true
+#define TXN_TEST true
     struct LockOffsetCache{
         LockOffsetCache(uint64_t input_ts, int32_t input_size):consolidation_ts(input_ts),delta_chain_num(input_size){}
         inline bool is_outdated(uint64_t current_consolidation_ts){
@@ -236,12 +238,50 @@ namespace bwgraph{
         //eagerly abort my deltas. If a transaction validated for a block, then the block enters Installation phase, this txn will not eager abort for that block.
         void eager_abort();
         //for pessimistic mode: release all locks in the current block
-        void release_all_locks_of_a_block();//todo: finish signature
+        inline void release_all_locks_of_a_block(EdgeDeltaBlockHeader* current_block, LockOffsetCache& lock_cache);//todo: finish signature
         //abort all my deltas using scans
         void abort_all_my_deltas(EdgeDeltaBlockHeader* current_block,uint64_t current_offset);
         //abort all my deltas using cache
         void abort_all_my_deltas_using_cache();//todo: finish signature
-
+        //todo:: only concern is with delete vertex, what if the vertex entry is deleted? then we should return error
+        inline BwLabelEntry* writer_access_label(vertex_t vid, label_t label){
+            auto block_id = generate_block_id(vid,label);
+            auto emplace_result = accessed_edge_label_entry_cache.try_emplace(block_id, nullptr);
+            if(emplace_result.second){
+                auto& vertex_index_entry = graph.get_vertex_index_entry(vid);
+                //cannot insert to invalid vertex entry
+                if(!vertex_index_entry.valid.load()){
+                    accessed_edge_label_entry_cache.erase(emplace_result.first);
+                    return nullptr;
+                }
+                auto edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
+                //either access an existing entry or creating a new entry
+                emplace_result.first->second = edge_label_block->writer_lookup_label(label,&txn_tables);
+            }
+            return emplace_result.first->second;
+        }
+        inline BwLabelEntry* reader_access_label(vertex_t vid, label_t label){
+            auto block_id = generate_block_id(vid,label);
+            auto emplace_result = accessed_edge_label_entry_cache.try_emplace(block_id, nullptr);
+            if(emplace_result.second){
+                auto& vertex_index_entry = graph.get_vertex_index_entry(vid);
+                if(!vertex_index_entry.valid.load()){
+                    accessed_edge_label_entry_cache.erase(emplace_result.first);
+                    return nullptr;
+                }
+                auto edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
+                auto found = edge_label_block->reader_lookup_label(label, emplace_result.first->second);
+                if(!found){
+                    accessed_edge_label_entry_cache.erase(emplace_result.first);
+                    return nullptr;
+                }
+            }
+            return emplace_result.first->second;
+        }
+        //this function is only invoked when we know the entry must exist (access from txn own label cache)
+        inline BwLabelEntry* get_label_entry(uint64_t block_id){
+            return accessed_edge_label_entry_cache.at(block_id);
+        }
         //allocate space in the current block for delta
         EdgeDeltaInstallResult allocate_delta(EdgeDeltaBlockHeader* current_block, int32_t data_size){
             uint32_t block_size = current_block->get_size();
@@ -305,7 +345,24 @@ namespace bwgraph{
             uint64_t ratio = std::max(500/lifespan, static_cast<uint64_t>(2));
             return delta_storage_size*ratio + sizeof(EdgeDeltaBlockHeader);
         }
-
+        //don't forget to subtract op_count
+        inline ReclaimDeltaChainResult reclaim_delta_chain_offsets(LockOffsetCache& txn_offset_cache, EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry){
+            uint64_t current_combined_offset = current_block->get_current_offset();
+            if(current_block->is_overflow_offset(current_combined_offset)){
+                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                return ReclaimDeltaChainResult::RETRY;
+            }
+            auto reclaim_delta_chains_result = txn_offset_cache.reclaim_delta_chain_lock(current_block,current_label_entry,local_txn_id,read_timestamp,current_combined_offset);
+            if(!reclaim_delta_chains_result){
+                //abort my deltas and track the number
+                auto abort_delta_count = txn_offset_cache.eager_abort(current_block,current_label_entry,local_txn_id,current_combined_offset);
+                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                //record the number of reduced op_count
+                op_count-= abort_delta_count;
+                return ReclaimDeltaChainResult::FAIL;
+            }
+            return ReclaimDeltaChainResult::SUCCESS;
+        }
         //txn local fields
         BwGraph& graph;
         const uint64_t local_txn_id;
@@ -322,6 +379,7 @@ namespace bwgraph{
         uint8_t thread_id;
         uint32_t current_delta_offset;
         uint32_t current_data_offset;
+        std::unordered_map<uint64_t, BwLabelEntry*> accessed_edge_label_entry_cache;
     };
 }
 #endif //BWGRAPH_V2_BW_TRANSACTION_HPP
