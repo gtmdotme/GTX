@@ -1,3 +1,7 @@
 add_test( [==[Test DocTest]==] /home/zhou822/BwGraph_v2/cmake-build-debug/tests [==[--test-case=Test DocTest]==])
 set_tests_properties( [==[Test DocTest]==] PROPERTIES WORKING_DIRECTORY /home/zhou822/BwGraph_v2/cmake-build-debug LABELS)
-set( tests_TESTS [==[Test DocTest]==])
+add_test( [==[Vertex Index Test 1]==] /home/zhou822/BwGraph_v2/cmake-build-debug/tests [==[--test-case=Vertex Index Test 1]==])
+set_tests_properties( [==[Vertex Index Test 1]==] PROPERTIES WORKING_DIRECTORY /home/zhou822/BwGraph_v2/cmake-build-debug LABELS)
+add_test( [==[Edge Label Entry Test 1]==] /home/zhou822/BwGraph_v2/cmake-build-debug/tests [==[--test-case=Edge Label Entry Test 1]==])
+set_tests_properties( [==[Edge Label Entry Test 1]==] PROPERTIES WORKING_DIRECTORY /home/zhou822/BwGraph_v2/cmake-build-debug LABELS)
+set( tests_TESTS [==[Test DocTest]==] [==[Vertex Index Test 1]==] [==[Edge Label Entry Test 1]==])

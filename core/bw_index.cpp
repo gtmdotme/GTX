@@ -32,6 +32,7 @@ namespace bwgraph{
         }
     }
     //todo: double check this function
+    //todo:: modify to add consolidation time?
     //will always succeed
     BwLabelEntry *EdgeLabelBlock::writer_lookup_label(bwgraph::label_t target_label, TxnTables* txn_tables) {
         //loop until we observe concurrent updates

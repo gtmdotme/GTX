@@ -493,6 +493,7 @@ namespace bwgraph{
         inline order_t get_order(){
             return order;
         }
+        //todo:: implement a write function
     private:
         //int64_t owner_id;
         std::atomic_uint64_t creation_time;

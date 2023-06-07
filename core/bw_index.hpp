@@ -50,6 +50,8 @@ namespace bwgraph {
     class VertexIndexBucket{
     public:
         inline VertexIndexEntry& get_vertex_index_entry(vertex_t vid){
+            //std::cout<<vid<<std::endl;
+            //std::cout<<vid%static_cast<vertex_t>(BUCKET_SIZE)<<std::endl;
             return index_entries[vid%BUCKET_SIZE];
         }
         inline void allocate_vertex_index_entry(vertex_t vid){
