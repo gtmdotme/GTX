@@ -305,6 +305,7 @@ namespace bwgraph {
 #endif
             local_table[index].txn_id.store(txn_id);
             local_table[index].status.store(IN_PROGRESS);
+            local_table[index].touched_blocks.clear();
             return &local_table[index];
         }
         inline void commit_txn(entry_ptr ptr, uint64_t op_count, uint64_t commit_ts){

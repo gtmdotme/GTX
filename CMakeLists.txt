@@ -7,8 +7,21 @@ set(CMAKE_CXX_FLAGS_DEBUG "-ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -We
 find_package(TBB REQUIRED PATHS /tmp/my_installed_onetbb/lib/cmake/TBB)
 add_library(parallel_hashmap_lib STATIC Libraries/parallel_hashmap/something.cpp)
 target_include_directories(parallel_hashmap_lib PUBLIC parallel_hashmap)
-add_library(bwgraph_lib STATIC core/block.cpp core/transaction_tables.cpp core/bw_index.cpp  core/bwgraph.cpp core/commit_manager.cpp src/bw_transaction.cpp)
+include_directories(${PROJECT_SOURCE_DIR})
+add_library(bwgraph_lib STATIC core/block.cpp core/transaction_tables.cpp core/bw_index.cpp  core/bwgraph.cpp core/commit_manager.cpp src/bw_transaction.cpp tests/main.cpp)
 target_include_directories(bwgraph_lib PUBLIC public core)
-add_executable(BwGraph_v2 main.cpp ) #core/types.hpp core/block_manager.hpp core/utils.hpp core/block.hpp core/exceptions.hpp core/transaction_tables.cpp core/transaction_tables.hpp core/graph_global.hpp Libraries/parallel_hashmap/something.cpp
+set(PROJECT_DEPS_DIR ${PROJECT_SOURCE_DIR}/doctest)
+option(BUILD_TESTING "Build the testing tree." ON)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+    add_subdirectory(doctest EXCLUDE_FROM_ALL)
+    add_executable(tests
+            tests/main.cpp
+            tests/bw_index.cpp)
+    target_link_libraries(tests bwgraph_lib doctest::doctest TBB::tbb parallel_hashmap_lib)
+    enable_testing()
+    include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
+    doctest_discover_tests(tests)
+endif()
+#add_executable(BwGraph_v2 main.cpp ) #core/types.hpp core/block_manager.hpp core/utils.hpp core/block.hpp core/exceptions.hpp core/transaction_tables.cpp core/transaction_tables.hpp core/graph_global.hpp Libraries/parallel_hashmap/something.cpp
 #target_link_directories(BwGraph_v2 PUBLIC core/ )
-target_link_libraries(BwGraph_v2 TBB::tbb parallel_hashmap_lib bwgraph_lib)
+#target_link_libraries(BwGraph_v2 TBB::tbb parallel_hashmap_lib bwgraph_lib)

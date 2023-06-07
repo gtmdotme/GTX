@@ -638,8 +638,11 @@ bool RWTransaction::commit() {
     batch_lazy_updates();
     if(!validation()){
         eager_abort();
-        txn_tables.abort_txn(self_entry,op_count);
+        txn_tables.abort_txn(self_entry,op_count);//no need to cache the touched blocks of aborted txns due to eager abort
         return false;
+    }
+    for(auto it = per_block_cached_delta_chain_offsets.begin(); it!=per_block_cached_delta_chain_offsets.end();it++){
+        self_entry->touched_blocks.emplace_back(it->first, it->second.consolidation_ts);//safe because our validated blocks will not get version changed until we commit.
     }
     commit_manager.txn_commit(self_entry);
     return true;
@@ -648,7 +651,7 @@ bool RWTransaction::commit() {
 void RWTransaction::abort() {
     batch_lazy_updates();
     eager_abort();
-    txn_tables.abort_txn(self_entry,op_count);
+    txn_tables.abort_txn(self_entry,op_count);//no need to cache the touched blocks of aborted txns due to eager abort
 }
 
 #endif

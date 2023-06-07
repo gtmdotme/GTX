@@ -380,6 +380,7 @@ namespace bwgraph{
         uint32_t current_delta_offset;
         uint32_t current_data_offset;
         std::unordered_map<uint64_t, BwLabelEntry*> accessed_edge_label_entry_cache;
+        std::unordered_set<vertex_t> updated_vertices;
     };
 }
 #endif //BWGRAPH_V2_BW_TRANSACTION_HPP
