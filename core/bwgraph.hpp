@@ -36,6 +36,7 @@ namespace bwgraph{
         inline BlockAccessTimestampTable& get_block_access_ts_table(){return block_access_ts_table;}
         inline CommitManager& get_commit_manager(){return commit_manager;}
         inline TxnTables & get_txn_tables(){return txn_tables;}
+        inline VertexIndex& get_vertex_index(){return vertex_index;}
     private:
         BlockManager block_manager;
         VertexIndex vertex_index;
