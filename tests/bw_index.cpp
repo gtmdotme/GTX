@@ -39,6 +39,36 @@ TEST_CASE("Vertex Index Test 1"){
         //CHECK_EQ(entry.vertex_delta_chain_head_ptr,0);
     }
 }
+TEST_CASE("Vertex Index Test 2"){
+    BwGraph* g = new BwGraph();
+    auto& vertex_index = g->get_vertex_index();
+    for(int i=0; i<100000000; i++){
+        auto vid = vertex_index.get_next_vid();
+        CHECK_EQ(vid,i+1);
+    }
+    delete g;
+}
+void thread_create_vertex(std::atomic_bool& blocking, VertexIndex& vertex_index){
+    while(blocking.load());
+    for(int i=0; i<10000000; i++){
+        vertex_index.get_next_vid();
+    }
+}
+TEST_CASE("Vertex Index Test 3"){
+    BwGraph* g = new BwGraph();
+    auto& vertex_index = g->get_vertex_index();
+    std::atomic_bool blocking = true;
+    std::vector<std::thread>workers;
+    for(int i=0; i<10; i++){
+        workers.emplace_back(std::thread(thread_create_vertex, std::ref(blocking), std::ref(vertex_index)));
+    }
+    blocking.store(false);
+    for(int i=0; i<10; i++){
+        workers.at(i).join();
+    }
+    CHECK_EQ(vertex_index.get_next_vid(),100000001);
+    delete g;
+}
 //test edge label entry
 TEST_CASE("Edge Label Entry Test 1"){
     BwGraph* g = new BwGraph();
@@ -59,7 +89,7 @@ TEST_CASE("Edge Label Entry Test 1"){
         edge_label_block->fill_information(vid,&g->get_block_manager());
         BwLabelEntry* test_entry;
         CHECK_FALSE(edge_label_block->reader_lookup_label(1,test_entry));
-        auto label_entry = edge_label_block->writer_lookup_label(1,&txn_table);
+        auto label_entry = edge_label_block->writer_lookup_label(1,&txn_table,vid);
         CHECK(label_entry);
         CHECK_EQ(label_entry->label,1);
     }
@@ -68,6 +98,7 @@ TEST_CASE("Edge Label Entry Test 1"){
         auto edge_label_block = g->get_block_manager().convert<EdgeLabelBlock>(entry.edge_label_block_ptr);
         BwLabelEntry* test_entry;
         CHECK(edge_label_block->reader_lookup_label(1,test_entry));
+        CHECK_EQ(test_entry->consolidation_time,i);
         CHECK(test_entry->valid);
         CHECK_EQ(test_entry->label,1);
         auto block = g->get_block_manager().convert<EdgeDeltaBlockHeader>(test_entry->block_ptr);
@@ -99,15 +130,18 @@ TEST_CASE("Edge Label Entry Test 2"){
         edge_label_block->fill_information(vid,&g->get_block_manager());
         BwLabelEntry* test_entry;
         CHECK_FALSE(edge_label_block->reader_lookup_label(1,test_entry));
-        auto label_entry = edge_label_block->writer_lookup_label(1,&txn_table);
+        auto label_entry = edge_label_block->writer_lookup_label(1,&txn_table,1);
         CHECK(label_entry);
         CHECK_EQ(label_entry->label,1);
-        label_entry = edge_label_block->writer_lookup_label(2,&txn_table);
+        CHECK_EQ(label_entry->consolidation_time,1);
+        label_entry = edge_label_block->writer_lookup_label(2,&txn_table,2);
         CHECK(label_entry);
         CHECK_EQ(label_entry->label,2);
-        label_entry = edge_label_block->writer_lookup_label(3,&txn_table);
+        CHECK_EQ(label_entry->consolidation_time,2);
+        label_entry = edge_label_block->writer_lookup_label(3,&txn_table,3);
         CHECK(label_entry);
         CHECK_EQ(label_entry->label,3);
+        CHECK_EQ(label_entry->consolidation_time,3);
     }
     for(uint64_t i=1; i<=10; i++){
         auto& entry = vertex_index.get_vertex_index_entry(i);
@@ -117,6 +151,7 @@ TEST_CASE("Edge Label Entry Test 2"){
             CHECK(edge_label_block->reader_lookup_label(j,test_entry));
             CHECK(test_entry->valid);
             CHECK_EQ(test_entry->label,j);
+            CHECK_EQ(test_entry->consolidation_time,j);
             auto block = g->get_block_manager().convert<EdgeDeltaBlockHeader>(test_entry->block_ptr);
             CHECK_EQ(block->get_order(),DEFAULT_EDGE_DELTA_BLOCK_ORDER);
             CHECK_EQ(block->get_owner_id(),i);
@@ -148,9 +183,10 @@ TEST_CASE("Edge Label Entry Test 3"){
         BwLabelEntry* test_entry;
         for(int j=1; j<=5;j++){
             CHECK_FALSE(edge_label_block->reader_lookup_label(j,test_entry));
-            auto label_entry = edge_label_block->writer_lookup_label(j,&txn_table);
+            auto label_entry = edge_label_block->writer_lookup_label(j,&txn_table,j);
             CHECK(label_entry);
             CHECK_EQ(label_entry->label,j);
+            CHECK_EQ(label_entry->consolidation_time,j);
         }
         CHECK(edge_label_block->next_ptr.load());
     }
@@ -160,10 +196,11 @@ TEST_CASE("Edge Label Entry Test 3"){
         BwLabelEntry* test_entry;
         for(int j=1; j<=5; j++){
             CHECK(edge_label_block->reader_lookup_label(j,test_entry));
-            auto compare_entry = edge_label_block->writer_lookup_label(j,&txn_table);
+            auto compare_entry = edge_label_block->writer_lookup_label(j,&txn_table,j*10);
             CHECK_EQ(test_entry,compare_entry);
             CHECK(test_entry->valid);
             CHECK_EQ(test_entry->label,j);
+            CHECK_EQ(test_entry->consolidation_time,j);
             auto block = g->get_block_manager().convert<EdgeDeltaBlockHeader>(test_entry->block_ptr);
             CHECK_EQ(block->get_order(),DEFAULT_EDGE_DELTA_BLOCK_ORDER);
             CHECK_EQ(block->get_owner_id(),i);
@@ -177,7 +214,7 @@ TEST_CASE("Edge Label Entry Test 3"){
 void thread_access_label_entry(std::atomic_bool& blocking,EdgeLabelBlock* edge_label_block,int32_t thread_id, label_t label, std::vector<BwLabelEntry*>& label_access_result,TxnTables* txn_tables){
     while(blocking.load());
     BwLabelEntry* test_entry;
-    auto compare_entry = edge_label_block->writer_lookup_label(label,txn_tables);
+    auto compare_entry = edge_label_block->writer_lookup_label(label,txn_tables,3);
     CHECK(edge_label_block->reader_lookup_label(label,test_entry));
     CHECK_EQ(test_entry,compare_entry);
     label_access_result[thread_id]= test_entry;
@@ -206,6 +243,10 @@ TEST_CASE("Edge Label Entry Test 4"){
     for(int j=1; j<10; j++){
         CHECK_EQ(label_access_result[0],label_access_result[j]);
     }
+    CHECK_EQ(edge_label_block->label_entries[0].label,1);
+    CHECK(edge_label_block->label_entries[0].delta_chain_index);
+    CHECK(edge_label_block->label_entries[0].block_ptr);
+    CHECK(edge_label_block->label_entries[0].valid);
     for(int i=1; i<=2;i++){
         CHECK_FALSE(edge_label_block->label_entries[i].label);
         CHECK_FALSE(edge_label_block->label_entries[i].delta_chain_index);

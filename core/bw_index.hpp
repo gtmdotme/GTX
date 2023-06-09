@@ -34,7 +34,7 @@ namespace bwgraph {
         }
         //reader will locate a corresponding label entry if it exists, otherwise it returns false
         bool reader_lookup_label(label_t target_label,  BwLabelEntry*& target_entry);
-        BwLabelEntry* writer_lookup_label(label_t target_label, TxnTables* txn_tables);
+        BwLabelEntry* writer_lookup_label(label_t target_label, TxnTables* txn_tables, timestamp_t txn_read_ts);
         vertex_t owner_id;
         std::atomic_uint8_t offset=0;
         BlockManager* block_manager;
@@ -46,6 +46,9 @@ namespace bwgraph {
         std::atomic_bool valid = false;
         std::atomic_uintptr_t vertex_delta_chain_head_ptr=0;
         std::atomic_uintptr_t edge_label_block_ptr=0;
+        inline bool install_vertex_delta(uintptr_t current_delta_ptr, uintptr_t new_delta_ptr){
+            return vertex_delta_chain_head_ptr.compare_exchange_strong(current_delta_ptr,new_delta_ptr);
+        }
     };
     class VertexIndexBucket{
     public:
@@ -96,6 +99,9 @@ namespace bwgraph {
         }
         inline VertexIndexEntry& get_vertex_index_entry(vertex_t vid){
             return bucket_index[vid/BUCKET_SIZE].get_index_bucket_ptr()->get_vertex_index_entry(vid);
+        }
+        inline void make_valid(vertex_t vid){
+            bucket_index[vid/BUCKET_SIZE].get_index_bucket_ptr()->get_vertex_index_entry(vid).valid.store(true);
         }
     private:
         std::atomic_uint64_t global_vertex_id;

@@ -152,7 +152,7 @@ namespace bwgraph{
             return is_overflow_offset(combined_offsets.load());
         }
         //metadata modifier
-        inline void fill_metadata(vertex_t input_owner_id, timestamp_t input_creation_time, uintptr_t input_prev_pointer, order_t input_order, TxnTables* txn_table_ptr){
+        inline void fill_metadata(vertex_t input_owner_id, timestamp_t input_creation_time, uintptr_t input_prev_pointer, order_t input_order, TxnTables* txn_table_ptr,  std::vector<AtomicDeltaOffset>* input_index_ptr){
             owner_id = input_owner_id;
             creation_time = input_creation_time;
             prev_pointer = input_prev_pointer;
@@ -160,6 +160,7 @@ namespace bwgraph{
             //define a function that determines how many delta chains it has:
             delta_chain_num = 1ul << ((order == DEFAULT_EDGE_DELTA_BLOCK_ORDER)?0:(order-DEFAULT_EDGE_DELTA_BLOCK_ORDER-1));//index takes less than 1% in storage
             txn_tables = txn_table_ptr;
+            delta_chains_index = input_index_ptr;
         }
         //get a specific delta
         BaseEdgeDelta *get_edge_delta(uint32_t entry_offset){
@@ -459,6 +460,7 @@ namespace bwgraph{
             std::cout<<"creation time is "<<creation_time<<std::endl;
             std::cout<<"size is "<<data_size<<std::endl;
         }
+        inline void eager_abort(){creation_time.store(ABORT);}
         inline void fill_metadata( uint64_t input_creation_ts, size_t input_to_write_size, order_t input_block_order,uintptr_t input_previous_ptr= 0){
             creation_time = input_creation_ts;
             previous_ptr = input_previous_ptr;
@@ -492,6 +494,11 @@ namespace bwgraph{
         }
         inline order_t get_order(){
             return order;
+        }
+        inline void write_data(const char* data){
+            for(int i=0; i<data_size;i++){
+                get_data()[i]=data[i];
+            }
         }
         //todo:: implement a write function
     private:

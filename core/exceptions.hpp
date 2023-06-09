@@ -114,6 +114,11 @@ namespace bwgraph {
             return "reader transaction observes anomaly";
         }
     };
+    class VertexDeltaException: public std::exception{
+        virtual const char *what() const throw() {
+            return "vertex delta anomaly";
+        }
+    };
     class LockReleaseException: public std::exception{
         virtual const char *what() const throw() {
             return "lock releasing is encountering error";
@@ -127,6 +132,11 @@ namespace bwgraph {
     class ValidationException: public std::exception{
         virtual const char *what() const throw() {
             return "anomaly encountered during validation";
+        }
+    };
+    class IllegalVertexAccessException: public std::exception{
+        virtual const char *what() const throw() {
+            return "accessing a vertex entry that is not allocated";
         }
     };
 }

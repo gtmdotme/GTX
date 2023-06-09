@@ -212,8 +212,8 @@ namespace bwgraph{
     class RWTransaction{
     public:
         //implement constructor
-        RWTransaction(BwGraph& source_graph,uint64_t input_txn_id, timestamp_t input_ts, entry_ptr input_txn_ptr, TxnTables& input_txn_tables, CommitManager& input_commit_manager,  BlockManager& input_block_manager,GarbageBlockQueue& input_garbage_queue, BlockAccessTimestampTable& input_bts_table):graph(source_graph),local_txn_id(input_txn_id),read_timestamp(input_ts),
-        self_entry(input_txn_ptr),txn_tables(input_txn_tables),commit_manager(input_commit_manager), block_manager(input_block_manager),per_thread_garbage_queue(input_garbage_queue), block_access_ts_table(input_bts_table){
+        RWTransaction(BwGraph& source_graph,uint64_t input_txn_id, timestamp_t input_ts, entry_ptr input_txn_ptr, TxnTables& input_txn_tables, CommitManager& input_commit_manager,  BlockManager& input_block_manager,GarbageBlockQueue& input_garbage_queue, BlockAccessTimestampTable& input_bts_table,std::queue<vertex_t>& input_thread_local_recycled_vertices):graph(source_graph),  local_txn_id(input_txn_id),read_timestamp(input_ts),
+        self_entry(input_txn_ptr),txn_tables(input_txn_tables),commit_manager(input_commit_manager), block_manager(input_block_manager),per_thread_garbage_queue(input_garbage_queue), block_access_ts_table(input_bts_table),thread_local_recycled_vertices(input_thread_local_recycled_vertices){
             thread_id = get_threadID(local_txn_id);
         }
         //transaction graph write operations
@@ -256,7 +256,7 @@ namespace bwgraph{
                 }
                 auto edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
                 //either access an existing entry or creating a new entry
-                emplace_result.first->second = edge_label_block->writer_lookup_label(label,&txn_tables);
+                emplace_result.first->second = edge_label_block->writer_lookup_label(label,&txn_tables,read_timestamp);
             }
             return emplace_result.first->second;
         }
@@ -380,7 +380,8 @@ namespace bwgraph{
         uint32_t current_delta_offset;
         uint32_t current_data_offset;
         std::unordered_map<uint64_t, BwLabelEntry*> accessed_edge_label_entry_cache;
-        std::unordered_set<vertex_t> updated_vertices;
+        std::unordered_set<vertex_t> updated_vertices;//cache the vertex deltas that the transaction has touched
+        std::queue<vertex_t>& thread_local_recycled_vertices;
     };
 }
 #endif //BWGRAPH_V2_BW_TRANSACTION_HPP

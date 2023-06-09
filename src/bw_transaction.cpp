@@ -190,7 +190,7 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     auto new_order = size_to_order(new_block_size);
     auto new_block_ptr = block_manager.alloc(new_order);
     auto new_block = block_manager.convert<EdgeDeltaBlockHeader>(new_block_ptr);
-    new_block->fill_metadata(current_block->get_owner_id(),largest_invalidation_ts,current_label_entry->block_ptr,new_order, &txn_tables);
+    new_block->fill_metadata(current_block->get_owner_id(),largest_invalidation_ts,current_label_entry->block_ptr,new_order, &txn_tables,current_label_entry->delta_chain_index);
     int32_t new_block_delta_chain_num = new_block->get_delta_chain_num();
     std::vector<AtomicDeltaOffset> new_delta_chains_index(new_block_delta_chain_num);
     //start installing latest version
@@ -550,6 +550,21 @@ void RWTransaction::eager_abort() {
                 touched_block_it++;
             }
         }
+
+        for(auto touched_vertex_it = updated_vertices.begin();touched_vertex_it!=updated_vertices.end();touched_vertex_it++){
+            auto& vertex_index_entry = graph.get_vertex_index_entry(*touched_vertex_it);
+            uint64_t current_vertex_delta_ptr = vertex_index_entry.vertex_delta_chain_head_ptr.load();
+            auto current_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta_ptr);
+#if TXN_TEST
+            if(current_vertex_delta->get_creation_ts()!=local_txn_id){
+                throw EagerAbortException();
+            }
+#endif
+            vertex_index_entry.vertex_delta_chain_head_ptr.store(current_vertex_delta->get_previous_ptr());
+            current_vertex_delta->eager_abort();
+            per_thread_garbage_queue.register_entry(current_vertex_delta_ptr, current_vertex_delta->get_order() , commit_manager.get_current_read_ts());
+            op_count--;
+        }
         if(per_block_cached_delta_chain_offsets.empty()){
 #if TXN_TEST
             if(op_count<0){
@@ -654,4 +669,139 @@ void RWTransaction::abort() {
     txn_tables.abort_txn(self_entry,op_count);//no need to cache the touched blocks of aborted txns due to eager abort
 }
 
+
+//vertex operations
+//maybe txn eager abort will recycle allocated vertices.
+vertex_t RWTransaction::create_vertex() {
+    //todo: further design the reuse vertex part, currently assume no vertex deletion
+    auto& vertex_index = graph.get_vertex_index();
+    if(!thread_local_recycled_vertices.empty()){
+        auto reuse_vid = thread_local_recycled_vertices.front();
+        thread_local_recycled_vertices.pop();
+        //vertex_index.make_valid(reuse_vid); already valid, but just deleted or no delta at all
+        return reuse_vid;
+    }
+    auto new_vid = vertex_index.get_next_vid();
+    vertex_index.make_valid(new_vid);
+    return new_vid;
+}
+
+//can be updating a new version or delete
+Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::string_view vertex_data) {
+    auto& vertex_index_entry = graph.get_vertex_index_entry(src);
+    if(!vertex_index_entry.valid.load()){
+        throw IllegalVertexAccessException();
+    }
+    uintptr_t current_vertex_delta_ptr;
+    VertexDeltaHeader* current_vertex_delta =nullptr;
+    while(true){
+        current_vertex_delta_ptr = vertex_index_entry.vertex_delta_chain_head_ptr.load();
+        if(current_vertex_delta_ptr){
+            current_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta_ptr);
+            timestamp_t original_ts = current_vertex_delta->get_creation_ts();
+            if(is_txn_id(original_ts)){
+                uint64_t status;
+                if(txn_tables.get_status(original_ts,status)){
+                    if(status==IN_PROGRESS){
+                        return Txn_Operation_Response::FAIL;
+                    }else if(status!=ABORT){
+                        if(current_vertex_delta->lazy_update(original_ts,status)){
+                            record_lazy_update_record(&lazy_update_records,original_ts);
+                            //invalidate previous entry if exist
+                            if(current_vertex_delta->get_previous_ptr()){
+                                auto previous_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta->get_previous_ptr());
+                                per_thread_garbage_queue.register_entry(current_vertex_delta->get_previous_ptr(),previous_vertex_delta->get_order(),status);
+                            }
+                        }
+#if TXN_TEST
+                        if(current_vertex_delta->get_creation_ts()!=status){
+                            throw VertexDeltaException();
+                        }
+#endif
+                        if(status>read_timestamp){
+                            return Txn_Operation_Response::FAIL;
+                        }else{
+                            break;
+                        }
+                    }else{
+                         continue; //status == abort, eager abort is done, we need to reread the entry
+                    }
+                }else{
+                    continue;//no status so delta is lazy updated
+                }
+            }else if(original_ts!=ABORT){
+                if(original_ts>read_timestamp){
+                    return Txn_Operation_Response::FAIL;
+                }
+                break;
+            }else{
+                continue;//don't worry because of eager abort, continue and reload delta until we see a committed version or 0
+            }
+        }else{
+            break;
+        }
+    }
+    //either 0 or comitted current version
+#if TXN_TEST
+    if(current_vertex_delta_ptr){
+        if(is_txn_id(current_vertex_delta->get_creation_ts())||current_vertex_delta->get_creation_ts()>read_timestamp){
+            throw VertexDeltaException();
+        }
+    }
+#endif
+    const char* data = vertex_data.data();
+    order_t new_order = size_to_order(sizeof(VertexDeltaHeader)+vertex_data.size());
+    auto new_delta_ptr = block_manager.alloc(new_order);
+    auto new_vertex_delta = block_manager.convert<VertexDeltaHeader>(new_delta_ptr);
+    //todo:: in the future support multiple versions of the same vertex from the same txn maybe???
+    new_vertex_delta->fill_metadata(local_txn_id,vertex_data.size(),new_order,current_vertex_delta_ptr);
+    new_vertex_delta->write_data(data);
+    if(vertex_index_entry.install_vertex_delta(current_vertex_delta_ptr,new_delta_ptr)){
+        updated_vertices.emplace(src);
+        op_count++;
+        return Txn_Operation_Response::SUCCESS;
+    }else{
+        block_manager.free(new_delta_ptr,new_order);
+        return Txn_Operation_Response::FAIL;
+    }
+}
+
+std::string_view RWTransaction::get_vertex(bwgraph::vertex_t src) {
+    auto& vertex_index_entry = graph.get_vertex_index_entry(src);
+    if(!vertex_index_entry.valid.load()){
+        throw IllegalVertexAccessException();
+    }
+    uintptr_t current_vertex_delta_ptr = vertex_index_entry.vertex_delta_chain_head_ptr.load();
+    if(!current_vertex_delta_ptr){
+        return std::string_view ();
+    }
+    VertexDeltaHeader* current_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta_ptr);
+    uint64_t current_ts = current_vertex_delta->get_creation_ts();
+    if(is_txn_id(current_ts)){
+        uint64_t status;
+        if(txn_tables.get_status(current_ts,status)){
+            if(status!=IN_PROGRESS){//ignore in progress ones
+                if(status!=ABORT){//abort will be eager updated
+                    if(current_vertex_delta->lazy_update(current_ts,status)){
+                        record_lazy_update_record(&lazy_update_records,current_ts);
+                        //invalidate previous entry if exist
+                        if(current_vertex_delta->get_previous_ptr()){
+                            auto previous_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta->get_previous_ptr());
+                            per_thread_garbage_queue.register_entry(current_vertex_delta->get_previous_ptr(),previous_vertex_delta->get_order(),status);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    while(current_vertex_delta_ptr){
+        if(current_vertex_delta->get_creation_ts()<=read_timestamp){
+            char* data = current_vertex_delta->get_data();
+            return std::string_view (data,current_vertex_delta->get_data_size());
+        }
+        current_vertex_delta_ptr = current_vertex_delta->get_previous_ptr();
+        current_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta_ptr);
+    }
+    return std::string_view();
+}
 #endif

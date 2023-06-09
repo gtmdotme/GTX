@@ -34,7 +34,7 @@ namespace bwgraph{
     //todo: double check this function
     //todo:: modify to add consolidation time?
     //will always succeed
-    BwLabelEntry *EdgeLabelBlock::writer_lookup_label(bwgraph::label_t target_label, TxnTables* txn_tables) {
+    BwLabelEntry *EdgeLabelBlock::writer_lookup_label(bwgraph::label_t target_label, TxnTables* txn_tables,timestamp_t txn_read_ts) {
         //loop until we observe concurrent updates
         EdgeLabelBlock* current_label_block = this;
         while(true){
@@ -61,9 +61,10 @@ namespace bwgraph{
                     //todo:: should we also set up a base edge delta block?
                     current_label_block->label_entries[current_offset].block_ptr = block_manager->alloc(DEFAULT_EDGE_DELTA_BLOCK_ORDER);
                     auto new_edge_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_label_block->label_entries[current_offset].block_ptr);
-                    new_edge_delta_block->fill_metadata(owner_id,0,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER,txn_tables);
                     current_label_block->label_entries[current_offset].delta_chain_index = new std::vector<AtomicDeltaOffset>(new_edge_delta_block->get_delta_chain_num());
+                    new_edge_delta_block->fill_metadata(owner_id,0,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER,txn_tables,current_label_block->label_entries[current_offset].delta_chain_index);
                     current_label_block->label_entries[current_offset].state=EdgeDeltaBlockState::NORMAL;
+                    current_label_block->label_entries[current_offset].consolidation_time = txn_read_ts;
                     current_label_block->label_entries[current_offset].valid=true;
                     return &current_label_block->label_entries[current_offset];
                 }else{//if allocation failed, someone else must have allocated a new entry, re-loop and re-observe what's going on by not changing current block and continue
@@ -82,9 +83,10 @@ namespace bwgraph{
                     //todo:: allocate a block as well maybe?
                     new_block->label_entries[0].block_ptr =block_manager->alloc(DEFAULT_EDGE_DELTA_BLOCK_ORDER);
                     auto new_edge_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(new_block->label_entries[0].block_ptr);
-                    new_edge_delta_block->fill_metadata(owner_id,0,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER,txn_tables);
                     new_block->label_entries[0].delta_chain_index = new std::vector<AtomicDeltaOffset>(new_edge_delta_block->get_delta_chain_num());
+                    new_edge_delta_block->fill_metadata(owner_id,0,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER,txn_tables,new_block->label_entries[0].delta_chain_index);
                     new_block->label_entries[0].state=EdgeDeltaBlockState::NORMAL;
+                    new_block->label_entries[0].consolidation_time = txn_read_ts;
                     new_block->label_entries[0].valid=true;
                     if(current_label_block->next_ptr.compare_exchange_strong(current_next_ptr,new_next_ptr)){
                         return &new_block->label_entries[0];
