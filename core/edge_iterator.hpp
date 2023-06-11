@@ -117,7 +117,9 @@ namespace bwgraph {
              }
             return nullptr;
         }
-
+        char* get_data(uint32_t offset){
+            return current_delta_block->get_edge_data(offset);
+        }
     private:
         EdgeDeltaBlockHeader *current_delta_block;
         timestamp_t txn_read_ts;
