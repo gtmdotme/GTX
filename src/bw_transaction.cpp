@@ -126,7 +126,7 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     int32_t current_delta_chain_num = current_block->get_delta_chain_num();
     std::set<delta_chain_id_t> to_check_delta_chains;
     while(original_delta_offset>0){
-        //should there be no unvalid deltas
+        //should there be no invalid deltas
         if(!current_delta->valid.load()){
             throw std::runtime_error("all writer transactions should already installed their deltas");
         }
@@ -143,7 +143,12 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
                         record_lazy_update_record(&lazy_update_records, original_ts);
                         if(status!=ABORT){
                             current_block->update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_offset, status);
+                        }//todo:: check always eager abort
+#if EDGE_DELTA_TEST
+                        else{
+                            throw EagerAbortException();//it is still consolidation phase, a txn should have aborted its delta before setting its state, so it is impossible.
                         }
+#endif
                     }else{
                         if(current_delta->creation_ts.load()!=status){
                             throw LazyUpdateException();
@@ -238,7 +243,7 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
                         }
                         while(to_abort_offset!=0){
                             current_delta = current_block->get_edge_delta(to_abort_offset);
-                            if(current_delta->creation_ts!=original_ts&&current_delta->creation_ts!=ABORT){
+                            if(current_delta->creation_ts!=original_ts){
                                 break;
                             }else if(current_delta->creation_ts==original_ts){
                                 if(current_delta->lazy_update(original_ts,status)){
@@ -247,6 +252,11 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
                                     throw ConsolidationException();
                                 }
                             }
+#if CONSOLIDATION_TEST
+                            else if(current_delta->creation_ts==ABORT){
+                                throw EagerAbortException();//aborted delta should not exit in the delta chain (except my own deltas that I'm aborting )
+                            }
+#endif
                             to_abort_offset = current_delta->previous_offset;
                         }
                         it = to_check_delta_chains.erase(it);//this delta chain is cleaned
@@ -261,7 +271,7 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
                         }
                         while(to_commit_offset!=0){
                             current_delta= current_block->get_edge_delta(to_commit_offset);
-                            if(current_delta->creation_ts!=original_ts&&current_delta->creation_ts!=status){
+                            if(current_delta->creation_ts!=original_ts&&current_delta->creation_ts!=status){//someone can already lazy update parts of txn's deltas due to concurrent readers
 #if EDGE_DELTA_TEST
                                 if(current_delta->creation_ts==ABORT){
                                     throw LazyUpdateException();
@@ -447,13 +457,14 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
                 while(read_timestamp<previous_block->get_creation_time()){
                     previous_block = block_manager.convert<EdgeDeltaBlockHeader>(previous_block->get_previous_ptr());
                 }
-                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);//reading previous block needs no protection, it is protected by read epoch
                 return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,
                                                                           scan_previous_block_find_edge(previous_block,dst));
             }else{
                 auto& delta_chains_index_entry = target_label_entry->delta_chain_index->at(current_block->get_delta_chain_id(dst));
                 offset = delta_chains_index_entry.get_raw_offset();//may be locked
-                BaseEdgeDelta* target_delta = current_block->get_edge_delta(offset);
+                //BaseEdgeDelta* target_delta = current_block->get_edge_delta(offset);
+                BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
                 if(!target_delta){
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                     return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,std::string());
@@ -659,12 +670,16 @@ bool RWTransaction::commit() {
     for(auto it = per_block_cached_delta_chain_offsets.begin(); it!=per_block_cached_delta_chain_offsets.end();it++){
         self_entry->touched_blocks.emplace_back(it->first, it->second.consolidation_ts);//safe because our validated blocks will not get version changed until we commit.
     }
+    for(auto it = updated_vertices.begin(); it!=updated_vertices.end();it++){
+        self_entry->touched_blocks.emplace_back(*it,0);
+    }
     commit_manager.txn_commit(self_entry);
     return true;
 }
 
 void RWTransaction::abort() {
     batch_lazy_updates();
+    //eager abort no need to cache
     eager_abort();
     txn_tables.abort_txn(self_entry,op_count);//no need to cache the touched blocks of aborted txns due to eager abort
 }

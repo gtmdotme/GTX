@@ -371,6 +371,9 @@ namespace bwgraph {
             ptr->op_count.store(op_count);
             ptr->status.store(ABORT);
         }
+        inline ArrayTransactionTable& get_table(uint8_t thread_id){
+            return tables[thread_id];
+        }
     private:
 
         std::array<ArrayTransactionTable,WORKER_THREAD_NUM> tables;

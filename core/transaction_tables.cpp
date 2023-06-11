@@ -36,12 +36,11 @@ namespace bwgraph{
                     if(txn_tables->get_status(original_ts,status)){
                         if(status!=IN_PROGRESS){
                             if(current_delta->lazy_update(original_ts,status)){
-                              auto emplace_result =lazy_update_records.try_emplace(original_ts,1);
-                              if(!emplace_result.second){
-                                  emplace_result.first->second++;
-                              }
+                                record_lazy_update_record(&lazy_update_records,original_ts);
                               if(status!=ABORT){
                                   current_edge_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
+                              }else{
+                                  throw EagerAbortException();
                               }
                             }
                         }
@@ -79,12 +78,15 @@ namespace bwgraph{
                 if(target_label_block->reader_lookup_label(target_vid_label_pair.second,target_label_entry)){
                     //if the block is under overflow or installation states, we know another thread is doing consolidation work so it will lazy update our transaction!
                    if( BlockStateVersionProtectionScheme::reader_access_block(thread_id,touched_block_entry.block_id,target_label_entry,bwGraph->get_block_access_ts_table())){
-                       //if the block still exists
-                        if(target_label_entry->block_ptr){
-                            lazy_update_block(target_label_entry->block_ptr);
-                        }
+                       //todo:: we add the safety check here: but it requires we cache this value after validation phase
+                       if(touched_block_entry.consolidation_ts==target_label_entry->consolidation_time){
+                           //if the block still exists
+                           if(target_label_entry->block_ptr){
+                               lazy_update_block(target_label_entry->block_ptr);
+                           }
+                       }
                        BlockStateVersionProtectionScheme::release_protection(thread_id,bwGraph->get_block_access_ts_table());
-                   }
+                   }//else under consolidation so someone will clean for us
                 }else{
                     //never delete entries, at the worst mark the block ptr as 0. So if I modified this label, the entry must exist
                     throw LabelEntryMissingException();
@@ -98,23 +100,17 @@ namespace bwgraph{
                         uint64_t status =0;
                         if(txn_tables->get_status(current_ts,status)){
                             if(status!=IN_PROGRESS){
-                                if(lazy_update(vertex_delta,current_ts,status)){
+                                if(vertex_delta->lazy_update(current_ts,status)){
                                     //todo: throw in garbage queue
                                     uintptr_t previous_ptr = vertex_delta->get_previous_ptr();
-                                    if(status==ABORT){
-                                        //index_entry.vertex_delta_chain_head_ptr.store(previous_ptr);
-                                        //remove aborted delta from the version chain
-                                        //let threads compete for this installation
-                                        if( index_entry.vertex_delta_chain_head_ptr.compare_exchange_strong(current_vertex_ptr,previous_ptr)){
-                                            thread_local_garbage_queue->register_entry(current_vertex_ptr,vertex_delta->get_order(),bwGraph->get_commit_manager().get_current_read_ts()+1);
-                                        }
-                                    }else{
-                                        //register when the previous version becomes outdated
-                                        if(previous_ptr){
-                                            auto previous_delta = bwGraph->get_block_manager().convert<VertexDeltaHeader>(previous_ptr);
-                                            thread_local_garbage_queue->register_entry(previous_ptr,previous_delta->get_order(),status);
-                                        }
-                                    }
+                                   if(status!=ABORT){
+                                       if(previous_ptr){
+                                           auto previous_delta = bwGraph->get_block_manager().convert<VertexDeltaHeader>(previous_ptr);
+                                           thread_local_garbage_queue->register_entry(previous_ptr,previous_delta->get_order(),status);
+                                       }
+                                   }else{
+                                       throw EagerAbortException();//aborted deltas should be eager aborted.
+                                   }
                                     txn_tables->reduce_op_count(current_ts,1);
                                 }
                             }
