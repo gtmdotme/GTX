@@ -18,12 +18,12 @@ namespace bwgraph{
 #define CONSOLIDATION_TEST true
 #define TXN_TEST true
     struct LockOffsetCache{
-        LockOffsetCache(uint64_t input_ts, int32_t input_size):consolidation_ts(input_ts),delta_chain_num(input_size){}
-        inline bool is_outdated(uint64_t current_consolidation_ts){
-            return current_consolidation_ts != consolidation_ts;
+        LockOffsetCache(uint64_t input_version, int32_t input_size):block_version_num(input_version),delta_chain_num(input_size){}
+        inline bool is_outdated(uint64_t current_version){
+            return current_version != block_version_num;
         }
-        inline bool is_same_version(timestamp_t current_consolidation_ts){
-            return current_consolidation_ts==consolidation_ts;
+        inline bool is_same_version(timestamp_t current_version){
+            return current_version==block_version_num;
         }
 
 #if PESSIMISTIC_DELTA_BLOCK
@@ -35,7 +35,7 @@ namespace bwgraph{
             delta_chain_num = current_block->get_delta_chain_num();//todo: check if we can update delta chain num directly in place
             std::set<delta_chain_id_t> to_reclaim_locks;//use set because we want a deterministic order of reclaiming locks
             already_updated_delta_chain_head_offsets.clear();
-            consolidation_ts = current_label_entry->consolidation_time.load();
+            block_version_num = current_label_entry->block_version_number.load();
             for(auto it = already_modified_edges.begin();it!=already_modified_edges.end();it++){
                 delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(*it,delta_chain_num);
                 to_reclaim_locks.emplace(delta_chain_id);
@@ -119,7 +119,7 @@ namespace bwgraph{
         * if the delta chain offset is cached, return the cached offset
         * Otherwise create a cache entry to cache the delta chain offset and return 0
         */
-        inline uint32_t ensure_delta_chain_cache(int64_t vid){
+        inline uint32_t ensure_delta_chain_cache(vertex_t vid){
             delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(vid,delta_chain_num);
             auto emplace_result = already_updated_delta_chain_head_offsets.try_emplace(delta_chain_id,0);
             return emplace_result.first->second;//either 0 or cached offset
@@ -150,7 +150,7 @@ namespace bwgraph{
         int64_t eager_abort(EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry, uint64_t txn_id,uint64_t current_block_offset){
             int64_t total_abort_count=0;
             //use offset cache to eager abort
-            if(current_label_entry->consolidation_time.load()==consolidation_ts){
+            if(current_label_entry->block_version_number.load()==block_version_num){
                 for(auto it = already_updated_delta_chain_head_offsets.begin();it!=already_updated_delta_chain_head_offsets.end();it++){
                     uint32_t current_delta_offset = it->second;
                     auto current_delta = current_block->get_edge_delta(current_delta_offset);
@@ -194,7 +194,7 @@ namespace bwgraph{
             return total_abort_count;
         }
 
-        uint64_t consolidation_ts;
+        uint64_t block_version_num;
         int32_t delta_chain_num;
         std::unordered_set<vertex_t>already_modified_edges;
         std::map<delta_chain_id_t ,uint32_t>already_updated_delta_chain_head_offsets;
@@ -290,7 +290,7 @@ namespace bwgraph{
             uint32_t original_delta_offset = static_cast<uint32_t>(original_block_offset&SIZE2MASK);
             uint32_t new_data_offset = original_data_offset+data_size;
             uint32_t new_delta_offset = original_delta_offset+ENTRY_DELTA_SIZE;
-            current_data_offset = original_delta_offset;//grow from left to right;
+            current_data_offset = original_data_offset;//grow from left to right;
             current_delta_offset = new_delta_offset; //grow from right to left
             if((new_delta_offset+new_data_offset)>block_size){
                 if(original_delta_offset+original_data_offset<=block_size){

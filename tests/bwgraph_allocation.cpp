@@ -4,6 +4,7 @@
 #include <doctest/doctest/doctest.h>
 #include <core/bw_index.hpp>
 #include "core/bwgraph.hpp"
+#include "core/mini_bwgraph.hpp"
 using namespace bwgraph;
 
 TEST_CASE("BwGraph allocation test"){
@@ -42,7 +43,7 @@ TEST_CASE("BwGraph allocation test"){
         CHECK_EQ(vertex_delta->get_data_size(),32);
         CHECK_EQ(vertex_delta->get_max_data_storage(),32);
         char* data = vertex_delta->get_data();
-        for(int j=0; j<vertex_delta->get_data_size();j++){
+        for(size_t j=0; j<vertex_delta->get_data_size();j++){
             CHECK_EQ(data[j],static_cast<char>(vid%32));
         }
         CHECK_FALSE(vertex_delta->get_previous_ptr());
@@ -71,4 +72,9 @@ TEST_CASE("BwGraph allocation test"){
         delete target_entry->delta_chain_index;
     }
     //commit_manager_worker = std::thread(&CommitManager::server_loop, &commit_manager);//start executing the commit manager
+}
+
+TEST_CASE("Mini Bw Edge Test under doctest"){
+    MiniBwGraph test;
+    test.execute_edge_only_test();
 }

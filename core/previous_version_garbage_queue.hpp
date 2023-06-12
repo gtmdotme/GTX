@@ -34,6 +34,7 @@ namespace bwgraph{
     };
     class GarbageBlockQueue{
     public:
+        GarbageBlockQueue(BlockManager* input_manager):block_manager(input_manager){}
         void free_block(uint64_t safe_ts){
             while(!previous_versions_queue.empty()){
                 if(previous_versions_queue.top().updated_ts<=safe_ts){

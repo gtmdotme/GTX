@@ -50,6 +50,9 @@ namespace bwgraph{
         return std::pair<vertex_t,label_t>((block_id&VERTEX_ID_MASK),(static_cast<label_t>(block_id>>48)));
     }
     inline void record_lazy_update_record(lazy_update_map* txn_lazy_update_records, uint64_t original_txn_id){
+      /*  if(!(original_txn_id&0x8000000000000000)){
+            std::cout<<original_txn_id<<std::endl;
+        }*/
         auto emplace_result = txn_lazy_update_records->try_emplace(original_txn_id,1);
         if(!emplace_result.second){
             emplace_result.first->second++;

@@ -6,7 +6,7 @@
 #define BWGRAPH_V2_GRAPH_GLOBAL_HPP
 //system-wise worker thread count
 #ifndef WORKER_THREAD_NUM
-#define WORKER_THREAD_NUM 64
+#define WORKER_THREAD_NUM 32
 #endif
 
 //transaction states

@@ -19,7 +19,7 @@ namespace bwgraph {
         std::atomic_bool valid=false;
         label_t label;//label starts from 1
         uintptr_t block_ptr=0;//todo::check if we can directly use raw pointer
-        std::atomic_uint64_t consolidation_time = 0;//the last time consolidation took place
+        std::atomic_uint64_t block_version_number = 0;//the last time consolidation took place
         std::vector<AtomicDeltaOffset>* delta_chain_index=nullptr;//this needs to be a pointer!
     };
 

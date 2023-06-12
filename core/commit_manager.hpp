@@ -30,10 +30,19 @@ namespace bwgraph{
         }
 #else
         inline uint64_t get_current_read_ts(){return global_read_epoch.load();}
-        inline void txn_commit(entry_ptr txn_entry);
+        inline void txn_commit(entry_ptr txn_entry){
+            latch.lock();
+            double_buffer_queue[offset].emplace(txn_entry);
+            latch.unlock();
+            return;
+        }
         void server_loop();//server loops to commit
+        inline void shutdown_signal(){
+            running.store(false);
+        }
 #endif
     private:
+        std::atomic_bool running = true;
         std::atomic_uint64_t global_read_epoch = 0;
         uint64_t global_write_epoch = 0;
         void batch_commit();

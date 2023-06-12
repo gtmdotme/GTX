@@ -137,7 +137,10 @@ namespace bwgraph{
             return combined_offsets.load();
         }
         inline char* get_edge_data(uint32_t offset){
-            return data+offset;
+            return get_edge_data()+offset;
+        }
+        inline char* get_edge_data(){
+            return data;
         }
         inline uint32_t get_size(){
             return (uint32_t)((1ul<<order)-sizeof (EdgeDeltaBlockHeader));
@@ -158,7 +161,7 @@ namespace bwgraph{
             prev_pointer = input_prev_pointer;
             order = input_order;
             //define a function that determines how many delta chains it has:
-            delta_chain_num = 1ul << ((order == DEFAULT_EDGE_DELTA_BLOCK_ORDER)?0:(order-DEFAULT_EDGE_DELTA_BLOCK_ORDER-1));//index takes less than 1% in storage
+            delta_chain_num = 1ul << ((order == DEFAULT_EDGE_DELTA_BLOCK_ORDER)?1:(order+1-DEFAULT_EDGE_DELTA_BLOCK_ORDER));//index takes less than 1% in storage
             txn_tables = txn_table_ptr;
             delta_chains_index = input_index_ptr;
         }
@@ -291,6 +294,7 @@ namespace bwgraph{
             uint32_t raw_delta_chain_offset = latest_delta_chain_head_offset&UNLOCK_MASK;
             BaseEdgeDelta* delta_chain_head = nullptr;
             //todo: also check lock?
+            Delta_Chain_Lock_Response temporary_result;
             if(raw_delta_chain_offset){
                 delta_chain_head = get_edge_delta(raw_delta_chain_offset);
                 uint64_t original_ts = delta_chain_head->creation_ts.load();
@@ -300,12 +304,18 @@ namespace bwgraph{
                         throw DeltaLockException();
                     }
 #endif
-                    auto temporary_result = lock_inheritance_on_delta_chain(delta_chain_id,lazy_update_map_ptr,txn_read_ts,raw_delta_chain_offset,original_ts);
+                    temporary_result = lock_inheritance_on_delta_chain(delta_chain_id,lazy_update_map_ptr,txn_read_ts,raw_delta_chain_offset,original_ts);
                     if(temporary_result==Delta_Chain_Lock_Response::LOCK_INHERIT||temporary_result==Delta_Chain_Lock_Response::CONFLICT){
+                        if(temporary_result==Delta_Chain_Lock_Response::CONFLICT){
+                            int i=0;
+                            i++;
+                        }
                         return temporary_result;
                     }
                 }else if(original_ts>txn_read_ts){
                     return Delta_Chain_Lock_Response::CONFLICT;
+                }else{
+                    temporary_result= Delta_Chain_Lock_Response::DEADLOCK;//for debug
                 }
             }
             if(target_chain_index_entry.try_set_lock()){
@@ -330,7 +340,7 @@ namespace bwgraph{
             }
         }
        inline void release_protection(vertex_t vid){
-            int32_t delta_chain_id = get_delta_chain_id(vid);
+            delta_chain_id_t delta_chain_id = get_delta_chain_id(vid);
             auto& current_entry = delta_chains_index->at(delta_chain_id);
             current_entry.release_lock();
         }
@@ -496,7 +506,7 @@ namespace bwgraph{
             return order;
         }
         inline void write_data(const char* data){
-            for(int i=0; i<data_size;i++){
+            for(size_t i=0; i<data_size;i++){
                 get_data()[i]=data[i];
             }
         }

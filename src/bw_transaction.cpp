@@ -3,6 +3,7 @@
 //
 #include "../core/bw_transaction.hpp"
 #include "../core/edge_delta_block_state_protection.hpp"
+#include "commit_manager.hpp"
 using namespace bwgraph;
 //pessimistic mode
 #if USING_PESSIMISTIC_MODE
@@ -35,11 +36,11 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
             return Txn_Operation_Response::WRITER_WAIT;
         }
         int32_t total_delta_chain_num = current_block->get_delta_chain_num();
-        auto cached_delta_chain_access = per_block_cached_delta_chain_offsets.try_emplace(block_id, LockOffsetCache(target_label_entry->consolidation_time,total_delta_chain_num));
+        auto cached_delta_chain_access = per_block_cached_delta_chain_offsets.try_emplace(block_id, LockOffsetCache(target_label_entry->block_version_number,total_delta_chain_num));
         uint32_t current_delta_chain_head_offset = 0;
         //if there exits
         if(!cached_delta_chain_access.second){
-            if(cached_delta_chain_access.first->second.is_outdated(target_label_entry->consolidation_time.load())){
+            if(cached_delta_chain_access.first->second.is_outdated(target_label_entry->block_version_number.load())){
                 uint64_t current_block_offset = current_block->get_current_offset();
                 if(current_block->is_overflow_offset(current_block_offset)){
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
@@ -113,6 +114,11 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     BlockStateVersionProtectionScheme::install_exclusive_state(EdgeDeltaBlockState::OVERFLOW,thread_id,block_id,current_label_entry,block_access_ts_table);
     uint32_t original_delta_offset = current_delta_offset-ENTRY_DELTA_SIZE;
     uint32_t original_data_offset = current_data_offset;
+    //also calculate approximately concurrent write-size
+    uint64_t current_block_offset = current_block->get_current_offset();
+    uint32_t overflow_data_size = (uint32_t)(current_block_offset>>32)-original_data_offset;
+    uint32_t overflow_delta_size = (uint32_t)(current_block_offset&SIZE2MASK)-original_delta_offset;
+
     uint64_t to_restore_offset = combine_offset(original_delta_offset, original_data_offset);
     current_block->set_offset(to_restore_offset);
     BlockStateVersionProtectionScheme::install_shared_state(EdgeDeltaBlockState::CONSOLIDATION,current_label_entry);
@@ -188,8 +194,10 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     }
     //handle edge case that the initial block was too small
     data_size = (data_size==0)? ENTRY_DELTA_SIZE:data_size;
+    data_size+=overflow_data_size+overflow_delta_size;
     //analyze scan finished, now apply heuristics
-    uint64_t lifespan = largest_creation_ts - current_label_entry->consolidation_time; //approximate lifespan of the block
+    //use the block creation time vs. latest committed write to estimate lifespan
+    uint64_t lifespan = largest_creation_ts - current_block->get_creation_time(); /*current_label_entry->consolidation_time;*/ //approximate lifespan of the block
     //todo:; apply different heuristics
     size_t new_block_size = calculate_nw_block_size_from_lifespan(data_size,lifespan,20);
     auto new_order = size_to_order(new_block_size);
@@ -207,7 +215,7 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
         }
         //find which delta chain the latest version delta belongs to
         delta_chain_id_t target_delta_chain_id = new_block->get_delta_chain_id(current_delta->toID);
-        const char* data = current_block->get_edge_data(current_delta->data_length);
+        const char* data = current_block->get_edge_data(current_delta->data_offset);
         auto& new_delta_chains_index_entry = new_delta_chains_index.at(target_delta_chain_id);
         uint32_t new_block_delta_offset = new_delta_chains_index_entry.get_offset();//if cannot be locked
         auto consolidation_append_result = new_block->append_edge_delta(current_delta->toID,current_delta->creation_ts.load(),current_delta->delta_type,data,current_delta->data_length,new_block_delta_offset);
@@ -313,9 +321,9 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
             it = in_progress_delta_per_txn.erase(it);
         }else{//committed deltas
             timestamp_t commit_ts = current_delta->creation_ts.load();
-            uint64_t txn_id = it->first;
             int64_t txn_own_deltas_size = static_cast<int64_t>(all_delta_offsets_of_txn.size());
             for(int64_t i = txn_own_deltas_size-1; i>=0; i--){
+                uint64_t txn_id = it->first;
                 current_delta= current_block->get_edge_delta(all_delta_offsets_of_txn.at(i));
                 if(current_delta->creation_ts.compare_exchange_strong(txn_id,commit_ts)){
                     record_lazy_update_record(&lazy_update_records,txn_id);
@@ -379,7 +387,7 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     per_thread_garbage_queue.register_entry(current_label_entry->block_ptr,current_block->get_order(),largest_invalidation_ts);
     *current_label_entry->delta_chain_index = std::move(new_delta_chains_index);//todo::check its correctness
     current_label_entry->block_ptr = new_block_ptr;
-    current_label_entry->consolidation_time.store(commit_manager.get_current_read_ts());
+    current_label_entry->block_version_number.fetch_add(1);//increase version by 1 /*consolidation_time.store(commit_manager.get_current_read_ts());*/
     BlockStateVersionProtectionScheme::install_shared_state(EdgeDeltaBlockState::NORMAL,current_label_entry);
     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
 }
@@ -416,7 +424,7 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
         uint32_t offset = 0;
         //if we have cache
         if(cached_delta_offsets!=per_block_cached_delta_chain_offsets.end()){
-            if(cached_delta_offsets->second.is_outdated(target_label_entry->consolidation_time.load())){
+            if(cached_delta_offsets->second.is_outdated(target_label_entry->block_version_number.load())){
               /*  uint64_t current_combined_offset = current_block->get_current_offset();
                 if(current_block->is_overflow_offset(current_combined_offset)){
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
@@ -499,7 +507,7 @@ RWTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
         bool has_deltas = false;
         if(cached_delta_offsets!=per_block_cached_delta_chain_offsets.end()){
             //eagerly check if our cache is outdated
-            if(cached_delta_offsets->second.is_outdated(target_label_entry->consolidation_time.load())){
+            if(cached_delta_offsets->second.is_outdated(target_label_entry->block_version_number.load())){
                 auto reclaim_result = reclaim_delta_chain_offsets(cached_delta_offsets->second,current_block,target_label_entry);
                 //block protection released by reclaim_delta_chain_offsets()
                 if(reclaim_result==ReclaimDeltaChainResult::FAIL){
@@ -580,6 +588,8 @@ void RWTransaction::eager_abort() {
 #if TXN_TEST
             if(op_count<0){
                 throw EagerAbortException();
+            }else if(op_count>0){
+                std::cout<<"need lazy abort"<<std::endl;
             }
 #endif
             return;
@@ -595,7 +605,7 @@ bool RWTransaction::validation() {
         auto current_label_entry = get_label_entry(touched_block_it->first);
         auto validation_access_result = BlockStateVersionProtectionScheme::committer_aborter_access_block(thread_id,touched_block_it->first,current_label_entry,block_access_ts_table);
         if(validation_access_result == EdgeDeltaBlockState::NORMAL || validation_access_result== EdgeDeltaBlockState::CONSOLIDATION){
-            if(touched_block_it->second.is_outdated(current_label_entry->consolidation_time)){
+            if(touched_block_it->second.is_outdated(current_label_entry->block_version_number)){
                 auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(current_label_entry->block_ptr);
                 uint64_t current_combined_offset = current_block->get_current_offset();
                 if(current_block->is_overflow_offset(current_combined_offset)){
@@ -639,7 +649,7 @@ bool RWTransaction::validation() {
                     current_label_entry->delta_chain_index->at(entry.delta_chain_id).update_offset(entry.original_offset);//todo: original offset (in the index) should always be lock at the current design, so we release the lock and restore offset together
                 }
                 auto validated_offsets_cache = per_block_cached_delta_chain_offsets.find(reverse_it->first);
-                if(validated_offsets_cache->second.is_outdated(current_label_entry->consolidation_time.load())){
+                if(validated_offsets_cache->second.is_outdated(current_label_entry->block_version_number.load())){
                     throw DeltaChainOffsetException();
                 }
                 validated_offsets_cache->second.eager_abort(current_block,current_label_entry,local_txn_id,0);//must use cache
@@ -668,11 +678,12 @@ bool RWTransaction::commit() {
         return false;
     }
     for(auto it = per_block_cached_delta_chain_offsets.begin(); it!=per_block_cached_delta_chain_offsets.end();it++){
-        self_entry->touched_blocks.emplace_back(it->first, it->second.consolidation_ts);//safe because our validated blocks will not get version changed until we commit.
+        self_entry->touched_blocks.emplace_back(it->first, it->second.block_version_num);//safe because our validated blocks will not get version changed until we commit.
     }
     for(auto it = updated_vertices.begin(); it!=updated_vertices.end();it++){
         self_entry->touched_blocks.emplace_back(*it,0);
     }
+    self_entry->op_count.store(op_count);
     commit_manager.txn_commit(self_entry);
     return true;
 }

@@ -21,7 +21,7 @@ namespace bwgraph {
     public:
         EdgeDeltaIterator(){}//empty iterator
         //when iterator ends, need to exit the block protection
-        ~EdgeDeltaIterator(){
+        void close(){
             block_access_ts_table->release_block_access(get_threadID(txn_id));
         }
         //give the current block, determine what to read
@@ -69,6 +69,7 @@ namespace bwgraph {
                                     //record lazy update
                                     record_lazy_update_record(txn_lazy_update_records,original_ts);
 #if EDGE_DELTA_TEST
+                                    //we should never need to lazy update for others
                                     if(status == ABORT){
                                         throw LazyUpdateAbortException();
                                     }

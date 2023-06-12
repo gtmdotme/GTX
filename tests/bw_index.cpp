@@ -98,13 +98,13 @@ TEST_CASE("Edge Label Entry Test 1"){
         auto edge_label_block = g->get_block_manager().convert<EdgeLabelBlock>(entry.edge_label_block_ptr);
         BwLabelEntry* test_entry;
         CHECK(edge_label_block->reader_lookup_label(1,test_entry));
-        CHECK_EQ(test_entry->consolidation_time,i);
+        CHECK_EQ(test_entry->block_version_number,0);
         CHECK(test_entry->valid);
         CHECK_EQ(test_entry->label,1);
         auto block = g->get_block_manager().convert<EdgeDeltaBlockHeader>(test_entry->block_ptr);
         CHECK_EQ(block->get_order(),DEFAULT_EDGE_DELTA_BLOCK_ORDER);
         CHECK_EQ(block->get_owner_id(),i);
-        CHECK_FALSE(block->get_creation_time());
+        CHECK_EQ(block->get_creation_time(),i);
         CHECK_FALSE(block->get_previous_ptr());
         delete test_entry->delta_chain_index;
     }
@@ -133,15 +133,15 @@ TEST_CASE("Edge Label Entry Test 2"){
         auto label_entry = edge_label_block->writer_lookup_label(1,&txn_table,1);
         CHECK(label_entry);
         CHECK_EQ(label_entry->label,1);
-        CHECK_EQ(label_entry->consolidation_time,1);
+        CHECK_EQ(label_entry->block_version_number,0);
         label_entry = edge_label_block->writer_lookup_label(2,&txn_table,2);
         CHECK(label_entry);
         CHECK_EQ(label_entry->label,2);
-        CHECK_EQ(label_entry->consolidation_time,2);
+        CHECK_EQ(label_entry->block_version_number,0);
         label_entry = edge_label_block->writer_lookup_label(3,&txn_table,3);
         CHECK(label_entry);
         CHECK_EQ(label_entry->label,3);
-        CHECK_EQ(label_entry->consolidation_time,3);
+        CHECK_EQ(label_entry->block_version_number,0);
     }
     for(uint64_t i=1; i<=10; i++){
         auto& entry = vertex_index.get_vertex_index_entry(i);
@@ -151,11 +151,11 @@ TEST_CASE("Edge Label Entry Test 2"){
             CHECK(edge_label_block->reader_lookup_label(j,test_entry));
             CHECK(test_entry->valid);
             CHECK_EQ(test_entry->label,j);
-            CHECK_EQ(test_entry->consolidation_time,j);
+            CHECK_EQ(test_entry->block_version_number,0);
             auto block = g->get_block_manager().convert<EdgeDeltaBlockHeader>(test_entry->block_ptr);
             CHECK_EQ(block->get_order(),DEFAULT_EDGE_DELTA_BLOCK_ORDER);
             CHECK_EQ(block->get_owner_id(),i);
-            CHECK_FALSE(block->get_creation_time());
+            CHECK_EQ(block->get_creation_time(),j);
             CHECK_FALSE(block->get_previous_ptr());
             delete test_entry->delta_chain_index;
         }
@@ -186,7 +186,7 @@ TEST_CASE("Edge Label Entry Test 3"){
             auto label_entry = edge_label_block->writer_lookup_label(j,&txn_table,j);
             CHECK(label_entry);
             CHECK_EQ(label_entry->label,j);
-            CHECK_EQ(label_entry->consolidation_time,j);
+            CHECK_EQ(label_entry->block_version_number,0);
         }
         CHECK(edge_label_block->next_ptr.load());
     }
@@ -200,11 +200,11 @@ TEST_CASE("Edge Label Entry Test 3"){
             CHECK_EQ(test_entry,compare_entry);
             CHECK(test_entry->valid);
             CHECK_EQ(test_entry->label,j);
-            CHECK_EQ(test_entry->consolidation_time,j);
+            CHECK_EQ(test_entry->block_version_number,0);
             auto block = g->get_block_manager().convert<EdgeDeltaBlockHeader>(test_entry->block_ptr);
             CHECK_EQ(block->get_order(),DEFAULT_EDGE_DELTA_BLOCK_ORDER);
             CHECK_EQ(block->get_owner_id(),i);
-            CHECK_FALSE(block->get_creation_time());
+            CHECK_EQ(block->get_creation_time(),j);
             CHECK_FALSE(block->get_previous_ptr());
             delete test_entry->delta_chain_index;
         }
