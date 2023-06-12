@@ -51,6 +51,11 @@ namespace bwgraph{
                     already_reclaimed_locks.emplace(*it);
                     auto& delta_chain_index_entry = current_label_entry->delta_chain_index->at(*it);
                     BaseEdgeDelta* current_delta_chain_head = current_block->get_edge_delta(delta_chain_index_entry.get_raw_offset());
+#if EDGE_DELTA_TEST
+                    if(!current_delta_chain_head->valid){
+                        throw DeltaChainCorruptionException();
+                    }
+#endif
                     uint64_t current_delta_chain_head_ts = current_delta_chain_head->creation_ts.load();
                     //because lock and offset are bind together
 #if EDGE_DELTA_TEST
@@ -85,6 +90,11 @@ namespace bwgraph{
             uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_block_offset);
             auto current_delta = current_block->get_edge_delta(current_delta_offset);
             while(settled_delta_chains.size()<delta_chains_to_reclaim_num){
+                if(!current_delta->valid){
+                    current_delta++;
+                    current_delta_offset-=ENTRY_DELTA_SIZE;
+                    continue;
+                }
                 if(current_delta_offset==0){
                     throw DeltaChainReclaimException();
                 }
@@ -155,6 +165,11 @@ namespace bwgraph{
                     uint32_t current_delta_offset = it->second;
                     auto current_delta = current_block->get_edge_delta(current_delta_offset);
                     while(current_delta_offset>0){
+#if EDGE_DELTA_TEST
+                        if(!current_delta->valid){
+                            throw DeltaChainCorruptionException();
+                        }
+#endif
                         if(current_delta->creation_ts.load()==txn_id){
 #if EDGE_DELTA_TEST
                             current_delta->eager_abort(txn_id);
@@ -178,6 +193,11 @@ namespace bwgraph{
                 uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_block_offset);
                 auto current_delta = current_block->get_edge_delta(current_delta_offset);
                 while(current_delta_offset>0){
+                    if(!current_delta->valid){
+                        current_delta++;
+                        current_delta_offset-=ENTRY_DELTA_SIZE;
+                        continue;
+                    }
                     //todo:: also lazy update for others?
                     if(current_delta->creation_ts.load()==txn_id){
 #if EDGE_DELTA_TEST

@@ -14,9 +14,9 @@
 using namespace bwgraph;
 constexpr vertex_t vertex_id_range = 100;
 constexpr vertex_t dst_id_range = 10000000;
-constexpr int32_t total_txn_count = 15000;
-constexpr int32_t op_count_range = 50;
-constexpr float write_ratio = 0.6;
+constexpr int32_t total_txn_count = 10000;
+constexpr int32_t op_count_range = 25;
+constexpr float write_ratio = 0.4;
 constexpr bool print_block_stats = true;
 class MiniBwGraph{
 public:

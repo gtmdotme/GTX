@@ -89,6 +89,29 @@ namespace bwgraph{
     };
     class alignas(64) BaseEdgeDelta{
     public:
+        BaseEdgeDelta& operator = (const BaseEdgeDelta& other){
+            toID = other.toID;
+            delta_type = other.delta_type;
+            creation_ts.store(other.creation_ts.load());
+            invalidate_ts.store(other.invalidate_ts.load());
+            data_length = other.data_length;
+            data_offset = other.data_offset;
+            previous_offset = other.previous_offset;
+            is_last_delta.store(other.is_last_delta);
+            valid.store(other.valid);
+            return *this;
+        }
+        BaseEdgeDelta(const BaseEdgeDelta& other){
+            toID = other.toID;
+            delta_type = other.delta_type;
+            creation_ts.store(other.creation_ts.load());
+            invalidate_ts.store(other.invalidate_ts.load());
+            data_length = other.data_length;
+            data_offset = other.data_offset;
+            previous_offset = other.previous_offset;
+            is_last_delta.store(other.is_last_delta);
+            valid.store(other.valid);
+        }
         inline bool lazy_update(uint64_t original_txn_id,uint64_t status){
             return creation_ts.compare_exchange_strong(original_txn_id,status);
         }
@@ -179,9 +202,14 @@ namespace bwgraph{
             BaseEdgeDelta* current_delta;
             while(offset){
                 current_delta = get_edge_delta(offset);
+#if EDGE_DELTA_TEST
+                if(!current_delta->valid){
+                    throw DeltaChainCorruptionException();
+                }
+#endif
                 if(current_delta->creation_ts==txn_id&&current_delta->toID==dst){
                     return current_delta;
-                }
+                }//else if(current_delta->creation_ts==txn_id){continue}
                 uint64_t original_ts = current_delta->creation_ts.load();
                 if(is_txn_id(original_ts)){
                     uint64_t status=0;
@@ -255,6 +283,9 @@ namespace bwgraph{
                 uint64_t original_ts = delta_chain_head->creation_ts.load();
                 if(is_txn_id(original_ts)){
 #if EDGE_DELTA_TEST
+                    if(!delta_chain_head->valid){
+                        throw DeltaChainCorruptionException();
+                    }
                     if(!(latest_delta_chain_head_offset&LOCK_MASK)){
                         throw DeltaLockException();
                     }
@@ -273,6 +304,9 @@ namespace bwgraph{
                 if(raw_delta_chain_offset){
                     delta_chain_head = get_edge_delta(raw_delta_chain_offset);
 #if EDGE_DELTA_TEST
+                    if(!delta_chain_head->valid){
+                        throw DeltaChainCorruptionException();
+                    }
                     if(is_txn_id(delta_chain_head->creation_ts.load())){
                         throw LazyUpdateException();
                     }
@@ -294,28 +328,25 @@ namespace bwgraph{
             uint32_t raw_delta_chain_offset = latest_delta_chain_head_offset&UNLOCK_MASK;
             BaseEdgeDelta* delta_chain_head = nullptr;
             //todo: also check lock?
-            Delta_Chain_Lock_Response temporary_result;
+            //Delta_Chain_Lock_Response temporary_result;
             if(raw_delta_chain_offset){
                 delta_chain_head = get_edge_delta(raw_delta_chain_offset);
                 uint64_t original_ts = delta_chain_head->creation_ts.load();
                 if(is_txn_id(original_ts)){
 #if EDGE_DELTA_TEST
+                    if(!delta_chain_head->valid){
+                        throw DeltaChainCorruptionException();
+                    }
                     if(!(latest_delta_chain_head_offset&LOCK_MASK)){
                         throw DeltaLockException();
                     }
 #endif
-                    temporary_result = lock_inheritance_on_delta_chain(delta_chain_id,lazy_update_map_ptr,txn_read_ts,raw_delta_chain_offset,original_ts);
+                    auto temporary_result = lock_inheritance_on_delta_chain(delta_chain_id,lazy_update_map_ptr,txn_read_ts,raw_delta_chain_offset,original_ts);
                     if(temporary_result==Delta_Chain_Lock_Response::LOCK_INHERIT||temporary_result==Delta_Chain_Lock_Response::CONFLICT){
-                        if(temporary_result==Delta_Chain_Lock_Response::CONFLICT){
-                            int i=0;
-                            i++;
-                        }
                         return temporary_result;
                     }
                 }else if(original_ts>txn_read_ts){
                     return Delta_Chain_Lock_Response::CONFLICT;
-                }else{
-                    temporary_result= Delta_Chain_Lock_Response::DEADLOCK;//for debug
                 }
             }
             if(target_chain_index_entry.try_set_lock()){
@@ -324,6 +355,9 @@ namespace bwgraph{
                 if(raw_delta_chain_offset){
                     delta_chain_head = get_edge_delta(raw_delta_chain_offset);
 #if EDGE_DELTA_TEST
+                    if(!delta_chain_head->valid){
+                        throw DeltaChainCorruptionException();
+                    }
                     if(is_txn_id(delta_chain_head->creation_ts.load())){
                         throw LazyUpdateException();
                     }

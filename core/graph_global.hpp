@@ -17,7 +17,7 @@
 #define USING_ARRAY_TABLE true
 //for array txn table only
 #define NO_TXN_ENTRY 0
-#define Per_Thread_Table_Size 32
+#define Per_Thread_Table_Size 1024
 //block allocation
 #define DEFAULT_EDGE_DELTA_BLOCK_ORDER 8
 #define BUCKET_SIZE 33554432//536870912/16 //for test use smaller bucket size

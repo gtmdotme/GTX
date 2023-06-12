@@ -56,7 +56,17 @@ namespace bwgraph {
             if(read_current_block){
                 //scan the current block, return pointers as appropriate, then maybe switch to the previous block
                 while(current_delta_offset>0){
+                    if(!current_delta->valid){
+                        current_delta_offset-=ENTRY_DELTA_SIZE;
+                        current_delta++;
+                        continue;
+                    }
                     uint64_t original_ts = current_delta->creation_ts.load();
+#if EDGE_DELTA_TEST
+                    if(!original_ts){
+                        throw LazyUpdateException();
+                    }
+#endif
                     if(is_txn_id(original_ts)){
                         uint64_t status=0;
                         if(txn_tables->get_status(original_ts,status)){
@@ -86,7 +96,7 @@ namespace bwgraph {
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
                     }
-                    if(current_delta->creation_ts.load()<=txn_read_ts&&(current_delta->invalidate_ts.load()==0||current_delta->invalidate_ts.load()>txn_read_ts)){
+                    if((current_delta->creation_ts.load()<=txn_read_ts)&&(current_delta->invalidate_ts.load()==0||current_delta->invalidate_ts.load()>txn_read_ts)){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
                     }
