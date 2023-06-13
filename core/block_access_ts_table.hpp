@@ -10,8 +10,8 @@
 #include "types.hpp"
 namespace bwgraph{
     struct alignas(64) BlockAccessTSEntry{
-        std::atomic_uint64_t accessed_block_id;
-        std::atomic_uint64_t current_ts;
+        std::atomic_uint64_t accessed_block_id=0;
+        std::atomic_uint64_t current_ts=0;
         char padding[48];
     };
     static_assert(sizeof(BlockAccessTSEntry)==64);

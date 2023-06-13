@@ -26,3 +26,4 @@
 #define USING_WAL false
 #define USING_PESSIMISTIC_MODE true
 #endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP
+constexpr uint64_t placeholder_txn_id = 0xFFFFFFFFFFFFFFFF;

@@ -12,15 +12,15 @@
 #include "core/exceptions.hpp"
 #include "core/graph_global.hpp"
 using namespace bwgraph;
-constexpr vertex_t vertex_id_range = 100;
-constexpr vertex_t dst_id_range = 10000000;
+constexpr vertex_t vertex_id_range = 1000000;
+constexpr vertex_t dst_id_range = 1000000;
 constexpr int32_t total_txn_count = 10000;
 constexpr int32_t op_count_range = 25;
-constexpr float write_ratio = 0.4;
+constexpr float write_ratio = 1;
 constexpr bool print_block_stats = true;
 class MiniBwGraph{
 public:
-    MiniBwGraph(){
+    MiniBwGraph(): bwGraph("",1ul << 36){
         auto& commit_manager = bwGraph.get_commit_manager();
         //manually setup some blocks
         auto& vertex_index = bwGraph.get_vertex_index();
@@ -72,16 +72,23 @@ public:
         std::cout<<"total abort is "<<total_abort<< std::endl;
         std::cout<<"total commit is "<<total_commit<<std::endl;
         std::cout<<"total op count is "<<total_op_count<<std::endl;
-       /* if(print_block_stats){
+        if(print_block_stats){
+            std::vector<uint32_t> order_nums(40);
+            for(int i=0; i<40; i++){
+                order_nums[i]=0;
+            }
             for(int32_t i=0; i<vertex_id_range; i++){
                 vertex_t vid =  i+1;
                 auto& vertex_entry = bwGraph.get_vertex_index_entry(vid);
                 EdgeLabelBlock* edge_label_block = bwGraph.get_block_manager().convert<EdgeLabelBlock>(vertex_entry.edge_label_block_ptr);
                 auto entry = edge_label_block->writer_lookup_label(1,&bwGraph.get_txn_tables(),0);
                 auto current_block = bwGraph.get_block_manager().convert<EdgeDeltaBlockHeader>(entry->block_ptr);
-                std::cout<<"order is "<<current_block->get_order()<<std::endl;
+                order_nums[current_block->get_order()]++;
             }
-        }*/
+            for(int i=0; i<40; i++){
+                std::cout<<"order "<<i<<" has "<<order_nums[i]<<" blocks"<<std::endl;
+            }
+        }
     }
     void thread_execute_edge_txn_operation(uint8_t thread_id){
         //stats
@@ -97,10 +104,11 @@ public:
         std::uniform_int_distribution<> dst_dist(1,dst_id_range);
         std::uniform_int_distribution<> op_count_dist(1,op_count_range);
         std::uniform_int_distribution<> write_size_dist(1,128);
-        //thread local structures
-        auto& thread_txn_table = bwGraph.get_txn_tables().get_table(thread_id);
-        std::queue<vertex_t> recycled_vid_queue;
+        //thread local structure
         GarbageBlockQueue local_garbage_queue(&bwGraph.get_block_manager());
+        auto& thread_txn_table = bwGraph.get_txn_tables().get_table(thread_id);
+        thread_txn_table.set_garbage_queue(&local_garbage_queue);
+        std::queue<vertex_t> recycled_vid_queue;
         //txn generation
         for(int32_t i=0; i<total_txn_count;i++){
             uint64_t txn_id = thread_txn_table.generate_txn_id();
@@ -110,6 +118,9 @@ public:
             RWTransaction txn(bwGraph,txn_id,read_ts,txn_entry,bwGraph.get_txn_tables(),bwGraph.get_commit_manager(),bwGraph.get_block_manager(),local_garbage_queue,bwGraph.get_block_access_ts_table(),recycled_vid_queue);
             int32_t op_count = op_count_dist(gen);
             bool to_abort = false;
+          /*  if(i%1000==0&&i>0){
+                std::cout<<local_garbage_queue.get_queue().size()<<std::endl;
+            }*/
             for(int32_t j=0; j<op_count;j++){
                 if(to_abort){
                     break;
@@ -180,7 +191,7 @@ public:
                 local_commit++;
                 txn.commit();
             }
-            if(!i%20){
+            if((i%20)==0){
                 timestamp_t safe_timestamp = bwGraph.get_block_access_ts_table().calculate_safe_ts();
                 local_garbage_queue.free_block(safe_timestamp);
             }

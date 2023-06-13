@@ -248,6 +248,54 @@ namespace bwgraph{
             }
             return nullptr;
         }
+        //for read only txns
+        BaseEdgeDelta* get_visible_target_delta_using_delta_chain(uint32_t offset, vertex_t dst, uint64_t txn_read_ts, std::unordered_map<uint64_t, int32_t>&lazy_update_records){
+            BaseEdgeDelta* current_delta;
+            while(offset){
+                current_delta = get_edge_delta(offset);
+#if EDGE_DELTA_TEST
+                if(!current_delta->valid){
+                    throw DeltaChainCorruptionException();
+                }
+#endif
+                uint64_t original_ts = current_delta->creation_ts.load();
+                if(is_txn_id(original_ts)){
+                    uint64_t status=0;
+                    if(txn_tables->get_status(original_ts,status)){
+                        if(status==IN_PROGRESS){
+                            offset = current_delta->previous_offset;
+                            continue;
+                        }else{
+                            if(current_delta->lazy_update(original_ts,status)){
+                                if(current_delta->is_last_delta){
+                                    release_protection(current_delta->toID);
+                                }
+                                auto result = lazy_update_records.try_emplace(original_ts,1);
+                                if(!result.second){
+                                    result.first->second++;
+                                }
+                                update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
+                            }
+#if EDGE_DELTA_TEST
+                            if(current_delta->creation_ts!=status){
+                                throw LazyUpdateException();
+                            }
+#endif
+                        }
+                    }
+                }
+#if EDGE_DELTA_TEST
+                if(current_delta->creation_ts==IN_PROGRESS|| is_txn_id(current_delta->creation_ts)){
+                    throw new std::runtime_error("error, lazy update failed");
+                }
+#endif
+                if(current_delta->toID==dst&&/*current_delta->creation_ts!=ABORT&&*/current_delta->creation_ts.load()<=txn_read_ts){//aborted delta should not be in the secondary index, only special case is when there is a system crash
+                    return current_delta;
+                }
+                offset = current_delta->previous_offset;
+            }
+            return nullptr;
+        }
         //lazy update function
         void update_previous_delta_invalidate_ts(vertex_t target_vid, uint32_t offset, uint64_t invalidate_ts){
             while(offset){

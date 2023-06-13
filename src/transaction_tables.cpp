@@ -15,9 +15,6 @@ namespace bwgraph{
         return edge_delta->lazy_update(txn_id,status);
     }
 
-    void ArrayTransactionTable::set_garbage_queue(bwgraph::GarbageBlockQueue *input_queue) {
-        thread_local_garbage_queue = input_queue;
-    }
     void ArrayTransactionTable::lazy_update_block(uintptr_t block_ptr) {
         EdgeDeltaBlockHeader* current_edge_delta_block = bwGraph->get_block_manager().convert<EdgeDeltaBlockHeader>(block_ptr);
         uint64_t current_combined_offset = current_edge_delta_block->get_current_offset();

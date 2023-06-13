@@ -35,7 +35,7 @@ namespace bwgraph{
     class GarbageBlockQueue{
     public:
         GarbageBlockQueue(BlockManager* input_manager):block_manager(input_manager){}
-        void free_block(uint64_t safe_ts){
+        inline void free_block(uint64_t safe_ts){
             while(!previous_versions_queue.empty()){
                 if(previous_versions_queue.top().updated_ts<=safe_ts){
                     auto current_top_entry = previous_versions_queue.top();
@@ -48,9 +48,10 @@ namespace bwgraph{
                 }
             }
         }
-        void register_entry(uintptr_t block_ptr, order_t order, uint64_t updated_ts){
+        inline void register_entry(uintptr_t block_ptr, order_t order, uint64_t updated_ts){
             previous_versions_queue.emplace(block_ptr,order,updated_ts);
         }
+        inline std::priority_queue<PreviousVersionBlockEntry>& get_queue(){return previous_versions_queue;}
     private:
         std::priority_queue<PreviousVersionBlockEntry> previous_versions_queue;
         BlockManager* block_manager;

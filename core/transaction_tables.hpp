@@ -335,7 +335,7 @@ namespace bwgraph {
             return new_txn_id;
         }
         //a necessary function for worker thread setup
-        inline void set_garbage_queue(GarbageBlockQueue* input_queue);
+        inline void set_garbage_queue(GarbageBlockQueue* input_queue){thread_local_garbage_queue = input_queue;}
         //put_entry, abort and commit txn don't need to be accessed by other threads
     private:
         void lazy_update_block(uintptr_t block_ptr);

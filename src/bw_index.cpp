@@ -58,13 +58,13 @@ namespace bwgraph{
                 uint8_t new_offset = current_offset+1;
                 if(current_label_block->offset.compare_exchange_strong(current_offset,new_offset)){
                     current_label_block->label_entries[current_offset].label = target_label;
-                    //todo:: now we are testing using large blocks
-                    current_label_block->label_entries[current_offset].block_ptr = block_manager->alloc(24);
+                    //todo:: now we are testing using large blocks Libin:reversed
+                    current_label_block->label_entries[current_offset].block_ptr = block_manager->alloc(DEFAULT_EDGE_DELTA_BLOCK_ORDER);
                     auto new_edge_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_label_block->label_entries[current_offset].block_ptr);
                     current_label_block->label_entries[current_offset].delta_chain_index = new std::vector<AtomicDeltaOffset>();
-                    //todo:: now we are testing using large blocks
-                    new_edge_delta_block->fill_metadata(owner_id,txn_read_ts,0,24,txn_tables,current_label_block->label_entries[current_offset].delta_chain_index);
-                    //new_edge_delta_block->fill_metadata(owner_id,txn_read_ts,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER,txn_tables,current_label_block->label_entries[current_offset].delta_chain_index);
+                    //todo:: now we are testing using large blocks Libin:reversed
+                    //new_edge_delta_block->fill_metadata(owner_id,txn_read_ts,0,24,txn_tables,current_label_block->label_entries[current_offset].delta_chain_index);
+                    new_edge_delta_block->fill_metadata(owner_id,txn_read_ts,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER,txn_tables,current_label_block->label_entries[current_offset].delta_chain_index);
                     current_label_block->label_entries[current_offset].delta_chain_index->resize(new_edge_delta_block->get_delta_chain_num());
                     current_label_block->label_entries[current_offset].state=EdgeDeltaBlockState::NORMAL;
                     current_label_block->label_entries[current_offset].block_version_number = 0;
