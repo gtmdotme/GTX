@@ -2,13 +2,14 @@
 // Created by zhou822 on 5/28/23.
 //
 #include "commit_manager.hpp"
+#include <random>
 namespace bwgraph{
 #if USING_WAL
 #else
     /*
      * the latch is held when the function is invoked, so the latch must be released here
      */
-    void CommitManager::collaborative_commit(){
+    void LatchDoubleBufferCommitManager::collaborative_commit(){
         commit_latch.lock();//synchronize commit groups
         uint8_t current_offset = offset;
         offset=1-offset;
@@ -31,7 +32,7 @@ namespace bwgraph{
         commit_latch.unlock();
     }
 
-    void CommitManager::server_loop() {
+    void LatchDoubleBufferCommitManager::server_loop() {
         while(running.load()){
             latch.lock();
             commit_latch.lock();
@@ -67,6 +68,36 @@ namespace bwgraph{
             }
             global_read_epoch.fetch_add(1);
         }
+    }
+    //Concurrent Array Commit Manager Server Loop
+    void ConcurrentArrayCommitManager::server_loop() {
+        std::uniform_int_distribution<> offset_distribution(0,worker_thread_num-1);
+        std::random_device rd; // obtain a random number from hardware
+        std::mt19937 gen(rd());
+        while(running.load()){
+            offset = offset_distribution(gen);
+            uint32_t current_offset = offset;
+            global_write_epoch++;
+            do{
+                auto current_txn_entry = commit_array[current_offset].txn_ptr.load();
+                if(current_txn_entry){
+                    current_txn_entry->status.store(global_write_epoch);
+                    commit_array[current_offset].txn_ptr.store(nullptr);
+                }
+                current_offset = (current_offset+1)%worker_thread_num;
+            }while(current_offset!=offset);
+            global_read_epoch.fetch_add(1);
+        }
+        //now the stop running signal is sent
+        global_write_epoch++;
+        for(uint32_t i=0; i<worker_thread_num;i++){
+            auto current_txn_entry = commit_array[i].txn_ptr.load();
+            if(current_txn_entry){
+                current_txn_entry->status.store(global_write_epoch);
+                commit_array[i].txn_ptr.store(nullptr);
+            }
+        }
+        global_read_epoch.fetch_add(1);
     }
 #endif
 }

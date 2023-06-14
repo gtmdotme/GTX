@@ -20,7 +20,7 @@ namespace bwgraph{
         inline void store_block_access(uint8_t thread_id, uint64_t block_id){table[thread_id].accessed_block_id.store(block_id);}
         inline void release_block_access(uint8_t thread_id){table[thread_id].accessed_block_id.store(BAD_BLOCK_ID);}
         bool is_safe(uint8_t thread_id, uint64_t block_id){
-            for(uint8_t i=0; i<WORKER_THREAD_NUM; i++){
+            for(uint8_t i=0; i<worker_thread_num; i++){
                 if(i==thread_id){
                     if(table[i].accessed_block_id!=block_id){
                         throw BlockSafeAccessException();
@@ -40,14 +40,14 @@ namespace bwgraph{
          */
         uint64_t calculate_safe_ts(){
             uint64_t min_ts = std::numeric_limits<uint64_t>::max();
-            for(int i=0; i<WORKER_THREAD_NUM;i++){
+            for(int i=0; i<worker_thread_num;i++){
                 uint64_t current_ts = table[i].current_ts.load();
                 min_ts = (current_ts<min_ts)?current_ts:min_ts;
             }
             return min_ts;
         }
     private:
-        std::array<BlockAccessTSEntry,WORKER_THREAD_NUM> table;
+        std::array<BlockAccessTSEntry,worker_thread_num> table;
     };
 }
 #endif //BWGRAPH_V2_BLOCK_ACCESS_TS_TABLE_HPP

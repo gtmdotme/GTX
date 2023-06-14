@@ -204,8 +204,8 @@ namespace bwgraph {
     public:
         ConcurrentTransactionTables()
         {
-            tables.reserve(WORKER_THREAD_NUM);
-            for(int i=0;i<WORKER_THREAD_NUM;i++){
+            tables.reserve(worker_thread_num);
+            for(int i=0;i<worker_thread_num;i++){
                 tables.push_back(ConcurrentTransactionTable());
             }
         }
@@ -248,15 +248,15 @@ namespace bwgraph {
     //now we program the array based transaction tables
     class ArrayTransactionTables;
 
-    using Array = std::vector<txn_table_entry>; //std::array<txn_table_entry,Per_Thread_Table_Size>;
+    using Array = std::vector<txn_table_entry>; //std::array<txn_table_entry,per_thread_table_size>;
     class ArrayTransactionTable{
     public:
-        ArrayTransactionTable():offset(0),bwGraph(nullptr),txn_tables(nullptr){local_table.resize(Per_Thread_Table_Size);}
-        ArrayTransactionTable(BwGraph* source_graph, ArrayTransactionTables* all_tables):offset(0),bwGraph(source_graph),txn_tables(all_tables){local_table.resize(Per_Thread_Table_Size);}
+        ArrayTransactionTable():offset(0),bwGraph(nullptr),txn_tables(nullptr){local_table.resize(per_thread_table_size);}
+        ArrayTransactionTable(BwGraph* source_graph, ArrayTransactionTables* all_tables):offset(0),bwGraph(source_graph),txn_tables(all_tables){local_table.resize(per_thread_table_size);}
         inline bool get_status(uint64_t txn_id, uint64_t& status_result){
 #if TXN_TABLE_TEST
-            uint64_t index = get_local_txn_id(txn_id)%Per_Thread_Table_Size;
-            uint64_t to_compare_index = txn_id % Per_Thread_Table_Size;
+            uint64_t index = get_local_txn_id(txn_id)%per_thread_table_size;
+            uint64_t to_compare_index = txn_id % per_thread_table_size;
             if(index!=to_compare_index){
                 throw std::runtime_error("error, should not use this approach");
             }
@@ -269,7 +269,7 @@ namespace bwgraph {
         }
         //only invoked at the end to check lazy update progress
         inline bool is_empty(){
-            for(int i=0; i<Per_Thread_Table_Size;i++){
+            for(int i=0; i<per_thread_table_size;i++){
                 if(local_table[i].op_count){
                     return false;
                 }
@@ -279,8 +279,8 @@ namespace bwgraph {
         //reduce op_count no longer deletes entry, it only reduces op_count to 0 at most. And an entry with no op_count becomes a candidate for new entry.
         inline void reduce_op_count(uint64_t txn_id,int64_t op_count){
 #if TXN_TABLE_TEST
-            uint64_t index = get_local_txn_id(txn_id)%Per_Thread_Table_Size;
-            uint64_t to_compare_index = txn_id % Per_Thread_Table_Size;
+            uint64_t index = get_local_txn_id(txn_id)%per_thread_table_size;
+            uint64_t to_compare_index = txn_id % per_thread_table_size;
             if(index!=to_compare_index){
                 throw std::runtime_error("error, should not use this approach");
             }
@@ -302,8 +302,8 @@ namespace bwgraph {
         }
         inline entry_ptr put_entry(uint64_t txn_id){
 #if TXN_TABLE_TEST
-            uint64_t index = get_local_txn_id(txn_id)%Per_Thread_Table_Size;
-            uint64_t to_compare_index = txn_id % Per_Thread_Table_Size;
+            uint64_t index = get_local_txn_id(txn_id)%per_thread_table_size;
+            uint64_t to_compare_index = txn_id % per_thread_table_size;
             if(index!=to_compare_index){
                 throw std::runtime_error("error, should not use this approach");
             }
@@ -339,7 +339,7 @@ namespace bwgraph {
         inline void set_thread_id(uint8_t id){thread_id=id;}
 
         inline uint64_t generate_txn_id(){
-            uint64_t index = offset%Per_Thread_Table_Size;
+            uint64_t index = offset%per_thread_table_size;
             if(local_table[index].op_count.load()){
                 eager_clean(index);
             }
@@ -362,7 +362,7 @@ namespace bwgraph {
     class ArrayTransactionTables{
     public:
         ArrayTransactionTables(BwGraph* source_graph){
-            for(uint8_t i=0; i<WORKER_THREAD_NUM;i++){
+            for(uint8_t i=0; i<worker_thread_num;i++){
                 tables[i].set_thread_id(i);
                 tables[i].set_bwgraph(source_graph);
                 tables[i].set_txn_tables(this);
@@ -397,7 +397,7 @@ namespace bwgraph {
         }
     private:
 
-        std::array<ArrayTransactionTable,WORKER_THREAD_NUM> tables;
+        std::array<ArrayTransactionTable,worker_thread_num> tables;
     };
 
 # if USING_ARRAY_TABLE

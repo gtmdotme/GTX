@@ -19,16 +19,16 @@ namespace bwgraph{
             queue_buffer.emplace(txn_entry);
         }
         std::queue<entry_ptr> queue_buffer;
-        std::array<bool,WORKER_THREAD_NUM> already_committed;
+        std::array<bool,worker_thread_num> already_committed;
     };
 #endif
     //todo: examine no server thread solution
-    class CommitManager{
+    class LatchDoubleBufferCommitManager{
     public:
 #if USING_ARRAY_TABLE
-        CommitManager(/*ArrayTransactionTables& graph_txn_table*/):latch()/*,txn_tables(graph_txn_table)*/{
+        LatchDoubleBufferCommitManager(/*ArrayTransactionTables& graph_txn_table*/):latch()/*,txn_tables(graph_txn_table)*/{
             for(int i=0; i<2; i++){
-                for(int j=0; j<WORKER_THREAD_NUM;j++){
+                for(int j=0; j<worker_thread_num;j++){
                     double_buffer_queue[i].already_committed[j]=false;
                 }
             }
@@ -80,5 +80,43 @@ namespace bwgraph{
 #endif
        // size_t current_entries = 0;
     };
+    struct alignas(64) padded_txn_entry_ptr{
+        padded_txn_entry_ptr(): txn_ptr(nullptr){
+            for(int i=0; i<56;i++){
+                padding[i]=0;
+            }
+        }
+        std::atomic<entry_ptr> txn_ptr;
+        char padding[56];
+    };
+    class ConcurrentArrayCommitManager{
+    public:
+        ConcurrentArrayCommitManager(){
+
+        }
+        inline bool txn_commit(uint8_t thread_id,entry_ptr txn_entry, bool willing_to_wait){
+            entry_ptr null_ptr = nullptr;
+            if(willing_to_wait){
+                //todo:: check memory order more
+                while(!commit_array[thread_id].txn_ptr.compare_exchange_strong(null_ptr, txn_entry /*,std::memory_order_acquire*/)){
+                    null_ptr = nullptr;
+                    //do something?
+                }
+                return true;
+            }else{
+                return commit_array[thread_id].txn_ptr.compare_exchange_strong(null_ptr, txn_entry /*,std::memory_order_acquire*/);
+            }
+        }
+        void server_loop();
+        inline uint64_t get_current_read_ts(){return global_read_epoch.load();}
+        inline void shutdown_signal(){running.store(false);}
+    private:
+        std::array<padded_txn_entry_ptr, worker_thread_num> commit_array;
+        std::atomic_bool running = true;
+        std::atomic_uint64_t global_read_epoch = 0;
+        uint64_t global_write_epoch = 0;
+        uint32_t offset = 0 ;
+    };
+    using CommitManager = ConcurrentArrayCommitManager;
 }
 #endif //BWGRAPH_V2_COMMIT_MANAGER_HPP

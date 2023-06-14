@@ -14,13 +14,13 @@
 using namespace bwgraph;
 constexpr vertex_t vertex_id_range = 1000000;
 constexpr vertex_t dst_id_range = 1000000;
-constexpr int32_t total_txn_count = 40000;
+constexpr int32_t total_txn_count = 100000;
 constexpr int32_t op_count_range = 25;
 constexpr float write_ratio = 0.5;
 constexpr bool print_block_stats = true;
 class MiniBwGraph{
 public:
-    MiniBwGraph(): bwGraph("",1ul << 35){
+    MiniBwGraph(): bwGraph("",1ul << 36){
         auto& commit_manager = bwGraph.get_commit_manager();
         //manually setup some blocks
         auto& vertex_index = bwGraph.get_vertex_index();
@@ -88,17 +88,17 @@ public:
     }
     void execute_edge_only_test(){
         std::vector<std::thread>workers;
-        for(uint8_t i=0; i<WORKER_THREAD_NUM;i++){
+        for(uint8_t i=0; i<worker_thread_num;i++){
             workers.push_back(std::thread(&MiniBwGraph::thread_execute_edge_txn_operation, this, i));
         }
-        for(uint8_t i=0; i<WORKER_THREAD_NUM;i++){
+        for(uint8_t i=0; i<worker_thread_num;i++){
             workers.at(i).join();
         }
         std::cout<<"txn execution finished"<<std::endl;
         //return;
         //execute a readonly txn
         cleanup_read_only_txn();
-        for(uint8_t i=0; i<WORKER_THREAD_NUM;i++){
+        for(uint8_t i=0; i<worker_thread_num;i++){
             auto& txn_table = bwGraph.get_txn_tables().get_table(i);
             if(!txn_table.is_empty()){
                 throw LazyUpdateException();

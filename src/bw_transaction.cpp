@@ -686,7 +686,7 @@ bool RWTransaction::commit() {
         self_entry->touched_blocks.emplace_back(*it,0);
     }
     self_entry->op_count.store(op_count);
-    commit_manager.txn_commit(thread_id,self_entry);
+    commit_manager.txn_commit(thread_id,self_entry,true);//now do it simple, just wait
     return true;
 }
 

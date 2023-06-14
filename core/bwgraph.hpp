@@ -41,6 +41,7 @@ namespace bwgraph{
         BlockManager block_manager;
         VertexIndex vertex_index;
         TxnTables txn_tables;
+        //CommitManager commit_manager;
         CommitManager commit_manager;
         BlockAccessTimestampTable block_access_ts_table;
         friend class ROTransaction;
