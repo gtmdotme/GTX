@@ -28,7 +28,7 @@ namespace bwgraph{
 #if USING_ARRAY_TABLE
         LatchDoubleBufferCommitManager(/*ArrayTransactionTables& graph_txn_table*/):latch()/*,txn_tables(graph_txn_table)*/{
             for(int i=0; i<2; i++){
-                for(int j=0; j<worker_thread_num;j++){
+                for(uint32_t j=0; j<worker_thread_num;j++){
                     double_buffer_queue[i].already_committed[j]=false;
                 }
             }

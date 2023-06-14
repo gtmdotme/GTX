@@ -205,7 +205,7 @@ namespace bwgraph {
         ConcurrentTransactionTables()
         {
             tables.reserve(worker_thread_num);
-            for(int i=0;i<worker_thread_num;i++){
+            for(uint32_t i=0;i<worker_thread_num;i++){
                 tables.push_back(ConcurrentTransactionTable());
             }
         }
@@ -269,7 +269,7 @@ namespace bwgraph {
         }
         //only invoked at the end to check lazy update progress
         inline bool is_empty(){
-            for(int i=0; i<per_thread_table_size;i++){
+            for(uint32_t i=0; i<per_thread_table_size;i++){
                 if(local_table[i].op_count){
                     return false;
                 }

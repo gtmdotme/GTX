@@ -40,7 +40,7 @@ namespace bwgraph{
          */
         uint64_t calculate_safe_ts(){
             uint64_t min_ts = std::numeric_limits<uint64_t>::max();
-            for(int i=0; i<worker_thread_num;i++){
+            for(uint32_t i=0; i<worker_thread_num;i++){
                 uint64_t current_ts = table[i].current_ts.load();
                 min_ts = (current_ts<min_ts)?current_ts:min_ts;
             }

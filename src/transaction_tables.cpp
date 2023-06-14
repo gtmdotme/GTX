@@ -207,7 +207,7 @@ namespace bwgraph{
             }
         }*/
         while(entry.op_count.load()){
-            if(count++==10000000){
+            if(count++==100000000){
                 throw EagerCleanException();
             }
         }

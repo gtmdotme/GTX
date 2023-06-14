@@ -51,7 +51,7 @@ public:
         bwGraph.get_commit_manager().shutdown_signal();
         commit_manager_worker.join();
         auto& block_manager = bwGraph.get_block_manager();
-        for(int32_t i=0; i<vertex_id_range; i++){
+        for(uint64_t i=0; i<vertex_id_range; i++){
             vertex_t vid =  i+1;
             auto& vertex_entry = bwGraph.get_vertex_index_entry(vid);
             EdgeLabelBlock* edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_entry.edge_label_block_ptr);
@@ -113,7 +113,7 @@ public:
             for(int i=0; i<40; i++){
                 order_nums[i]=0;
             }
-            for(int32_t i=0; i<vertex_id_range; i++){
+            for(uint64_t i=0; i<vertex_id_range; i++){
                 vertex_t vid =  i+1;
                 auto& vertex_entry = bwGraph.get_vertex_index_entry(vid);
                 EdgeLabelBlock* edge_label_block = bwGraph.get_block_manager().convert<EdgeLabelBlock>(vertex_entry.edge_label_block_ptr);
