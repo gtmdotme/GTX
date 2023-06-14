@@ -26,7 +26,13 @@ namespace bwgraph{
     class CommitManager{
     public:
 #if USING_ARRAY_TABLE
-        CommitManager(/*ArrayTransactionTables& graph_txn_table*/):latch()/*,txn_tables(graph_txn_table)*/{}
+        CommitManager(/*ArrayTransactionTables& graph_txn_table*/):latch()/*,txn_tables(graph_txn_table)*/{
+            for(int i=0; i<2; i++){
+                for(int j=0; j<WORKER_THREAD_NUM;j++){
+                    double_buffer_queue[i].already_committed[j]=false;
+                }
+            }
+        }
 #else
         CommitManager(ConcurrentTransactionTables& graph_txn_table):latch(),txn_tables(graph_txn_table){}
 #endif
@@ -46,6 +52,7 @@ namespace bwgraph{
                     continue;
                 }
                 double_buffer_queue[offset].emplace(txn_entry);
+                double_buffer_queue[offset].already_committed[thread_id]=true;
                 latch.unlock();
                 return;
             }
