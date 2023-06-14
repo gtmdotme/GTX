@@ -74,6 +74,7 @@ namespace bwgraph {
         std::atomic_uint64_t status;
         std::atomic_int64_t op_count;
         std::vector<touched_block_entry> touched_blocks;
+        char padding[16];
        //std::map<touched_block_entry,LockOffsetCache> touched_blocks;
        // char padding[16]
     };
@@ -247,11 +248,11 @@ namespace bwgraph {
     //now we program the array based transaction tables
     class ArrayTransactionTables;
 
-    using Array = std::array<txn_table_entry,Per_Thread_Table_Size>;
+    using Array = std::vector<txn_table_entry>; //std::array<txn_table_entry,Per_Thread_Table_Size>;
     class ArrayTransactionTable{
     public:
-        ArrayTransactionTable():offset(0),bwGraph(nullptr),txn_tables(nullptr){}
-        ArrayTransactionTable(BwGraph* source_graph, ArrayTransactionTables* all_tables):offset(0),bwGraph(source_graph),txn_tables(all_tables){}
+        ArrayTransactionTable():offset(0),bwGraph(nullptr),txn_tables(nullptr){local_table.resize(Per_Thread_Table_Size);}
+        ArrayTransactionTable(BwGraph* source_graph, ArrayTransactionTables* all_tables):offset(0),bwGraph(source_graph),txn_tables(all_tables){local_table.resize(Per_Thread_Table_Size);}
         inline bool get_status(uint64_t txn_id, uint64_t& status_result){
 #if TXN_TABLE_TEST
             uint64_t index = get_local_txn_id(txn_id)%Per_Thread_Table_Size;
@@ -266,6 +267,15 @@ namespace bwgraph {
             status_result= local_table[index].status.load();
             return local_table[index].txn_id == txn_id;
         }
+        //only invoked at the end to check lazy update progress
+        inline bool is_empty(){
+            for(int i=0; i<Per_Thread_Table_Size;i++){
+                if(local_table[i].op_count){
+                    return false;
+                }
+            }
+            return true;
+        }
         //reduce op_count no longer deletes entry, it only reduces op_count to 0 at most. And an entry with no op_count becomes a candidate for new entry.
         inline void reduce_op_count(uint64_t txn_id,int64_t op_count){
 #if TXN_TABLE_TEST
@@ -278,6 +288,9 @@ namespace bwgraph {
             uint64_t index =txn_id % Per_Thread_Table_Size;
 #endif
 #if TXN_TABLE_TEST
+            if(local_table[index].txn_id!=txn_id){
+                throw LazyUpdateException();
+            }
             if(local_table[index].status.load()==IN_PROGRESS){
                 throw new std::runtime_error("error, try to reduce operation count of an in progress transaction");
             }
@@ -338,7 +351,7 @@ namespace bwgraph {
         inline void set_garbage_queue(GarbageBlockQueue* input_queue){thread_local_garbage_queue = input_queue;}
         //put_entry, abort and commit txn don't need to be accessed by other threads
     private:
-        void lazy_update_block(uintptr_t block_ptr);
+        bool lazy_update_block(uintptr_t block_ptr);
         uint8_t thread_id;
         uint64_t offset;
         Array local_table;
@@ -353,13 +366,21 @@ namespace bwgraph {
                 tables[i].set_thread_id(i);
                 tables[i].set_bwgraph(source_graph);
                 tables[i].set_txn_tables(this);
+                //compatible with vector based table
+
             }
         }
         inline bool get_status(uint64_t txn_id,uint64_t& status_result){
+          /*  if(!(txn_id&TS_ID_MASK)){
+                std::cout<<txn_id<<std::endl;
+            }*/
             uint8_t thread_id = bwgraph::get_threadID(txn_id);
             return tables[thread_id].get_status(txn_id,status_result);
         }
         inline void reduce_op_count(uint64_t txn_id,int64_t op_count){
+            if(!(txn_id&TS_ID_MASK)){
+                throw LazyUpdateException();
+            }
             uint8_t thread_id = bwgraph::get_threadID(txn_id);
             tables[thread_id].reduce_op_count(txn_id, op_count);
         }

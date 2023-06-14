@@ -4,23 +4,23 @@
 
 #ifndef BWGRAPH_V2_MINI_BWGRAPH_HPP
 #define BWGRAPH_V2_MINI_BWGRAPH_HPP
-#include"core/bwgraph.hpp"
-#include "core/previous_version_garbage_queue.hpp"
-#include "core/bw_transaction.hpp"
+#include"../core/bwgraph.hpp"
+#include "../core/previous_version_garbage_queue.hpp"
+#include "../core/bw_transaction.hpp"
 #include <queue>
 #include <random>
-#include "core/exceptions.hpp"
-#include "core/graph_global.hpp"
+#include "../core/exceptions.hpp"
+#include "../core/graph_global.hpp"
 using namespace bwgraph;
 constexpr vertex_t vertex_id_range = 1000000;
 constexpr vertex_t dst_id_range = 1000000;
-constexpr int32_t total_txn_count = 10000;
+constexpr int32_t total_txn_count = 40000;
 constexpr int32_t op_count_range = 25;
-constexpr float write_ratio = 1;
+constexpr float write_ratio = 0.5;
 constexpr bool print_block_stats = true;
 class MiniBwGraph{
 public:
-    MiniBwGraph(): bwGraph("",1ul << 36){
+    MiniBwGraph(): bwGraph("",1ul << 35){
         auto& commit_manager = bwGraph.get_commit_manager();
         //manually setup some blocks
         auto& vertex_index = bwGraph.get_vertex_index();
@@ -60,6 +60,32 @@ public:
         }
 
     }
+    void cleanup_read_only_txn(){
+        GarbageBlockQueue local_garbage_queue(&bwGraph.get_block_manager());
+        timestamp_t read_ts = bwGraph.get_commit_manager().get_current_read_ts()+10;
+        ROTransaction cleanup_txn(bwGraph,read_ts,bwGraph.get_txn_tables(),bwGraph.get_block_manager(),local_garbage_queue,bwGraph.get_block_access_ts_table(),0);
+        for(vertex_t i=1; i<=vertex_id_range;i++){
+            auto scan_response = cleanup_txn.get_edges(i,1);
+            if(scan_response.first!=bwgraph::Txn_Operation_Response::SUCCESS){
+                throw TransactionReadException();
+            }
+            auto& edge_delta_iterator = scan_response.second;
+            BaseEdgeDelta* current_delta;
+            while((current_delta=edge_delta_iterator.next())!= nullptr){
+                if(!is_visible_check(placeholder_txn_id,read_ts,current_delta)){
+                    throw TransactionReadException();
+                }
+                char* data = edge_delta_iterator.get_data(current_delta->data_offset);
+                for(size_t z=0; z<current_delta->data_length; z++){
+                    if(static_cast<char>(current_delta->toID%32)!=data[z]){
+                        throw TransactionReadException();
+                    }
+                }
+            }
+            edge_delta_iterator.close();
+        }
+        cleanup_txn.commit();
+    }
     void execute_edge_only_test(){
         std::vector<std::thread>workers;
         for(uint8_t i=0; i<WORKER_THREAD_NUM;i++){
@@ -67,6 +93,16 @@ public:
         }
         for(uint8_t i=0; i<WORKER_THREAD_NUM;i++){
             workers.at(i).join();
+        }
+        std::cout<<"txn execution finished"<<std::endl;
+        return;
+        //execute a readonly txn
+        cleanup_read_only_txn();
+        for(uint8_t i=0; i<WORKER_THREAD_NUM;i++){
+            auto& txn_table = bwGraph.get_txn_tables().get_table(i);
+            if(!txn_table.is_empty()){
+                throw LazyUpdateException();
+            }
         }
         //std::cout<<"final read ts is "<<bwGraph.get_commit_manager().get_current_read_ts()<<std::endl;
         std::cout<<"total abort is "<<total_abort<< std::endl;
@@ -118,7 +154,7 @@ public:
             RWTransaction txn(bwGraph,txn_id,read_ts,txn_entry,bwGraph.get_txn_tables(),bwGraph.get_commit_manager(),bwGraph.get_block_manager(),local_garbage_queue,bwGraph.get_block_access_ts_table(),recycled_vid_queue);
             int32_t op_count = op_count_dist(gen);
             bool to_abort = false;
-          /*  if(i%1000==0&&i>0){
+           /* if(i%3000==0&&i>0){
                 std::cout<<local_garbage_queue.get_queue().size()<<std::endl;
             }*/
             for(int32_t j=0; j<op_count;j++){

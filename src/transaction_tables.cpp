@@ -14,13 +14,13 @@ namespace bwgraph{
     inline bool lazy_update(BaseEdgeDelta* edge_delta, uint64_t txn_id, uint64_t status){
         return edge_delta->lazy_update(txn_id,status);
     }
-
-    void ArrayTransactionTable::lazy_update_block(uintptr_t block_ptr) {
+    //todo:: change back to void
+    bool ArrayTransactionTable::lazy_update_block(uintptr_t block_ptr) {
         EdgeDeltaBlockHeader* current_edge_delta_block = bwGraph->get_block_manager().convert<EdgeDeltaBlockHeader>(block_ptr);
         uint64_t current_combined_offset = current_edge_delta_block->get_current_offset();
         //if the offset is overflowing, a consolidation will happen soon, so let me exit and let consolidation do lazy update for me.
         if(current_edge_delta_block->is_overflow_offset(current_combined_offset)){
-            return;
+            return false;
         }
         std::unordered_map<uint64_t,int32_t>lazy_update_records;
         uint32_t current_delta_offset = static_cast<uint32_t>(current_combined_offset&SIZE2MASK);
@@ -53,10 +53,29 @@ namespace bwgraph{
         for(auto it = lazy_update_records.begin();it!=lazy_update_records.end();it++){
             txn_tables->reduce_op_count(it->first,it->second);
         }
+        return true;
     }
     void ArrayTransactionTable::eager_clean(uint64_t index) {
         //need to access BwGraph and its block manager
         auto& entry = local_table[index];
+        //for debug
+        uint32_t number_of_cleaned_blocks = 0;
+        auto all_equal = true;
+        timestamp_t first_compare_ts = local_table[0].status.load();
+        for(int i=0; i<Per_Thread_Table_Size;i++){
+            if(local_table[i].status.load()!=first_compare_ts){
+                all_equal=false;
+            }
+        }
+        auto bool_all_in_progress = true;
+        if(all_equal){
+            if(first_compare_ts==IN_PROGRESS){
+
+            }else{
+                bool_all_in_progress = false;
+            }
+        }
+
         for(size_t i=0; i<entry.touched_blocks.size();i++){
             //if already cleaned-up, can quickly return
             if(!entry.op_count.load()){
@@ -79,14 +98,20 @@ namespace bwgraph{
                     //if the block is under overflow or installation states, we know another thread is doing consolidation work so it will lazy update our transaction!
                    if( BlockStateVersionProtectionScheme::reader_access_block(thread_id,touched_block_entry.block_id,target_label_entry,bwGraph->get_block_access_ts_table())){
                        //todo:: we add the safety check here: but it requires we cache this value after validation phase
-                       if(touched_block_entry.block_version_num==target_label_entry->block_version_number.load()){
+                     //  if(touched_block_entry.block_version_num==target_label_entry->block_version_number.load()){
                            //if the block still exists
                            if(target_label_entry->block_ptr){
-                               lazy_update_block(target_label_entry->block_ptr);
+                               //todo: change back from debug mode
+                               if(lazy_update_block(target_label_entry->block_ptr)){
+                                   number_of_cleaned_blocks++;
+                               }
                            }
-                       }
+                      // }
                        BlockStateVersionProtectionScheme::release_protection(thread_id,bwGraph->get_block_access_ts_table());
                    }//else under consolidation so someone will clean for us
+                   else{
+
+                   }
                 }else{
                     //never delete entries, at the worst mark the block ptr as 0. So if I modified this label, the entry must exist
                     throw LabelEntryMissingException();
@@ -119,6 +144,71 @@ namespace bwgraph{
                 }
             }
         }
-        while(entry.op_count.load());//spin until op_count reaches 0
+        //for debug
+        size_t count =0;
+        bool all_equal_100 = true;
+        bool all_equal_1000 = true;
+        bool all_equal_10000 = true;
+        bool all_equal_100000= true;
+        bool all_equal_1000000 = true;
+        bool all_equal_10000000 = true;
+        timestamp_t to_compare_ts0 = 0;
+        timestamp_t to_compare_ts1 = 0;
+        timestamp_t to_compare_ts2 = 0;
+        timestamp_t to_compare_ts3 = 0;
+        timestamp_t to_compare_ts4 = 0;
+        timestamp_t to_compare_ts5 = 0;
+        while(entry.op_count.load()){
+            count++;
+            if(count == 100){
+                to_compare_ts0 = local_table[0].status.load();
+                for(int i=0; i<Per_Thread_Table_Size;i++){
+                    if(local_table[i].status.load()!=to_compare_ts0){
+                        all_equal_100=false;
+                    }
+                }
+            }
+            else if(count == 1000){
+                to_compare_ts1 = local_table[0].status.load();
+                for(int i=0; i<Per_Thread_Table_Size;i++){
+                    if(local_table[i].status.load()!=to_compare_ts1){
+                        all_equal_1000=false;
+                    }
+                }
+            }
+            else if(count == 10000){
+                to_compare_ts2 = local_table[0].status.load();
+                for(int i=0; i<Per_Thread_Table_Size;i++){
+                    if(local_table[i].status.load()!=to_compare_ts2){
+                        all_equal_10000=false;
+                    }
+                }
+            }else if(count == 100000){
+                to_compare_ts3 = local_table[0].status.load();
+                for(int i=0; i<Per_Thread_Table_Size;i++){
+                    if(local_table[i].status.load()!=to_compare_ts3){
+                        all_equal_100000=false;
+                    }
+                }
+            }else if(count == 1000000){
+                to_compare_ts4 = local_table[0].status.load();
+                for(int i=0; i<Per_Thread_Table_Size;i++){
+                    if(local_table[i].status.load()!=to_compare_ts4){
+                        all_equal_1000000=false;
+                    }
+                }
+            }else if(count == 10000000){
+                to_compare_ts5 = local_table[0].status.load();
+                for(int i=0; i<Per_Thread_Table_Size;i++){
+                    if(local_table[i].status.load()!=to_compare_ts5){
+                        all_equal_10000000=false;
+                    }
+                }
+                assert(all_equal_100&&all_equal_1000&&all_equal_10000&&all_equal_100000&&all_equal_1000000&&all_equal_10000000);
+                throw EagerCleanException();
+            }
+        }
+       /* while(entry.op_count.load()){
+        }*/
     }
 }

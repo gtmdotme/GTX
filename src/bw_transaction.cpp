@@ -897,7 +897,7 @@ ROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
             return std::pair<Txn_Operation_Response,EdgeDeltaIterator>(Txn_Operation_Response::READER_WAIT,EdgeDeltaIterator());
         }
         //block protection released by iterator destructor
-        return std::pair<Txn_Operation_Response,EdgeDeltaIterator>(Txn_Operation_Response::SUCCESS,EdgeDeltaIterator(current_block,read_timestamp,placeholder_txn_id,false,EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset),
+        return std::pair<Txn_Operation_Response,EdgeDeltaIterator>(Txn_Operation_Response::SUCCESS,EdgeDeltaIterator(current_block,read_timestamp,((static_cast<uint64_t>(thread_id)<<56)|placeholder_txn_id),false,EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset),
                                                                                                                      graph,&lazy_update_records,&block_access_ts_table));
     }else{
         return std::pair<Txn_Operation_Response, EdgeDeltaIterator>(Txn_Operation_Response::READER_WAIT,EdgeDeltaIterator());

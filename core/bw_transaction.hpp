@@ -242,6 +242,9 @@ namespace bwgraph{
         std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label);
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label);
         std::string_view get_vertex(vertex_t src);
+        inline void commit(){
+            batch_lazy_updates();
+        }
     private:
         //this function is only invoked when we know the entry must exist (access from txn own label cache)
         inline BwLabelEntry* get_label_entry(uint64_t block_id){
@@ -271,9 +274,6 @@ namespace bwgraph{
                     txn_tables.reduce_op_count(it->first,it->second);
                 }
             }
-        }
-        void commit(){
-            batch_lazy_updates();
         }
         std::string_view scan_previous_block_find_edge(EdgeDeltaBlockHeader* previous_block, vertex_t vid);
         BwGraph& graph;

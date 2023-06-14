@@ -13,7 +13,14 @@ namespace bwgraph{
 #if USING_WAL
 
 #else
-    using CommitQueue = std::queue<entry_ptr>;
+    //using CommitQueue = std::queue<entry_ptr>;
+    struct CommitQueue{
+        inline void emplace(entry_ptr txn_entry){
+            queue_buffer.emplace(txn_entry);
+        }
+        std::queue<entry_ptr> queue_buffer;
+        std::array<bool,WORKER_THREAD_NUM> already_committed;
+    };
 #endif
     //todo: examine no server thread solution
     class CommitManager{
@@ -30,12 +37,21 @@ namespace bwgraph{
         }
 #else
         inline uint64_t get_current_read_ts(){return global_read_epoch.load();}
-        inline void txn_commit(entry_ptr txn_entry){
-            latch.lock();
-            double_buffer_queue[offset].emplace(txn_entry);
-            latch.unlock();
-            return;
+        inline void txn_commit(uint8_t thread_id,entry_ptr txn_entry){
+            while(true){
+                latch.lock();
+                if(double_buffer_queue[offset].already_committed[thread_id]){
+                    //do collaborative commit
+                    collaborative_commit();
+                    continue;
+                }
+                double_buffer_queue[offset].emplace(txn_entry);
+                latch.unlock();
+                return;
+            }
         }
+        //with latch held
+        void collaborative_commit();
         void server_loop();//server loops to commit
         inline void shutdown_signal(){
             running.store(false);
@@ -45,9 +61,10 @@ namespace bwgraph{
         std::atomic_bool running = true;
         std::atomic_uint64_t global_read_epoch = 0;
         uint64_t global_write_epoch = 0;
-        void batch_commit();
+       // void batch_commit();
         uint8_t offset = 0 ;
         spinlock latch;
+        spinlock commit_latch;
         std::array<CommitQueue,2>double_buffer_queue;
 #if USING_ARRAY_TABLE
        // ArrayTransactionTables& txn_tables;

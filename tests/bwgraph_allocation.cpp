@@ -75,6 +75,9 @@ TEST_CASE("BwGraph allocation test"){
 }
 
 TEST_CASE("Mini Bw Edge Test under doctest"){
-    MiniBwGraph test;
-    test.execute_edge_only_test();
+    for(int i=0; i<10; i++){
+        MiniBwGraph* test = new MiniBwGraph();
+        test->execute_edge_only_test();
+        delete test;
+    }
 }

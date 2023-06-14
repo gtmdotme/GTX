@@ -139,5 +139,15 @@ namespace bwgraph {
             return "accessing a vertex entry that is not allocated";
         }
     };
+    class EagerCleanException: public std::exception{
+        virtual const char *what() const throw() {
+            return "eager clean never gets done";
+        }
+    };
+    class CommitException: public std::exception{
+        virtual const char *what() const throw() {
+            return "group commit observes anmalies";
+        }
+    };
 }
 #endif //BWGRAPH_V2_EXCEPTIONS_HPP
