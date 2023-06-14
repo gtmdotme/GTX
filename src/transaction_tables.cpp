@@ -15,12 +15,12 @@ namespace bwgraph{
         return edge_delta->lazy_update(txn_id,status);
     }
     //todo:: change back to void
-    bool ArrayTransactionTable::lazy_update_block(uintptr_t block_ptr) {
+    void ArrayTransactionTable::lazy_update_block(uintptr_t block_ptr) {
         EdgeDeltaBlockHeader* current_edge_delta_block = bwGraph->get_block_manager().convert<EdgeDeltaBlockHeader>(block_ptr);
         uint64_t current_combined_offset = current_edge_delta_block->get_current_offset();
         //if the offset is overflowing, a consolidation will happen soon, so let me exit and let consolidation do lazy update for me.
         if(current_edge_delta_block->is_overflow_offset(current_combined_offset)){
-            return false;
+           // return false;
         }
         std::unordered_map<uint64_t,int32_t>lazy_update_records;
         uint32_t current_delta_offset = static_cast<uint32_t>(current_combined_offset&SIZE2MASK);
@@ -53,13 +53,13 @@ namespace bwgraph{
         for(auto it = lazy_update_records.begin();it!=lazy_update_records.end();it++){
             txn_tables->reduce_op_count(it->first,it->second);
         }
-        return true;
+        //return true;
     }
     void ArrayTransactionTable::eager_clean(uint64_t index) {
         //need to access BwGraph and its block manager
         auto& entry = local_table[index];
         //for debug
-        uint32_t number_of_cleaned_blocks = 0;
+    /*    uint32_t number_of_cleaned_blocks = 0;
         auto all_equal = true;
         timestamp_t first_compare_ts = local_table[0].status.load();
         for(int i=0; i<Per_Thread_Table_Size;i++){
@@ -74,7 +74,7 @@ namespace bwgraph{
             }else{
                 bool_all_in_progress = false;
             }
-        }
+        }*/
 
         for(size_t i=0; i<entry.touched_blocks.size();i++){
             //if already cleaned-up, can quickly return
@@ -102,9 +102,7 @@ namespace bwgraph{
                            //if the block still exists
                            if(target_label_entry->block_ptr){
                                //todo: change back from debug mode
-                               if(lazy_update_block(target_label_entry->block_ptr)){
-                                   number_of_cleaned_blocks++;
-                               }
+                               lazy_update_block(target_label_entry->block_ptr);
                            }
                       // }
                        BlockStateVersionProtectionScheme::release_protection(thread_id,bwGraph->get_block_access_ts_table());
@@ -146,7 +144,7 @@ namespace bwgraph{
         }
         //for debug
         size_t count =0;
-        bool all_equal_100 = true;
+    /*    bool all_equal_100 = true;
         bool all_equal_1000 = true;
         bool all_equal_10000 = true;
         bool all_equal_100000= true;
@@ -204,11 +202,14 @@ namespace bwgraph{
                         all_equal_10000000=false;
                     }
                 }
-                assert(all_equal_100&&all_equal_1000&&all_equal_10000&&all_equal_100000&&all_equal_1000000&&all_equal_10000000);
+            }else if(count ==100000000){
+                throw EagerCleanException();
+            }
+        }*/
+        while(entry.op_count.load()){
+            if(count++==10000000){
                 throw EagerCleanException();
             }
         }
-       /* while(entry.op_count.load()){
-        }*/
     }
 }

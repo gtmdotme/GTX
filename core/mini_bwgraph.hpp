@@ -95,7 +95,7 @@ public:
             workers.at(i).join();
         }
         std::cout<<"txn execution finished"<<std::endl;
-        return;
+        //return;
         //execute a readonly txn
         cleanup_read_only_txn();
         for(uint8_t i=0; i<WORKER_THREAD_NUM;i++){

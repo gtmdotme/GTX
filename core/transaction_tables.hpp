@@ -351,7 +351,7 @@ namespace bwgraph {
         inline void set_garbage_queue(GarbageBlockQueue* input_queue){thread_local_garbage_queue = input_queue;}
         //put_entry, abort and commit txn don't need to be accessed by other threads
     private:
-        bool lazy_update_block(uintptr_t block_ptr);
+        void lazy_update_block(uintptr_t block_ptr);
         uint8_t thread_id;
         uint64_t offset;
         Array local_table;
