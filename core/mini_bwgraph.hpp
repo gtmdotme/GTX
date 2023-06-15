@@ -17,7 +17,7 @@ constexpr vertex_t dst_id_range = 1000000;
 constexpr int32_t total_txn_count = 500000;
 constexpr int32_t op_count_range = 25;
 constexpr float write_ratio = 0.4;
-constexpr double vertex_operation_ratio = 0.1;
+constexpr double vertex_operation_ratio = 0.5;
 constexpr bool print_block_stats = true;
 class MiniBwGraph{
 public:

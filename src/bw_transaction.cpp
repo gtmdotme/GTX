@@ -144,22 +144,20 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
                 if(status == IN_PROGRESS){
                     //do nothing
                 }else{
-                    if(current_delta->lazy_update(original_ts,status)){
-                        //record lazy update
-                        record_lazy_update_record(&lazy_update_records, original_ts);
-                        if(status!=ABORT){
-                            current_block->update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_offset, status);
-                        }//todo:: check always eager abort
-#if EDGE_DELTA_TEST
-                        else{
-                            throw EagerAbortException();//it is still consolidation phase, a txn should have aborted its delta before setting its state, so it is impossible.
+                    if(status!=ABORT){
+                        current_block->update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_offset, status);
+                        if(current_delta->lazy_update(original_ts,status)){
+                            //record lazy update
+                            record_lazy_update_record(&lazy_update_records, original_ts);
                         }
-#endif
-                    }else{
-                        if(current_delta->creation_ts.load()!=status){
-                            throw LazyUpdateException();
-                        }
+
                     }
+                    //if status == abort, must already be eager aborted
+#if EDGE_DELTA_TEST
+                    if(current_delta->creation_ts.load()!=status){
+                        throw LazyUpdateException();
+                    }
+#endif
                 }
             }
         }
@@ -571,8 +569,8 @@ void RWTransaction::eager_abort() {
                 touched_block_it++;
             }
         }
-
-        for(auto touched_vertex_it = updated_vertices.begin();touched_vertex_it!=updated_vertices.end();touched_vertex_it++){
+        //eager abort of vertex deltas should always immediately succeeds
+        for(auto touched_vertex_it = updated_vertices.begin();touched_vertex_it!=updated_vertices.end();touched_vertex_it=updated_vertices.erase(touched_vertex_it)){
             auto& vertex_index_entry = graph.get_vertex_index_entry(*touched_vertex_it);
             uint64_t current_vertex_delta_ptr = vertex_index_entry.vertex_delta_chain_head_ptr.load();
             auto current_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta_ptr);
@@ -722,11 +720,12 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
     }
     uintptr_t current_vertex_delta_ptr;
     VertexDeltaHeader* current_vertex_delta =nullptr;
+    timestamp_t original_ts = 0;
     while(true){
         current_vertex_delta_ptr = vertex_index_entry.vertex_delta_chain_head_ptr.load();
         if(current_vertex_delta_ptr){
             current_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta_ptr);
-            timestamp_t original_ts = current_vertex_delta->get_creation_ts();
+            /*timestamp_t*/ original_ts = current_vertex_delta->get_creation_ts();
             if(original_ts==local_txn_id){
                 break;
             }
@@ -775,8 +774,10 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
     //either 0 or comitted current version
 #if TXN_TEST
     if(current_vertex_delta_ptr){
-        if(is_txn_id(current_vertex_delta->get_creation_ts())||current_vertex_delta->get_creation_ts()>read_timestamp){
-            throw VertexDeltaException();
+        if(current_vertex_delta->get_creation_ts()!=local_txn_id){
+            if(is_txn_id(current_vertex_delta->get_creation_ts())||current_vertex_delta->get_creation_ts()>read_timestamp){
+                throw VertexDeltaException();
+            }
         }
     }
 #endif

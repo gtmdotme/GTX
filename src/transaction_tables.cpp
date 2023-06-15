@@ -32,17 +32,20 @@ namespace bwgraph{
                     uint64_t status =0;
                     if(txn_tables->get_status(original_ts,status)){
                         if(status!=IN_PROGRESS){
-                            if(current_delta->lazy_update(original_ts,status)){
-                                record_lazy_update_record(&lazy_update_records,original_ts);
-                              if(status!=ABORT){
-                                  current_edge_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
-                                  if(current_delta->is_last_delta){
-                                      current_edge_delta_block->release_protection(current_delta->toID);
-                                  }
-                              }else{
-                                  throw EagerAbortException();
-                              }
+                            if(status!=ABORT){
+                                current_edge_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
+                                if(current_delta->lazy_update(original_ts,status)){
+                                    record_lazy_update_record(&lazy_update_records,original_ts);
+                                    if(current_delta->is_last_delta){
+                                        current_edge_delta_block->release_protection(current_delta->toID);
+                                    }
+                                }
                             }
+#if EDGE_DELTA_TEST
+                            if(current_delta->creation_ts!=status){
+                                throw EagerCleanException();
+                            }
+#endif
                         }
                     }
                 }

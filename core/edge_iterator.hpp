@@ -75,20 +75,21 @@ namespace bwgraph {
                                 current_delta++;
                                 continue;
                             }else{
-                                if(current_delta->lazy_update(original_ts,status)){
-                                    //record lazy update
-                                    record_lazy_update_record(txn_lazy_update_records,original_ts);
-#if EDGE_DELTA_TEST
-                                    //we should never need to lazy update for others
-                                    if(status == ABORT){
-                                        throw LazyUpdateAbortException();
-                                    }
-#endif
+                                if(status!=ABORT){
                                     current_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
-                                    if(current_delta->is_last_delta.load()){
-                                        current_delta_block-> release_protection(current_delta->toID);
+                                    if(current_delta->lazy_update(original_ts,status)){
+                                        //record lazy update
+                                        record_lazy_update_record(txn_lazy_update_records,original_ts);
+                                        if(current_delta->is_last_delta.load()){
+                                            current_delta_block-> release_protection(current_delta->toID);
+                                        }
                                     }
                                 }
+#if EDGE_DELTA_TEST
+                                if(current_delta->creation_ts!=status){
+                                    throw LazyUpdateException();
+                                }
+#endif
                             }
                         }
                     }
