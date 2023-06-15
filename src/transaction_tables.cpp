@@ -124,6 +124,7 @@ namespace bwgraph{
                         if(txn_tables->get_status(current_ts,status)){
                             if(status!=IN_PROGRESS){
                                 if(vertex_delta->lazy_update(current_ts,status)){
+                                    txn_tables->reduce_op_count(current_ts,1);
                                     //todo: throw in garbage queue
                                     uintptr_t previous_ptr = vertex_delta->get_previous_ptr();
                                    if(status!=ABORT){
@@ -134,7 +135,6 @@ namespace bwgraph{
                                    }else{
                                        throw EagerAbortException();//aborted deltas should be eager aborted.
                                    }
-                                    txn_tables->reduce_op_count(current_ts,1);
                                 }
                             }
                         }
