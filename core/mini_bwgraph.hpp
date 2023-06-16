@@ -14,10 +14,10 @@
 using namespace bwgraph;
 constexpr vertex_t vertex_id_range = 1000000;
 constexpr vertex_t dst_id_range = 1000000;
-constexpr int32_t total_txn_count = 500000;
+constexpr int32_t total_txn_count = 600000;
 constexpr int32_t op_count_range = 25;
-constexpr float write_ratio = 0.4;
-constexpr double vertex_operation_ratio = 0.5;
+constexpr float write_ratio = 0.6;
+constexpr double vertex_operation_ratio = 0.1;
 constexpr bool print_block_stats = true;
 class MiniBwGraph{
 public:
@@ -47,6 +47,65 @@ public:
         }
         commit_manager_worker = std::thread(&CommitManager::server_loop, &commit_manager);//start executing the commit manager
         std::cout<<"test graph allocated"<<std::endl;
+    }
+    //assume initialization_thread_count can evenly divide vertex id range
+    MiniBwGraph(int32_t initialization_thread_count): bwGraph("",1ul << 36){
+        auto& commit_manager = bwGraph.get_commit_manager();
+        //manually setup some blocks
+        auto& vertex_index = bwGraph.get_vertex_index();
+        auto& block_manager = bwGraph.get_block_manager();
+        //initial state setup
+        std::vector<std::thread>workers;
+        workers.reserve(initialization_thread_count);
+        for(int i=0; i<initialization_thread_count;i++){
+            workers.emplace_back(&MiniBwGraph::setup_graph, this, vertex_id_range/initialization_thread_count);
+        }
+        for(int i=0; i<initialization_thread_count;i++){
+            workers.at(i).join();
+        }
+ /*       for(uint64_t i=0; i<vertex_id_range; i++){
+            vertex_t vid = vertex_index.get_next_vid();
+            auto& vertex_entry = bwGraph.get_vertex_index_entry(vid);
+            //allocate initial blocks
+            vertex_entry.vertex_delta_chain_head_ptr = block_manager.alloc(size_to_order(sizeof(VertexDeltaHeader))+1);
+            VertexDeltaHeader* vertex_delta = block_manager.convert<VertexDeltaHeader>( vertex_entry.vertex_delta_chain_head_ptr.load());
+            vertex_delta->fill_metadata(0,32,6);
+            char data[32];
+            for(int j=0;j<32; j++){
+                data[j]=static_cast<char>(vid%32);
+            }
+            vertex_delta->write_data(data);
+            vertex_entry.edge_label_block_ptr= block_manager.alloc(size_to_order(sizeof(EdgeLabelBlock)));
+            EdgeLabelBlock* edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_entry.edge_label_block_ptr);
+            edge_label_block->fill_information(vid,&block_manager);
+            edge_label_block->writer_lookup_label(1,&bwGraph.get_txn_tables(),0);
+            vertex_entry.valid.store(true);
+        }*/
+        commit_manager_worker = std::thread(&CommitManager::server_loop, &commit_manager);//start executing the commit manager
+        std::cout<<"test graph allocated"<<std::endl;
+    }
+    //use multi threading to initialize the graph, test its performance.
+    void setup_graph(size_t workload_size){
+        auto& vertex_index = bwGraph.get_vertex_index();
+        auto& block_manager = bwGraph.get_block_manager();
+        for(size_t i=0; i<workload_size;i++){
+            vertex_t vid = vertex_index.get_next_vid();
+            auto& vertex_entry = bwGraph.get_vertex_index_entry(vid);
+            //allocate initial blocks
+            vertex_entry.vertex_delta_chain_head_ptr = block_manager.alloc(size_to_order(sizeof(VertexDeltaHeader))+1);
+            VertexDeltaHeader* vertex_delta = block_manager.convert<VertexDeltaHeader>( vertex_entry.vertex_delta_chain_head_ptr.load());
+            vertex_delta->fill_metadata(0,32,6);
+            char data[32];
+            for(int j=0;j<32; j++){
+                data[j]=static_cast<char>(vid%32);
+            }
+            vertex_delta->write_data(data);
+            vertex_entry.edge_label_block_ptr= block_manager.alloc(size_to_order(sizeof(EdgeLabelBlock)));
+            EdgeLabelBlock* edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_entry.edge_label_block_ptr);
+            edge_label_block->fill_information(vid,&block_manager);
+            edge_label_block->writer_lookup_label(1,&bwGraph.get_txn_tables(),0);
+            vertex_entry.valid.store(true);
+        }
     }
     ~MiniBwGraph(){
         //commit_manager_worker.join();
@@ -386,6 +445,55 @@ public:
         total_abort.fetch_add(local_abort);
         total_op_count.fetch_add(local_op_count);
     }
+    void execute_read_only_txn(ROTransaction& txn, int32_t op_count, timestamp_t read_ts){
+        std::random_device rd; // obtain a random number from hardware
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> vertex_dist(1,vertex_id_range);
+        std::uniform_int_distribution<> dst_dist(1,dst_id_range);
+        for(int j=0; j<op_count;j++){
+            vertex_t src = vertex_dist(gen);
+            if(j%2){
+                vertex_t dst = dst_dist(gen);
+                while(true){
+                    auto op_response = txn.get_edge(src,dst,1);
+                    if(op_response.first==bwgraph::Txn_Operation_Response::FAIL){
+                        throw TransactionReadException();
+                    }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                        for(size_t z=0; z<op_response.second.size();z++){
+                            if(op_response.second.at(z)!=static_cast<char>(dst%32)){
+                                throw TransactionReadException();
+                            }
+                        }
+                        break;
+                    }
+                }
+            }else{
+                while(true){
+                    auto op_response = txn.get_edges(src,1);
+                    if(op_response.first==bwgraph::Txn_Operation_Response::FAIL){
+                        throw TransactionReadException();
+                    }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                        auto& edge_delta_iterator = op_response.second;
+                        BaseEdgeDelta* current_delta;
+                        while((current_delta=edge_delta_iterator.next())!= nullptr){
+                            if(current_delta->creation_ts.load()>read_ts|| (current_delta->invalidate_ts!=0&&current_delta->invalidate_ts<=read_ts)){
+                                throw TransactionReadException();
+                            }
+                            char* data = edge_delta_iterator.get_data(current_delta->data_offset);
+                            for(size_t z=0; z<current_delta->data_length; z++){
+                                if(static_cast<char>(current_delta->toID%32)!=data[z]){
+                                    throw TransactionReadException();
+                                }
+                            }
+                        }
+                        edge_delta_iterator.close();
+                        break;
+                    }
+                }
+            }
+        }
+        txn.commit();
+    }
     void thread_execute_vertex_edge_txn_operation(uint8_t thread_id){
         //stats
         size_t local_abort=0;
@@ -402,6 +510,7 @@ public:
         std::uniform_int_distribution<> dst_dist(1,dst_id_range);
         std::uniform_int_distribution<> op_count_dist(1,op_count_range);
         std::uniform_int_distribution<> write_size_dist(1,128);
+        std::uniform_int_distribution<> read_only_dist(0,3);
         //thread local structure
         GarbageBlockQueue local_garbage_queue(&bwGraph.get_block_manager());
         auto& thread_txn_table = bwGraph.get_txn_tables().get_table(thread_id);
@@ -409,6 +518,20 @@ public:
         std::queue<vertex_t> recycled_vid_queue;
         //txn generation
         for(int32_t i=0; i<total_txn_count;i++){
+            if(!read_only_dist(gen)){
+                timestamp_t read_ts = bwGraph.get_commit_manager().get_current_read_ts();
+                bwGraph.get_block_access_ts_table().store_current_ts(thread_id,read_ts);
+                ROTransaction txn(bwGraph,read_ts,bwGraph.get_txn_tables(),bwGraph.get_block_manager(),local_garbage_queue,bwGraph.get_block_access_ts_table(),thread_id);
+                int32_t op_count = op_count_dist(gen);
+                execute_read_only_txn(txn,op_count,read_ts);
+                local_commit++;
+                local_op_count+=op_count;
+                if((i%20)==0){
+                    timestamp_t safe_timestamp = bwGraph.get_block_access_ts_table().calculate_safe_ts();
+                    local_garbage_queue.free_block(safe_timestamp);
+                }
+                continue;
+            }
             uint64_t txn_id = thread_txn_table.generate_txn_id();
             entry_ptr txn_entry = thread_txn_table.put_entry(txn_id);
             timestamp_t read_ts = bwGraph.get_commit_manager().get_current_read_ts();

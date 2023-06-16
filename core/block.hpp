@@ -16,6 +16,7 @@
 #include "exceptions.hpp"
 #include "transaction_tables.hpp"
 namespace bwgraph{
+#define LAZY_LOCKING false
 #define ENTRY_DELTA_SIZE 64
 #define SIZE2MASK 0x00000000FFFFFFFF
 #define LOCK_MASK 0x80000000
@@ -227,9 +228,11 @@ namespace bwgraph{
                             if(status!=ABORT){
                                 update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
                                 if(current_delta->lazy_update(original_ts,status)){
+#if LAZY_LOCKING
                                     if(current_delta->is_last_delta){
                                         release_protection(current_delta->toID);
                                     }
+#endif
                                     auto result = lazy_update_records.try_emplace(original_ts,1);
                                     if(!result.second){
                                         result.first->second++;
@@ -281,9 +284,11 @@ namespace bwgraph{
                                 //move it before lazy update to enforce serialization
                                 update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
                                 if(current_delta->lazy_update(original_ts,status)){
+#if LAZY_LOCKING
                                     if(current_delta->is_last_delta){
                                         release_protection(current_delta->toID);
                                     }
+#endif
                                     auto result = lazy_update_records.try_emplace(original_ts,1);
                                     if(!result.second){
                                         result.first->second++;
@@ -451,56 +456,66 @@ namespace bwgraph{
             if(latest_delta_chain_head_offset&LOCK_MASK){
                 return Delta_Chain_Lock_Response::CONFLICT;
             }
-            auto current_head_delta = get_edge_delta(latest_delta_chain_head_offset);
-            auto current_head_ts = current_head_delta->creation_ts.load();
-            if(is_txn_id(current_head_ts)){
-                uint64_t status = 0;
-                if(txn_tables->get_status(current_head_ts,status)){
-                    if(status!=IN_PROGRESS&&status!=ABORT){
-                        update_previous_delta_invalidate_ts(current_head_delta->toID,current_head_delta->previous_offset,status);
-                        if(current_head_delta->lazy_update(current_head_ts,status)){
-                            record_lazy_update_record(lazy_update_map_ptr,current_head_ts);
-                        }
+            if(latest_delta_chain_head_offset){
+                auto current_head_delta = get_edge_delta(latest_delta_chain_head_offset);
+                auto current_head_ts = current_head_delta->creation_ts.load();
+                if(is_txn_id(current_head_ts)){
+                    uint64_t status = 0;
+                    if(txn_tables->get_status(current_head_ts,status)){
+                        if(status!=IN_PROGRESS&&status!=ABORT){
+                            update_previous_delta_invalidate_ts(current_head_delta->toID,current_head_delta->previous_offset,status);
+                            if(current_head_delta->lazy_update(current_head_ts,status)){
+                                record_lazy_update_record(lazy_update_map_ptr,current_head_ts);
+                            }
 #if EDGE_DELTA_TEST
-                        if(current_head_delta->creation_ts!=status){
-                            throw LazyUpdateException();
-                        }
+                            if(current_head_delta->creation_ts!=status){
+                                throw LazyUpdateException();
+                            }
 #endif
-                        if(status<=txn_read_ts){
-                            if(target_chain_index_entry.try_set_lock(latest_delta_chain_head_offset)){
-                                return Delta_Chain_Lock_Response::SUCCESS;
+                            if(status<=txn_read_ts){
+                                if(target_chain_index_entry.try_set_lock(latest_delta_chain_head_offset)){
+                                    return Delta_Chain_Lock_Response::SUCCESS;
+                                }else{
+                                    return Delta_Chain_Lock_Response::CONFLICT;
+                                }
                             }else{
                                 return Delta_Chain_Lock_Response::CONFLICT;
                             }
+                        }else if(status==IN_PROGRESS){
+                            return Delta_Chain_Lock_Response::CONFLICT;
+                        }else{
+#if EDGE_DELTA_TEST
+                            if(current_head_delta->creation_ts!=ABORT){
+                                throw EagerAbortException();
+                            }
+#endif
+                            return Delta_Chain_Lock_Response::UNCLEAR;//is concurrently eager aborted, so retry the get protection
+                        }
+                    }else{
+                        return Delta_Chain_Lock_Response::UNCLEAR;//the txn entry is missing, someone else did lazy update, let's retry
+                    }
+                }else if(current_head_ts!=ABORT){
+                    if(current_head_ts<=txn_read_ts){
+                        if(target_chain_index_entry.try_set_lock(latest_delta_chain_head_offset)){
+                            return Delta_Chain_Lock_Response::SUCCESS;
                         }else{
                             return Delta_Chain_Lock_Response::CONFLICT;
                         }
-                    }else if(status==IN_PROGRESS){
-                        return Delta_Chain_Lock_Response::CONFLICT;
                     }else{
-#if EDGE_DELTA_TEST
-                        if(current_head_delta->creation_ts!=ABORT){
-                            throw EagerAbortException();
-                        }
-#endif
-                        return Delta_Chain_Lock_Response::UNCLEAR;//is concurrently eager aborted, so retry the get protection
+                        return Delta_Chain_Lock_Response::CONFLICT;
                     }
                 }else{
-                    return Delta_Chain_Lock_Response::UNCLEAR;//the txn entry is missing, someone else did lazy update, let's retry
+                    //todo: abort should happen after the restore? so txn will never observe unlocked offset to abort deltas
+                    throw EagerAbortException();
+                    //delta chain head failed during validation, so we need to retry
+                    //return Delta_Chain_Lock_Response::UNCLEAR;
                 }
-            }else if(current_head_ts!=ABORT){
-                if(current_head_ts<=txn_read_ts){
-                    if(target_chain_index_entry.try_set_lock(latest_delta_chain_head_offset)){
-                        return Delta_Chain_Lock_Response::SUCCESS;
-                    }else{
-                        return Delta_Chain_Lock_Response::CONFLICT;
-                    }
+            }else{
+                if(target_chain_index_entry.try_set_lock(latest_delta_chain_head_offset)){
+                    return Delta_Chain_Lock_Response::SUCCESS;
                 }else{
                     return Delta_Chain_Lock_Response::CONFLICT;
                 }
-            }else{
-                //delta chain head failed during validation, so we need to retry
-                return Delta_Chain_Lock_Response::UNCLEAR;
             }
         }
         Delta_Chain_Lock_Response simple_set_protection(vertex_t vid,std::unordered_map<uint64_t, int32_t>* lazy_update_map_ptr, uint64_t txn_read_ts ){
@@ -608,13 +623,16 @@ namespace bwgraph{
             edgeDelta->valid.store(true);
             if(previous_delta_offset){
                 edgeDelta->previous_offset = previous_delta_offset;
+#if LAZY_LOCKING
                 BaseEdgeDelta* previous_edge_delta = (get_edge_delta(previous_delta_offset));
 #if EDGE_DELTA_TEST
                 if(get_delta_chain_id(toID)!= get_delta_chain_id(previous_edge_delta->toID)){
                     throw DeltaChainCorruptionException();
                 }
-#endif
+#endif// EDGE_DELTA_TEST
+
                 previous_edge_delta->is_last_delta=false;
+#endif//LAZY_LOCKING
             }
             return;
         }
@@ -659,13 +677,15 @@ namespace bwgraph{
             edgeDelta->valid.store(true);
             if(previous_delta_offset){
                 edgeDelta->previous_offset = previous_delta_offset;
+#if LAZY_LOCKING
                 BaseEdgeDelta* previous_edge_delta = (get_edge_delta(previous_delta_offset));
 #if EDGE_DELTA_TEST
                 if(get_delta_chain_id(toID)!= get_delta_chain_id(previous_edge_delta->toID)){
                     throw DeltaChainCorruptionException();
                 }
-#endif
+#endif //EDGE_DELTA_TEST
                 previous_edge_delta->is_last_delta=false;
+#endif //LAZY_LOCKING
             }
             return std::pair<EdgeDeltaInstallResult,uint32_t>(EdgeDeltaInstallResult::SUCCESS,newEntryOffset);
         }

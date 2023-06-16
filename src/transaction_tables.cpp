@@ -35,10 +35,12 @@ namespace bwgraph{
                             if(status!=ABORT){
                                 current_edge_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
                                 if(current_delta->lazy_update(original_ts,status)){
-                                    record_lazy_update_record(&lazy_update_records,original_ts);
+#if LAZY_LOCKING
                                     if(current_delta->is_last_delta){
                                         current_edge_delta_block->release_protection(current_delta->toID);
                                     }
+#endif
+                                    record_lazy_update_record(&lazy_update_records,original_ts);
                                 }
                             }
 #if EDGE_DELTA_TEST

@@ -146,7 +146,12 @@ namespace bwgraph {
     };
     class CommitException: public std::exception{
         virtual const char *what() const throw() {
-            return "group commit observes anmalies";
+            return "group commit observes anomolies";
+        }
+    };
+    class VertexCreationException: public std::exception{
+        virtual const char *what() const throw() {
+            return "trying to create a delta at an already-allocated entry";
         }
     };
 }

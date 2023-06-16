@@ -57,7 +57,7 @@ namespace bwgraph{
                         if(!current_delta_chain_head->valid){
                             throw DeltaChainCorruptionException();
                         }
-#endif
+#endif//endif EDGE_DELTA_TEST
                         uint64_t current_delta_chain_head_ts = current_delta_chain_head->creation_ts.load();
                         //because lock and offset are bind together
 #if EDGE_DELTA_TEST
@@ -85,7 +85,44 @@ namespace bwgraph{
             //reconstruct offsets
             return true;
         }
-
+        //for simple protocol
+        bool reclaim_delta_chain_lock(EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry, uint64_t txn_id, uint64_t txn_read_ts, uint64_t current_block_offset, lazy_update_map* lazy_update_records){
+            delta_chain_num = current_block->get_delta_chain_num();//todo: check if we can update delta chain num directly in place
+            std::set<delta_chain_id_t> to_reclaim_locks;//use set because we want a deterministic order of reclaiming locks
+            already_updated_delta_chain_head_offsets.clear();
+            block_version_num = current_label_entry->block_version_number.load();
+            for(auto it = already_modified_edges.begin();it!=already_modified_edges.end();it++){
+                delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(*it,delta_chain_num);
+                to_reclaim_locks.emplace(delta_chain_id);
+                already_updated_delta_chain_head_offsets.try_emplace(delta_chain_id,0);//initialize entries
+            }
+            //our new solution: reclaim offsets first
+            reconstruct_offsets(current_block,txn_id,current_block_offset);
+            std::set<delta_chain_id_t> already_reclaimed_locks;
+            bool to_abort = false;
+            for(auto it = to_reclaim_locks.begin();it!=to_reclaim_locks.end();){
+                auto lock_result = current_block->simple_set_protection_on_delta_chain(*it,lazy_update_records,txn_read_ts);
+                if(lock_result==Delta_Chain_Lock_Response::SUCCESS){
+                    //even timestamp is matching
+                    already_reclaimed_locks.emplace(*it);
+                    it++;
+                }else if(lock_result==Delta_Chain_Lock_Response::CONFLICT){
+                    to_abort = true;
+                    break;
+                }else{//lock_result == UNCLEAR
+                    //do nothing, retry
+                }
+            }
+            if(to_abort){
+                for(auto it = already_reclaimed_locks.begin();it!=already_reclaimed_locks.end();it++){
+                    // current_block->release_protection(it);
+                    current_block->release_protection_delta_chain(*it);
+                }
+                return false;
+            }
+            //reconstruct offsets
+            return true;
+        }
         //reconstruct all private transaction delta chain heads: assume we already computed which delta chains need to be reclaimed, delta chain num is also updated
         void reconstruct_offsets(EdgeDeltaBlockHeader* current_block, uint64_t txn_id, uint64_t current_block_offset){
             size_t delta_chains_to_reclaim_num = already_updated_delta_chain_head_offsets.size();//the total number of delta chains we want to reclaim
@@ -314,7 +351,9 @@ namespace bwgraph{
             thread_id = get_threadID(local_txn_id);
         }
         //transaction graph write operations
+        //for edge creation and update
         Txn_Operation_Response put_edge(vertex_t src, vertex_t dst, label_t label, std::string_view edge_data);
+        Txn_Operation_Response delete_edge(vertex_t src, vertex_t dst, label_t label);
         vertex_t create_vertex();
         Txn_Operation_Response update_vertex(vertex_t src, std::string_view vertex_data);
         //Txn_Operation_Response delete_vertex(vertex_t src);
@@ -332,6 +371,7 @@ namespace bwgraph{
         void consolidation(BwLabelEntry* current_label_entry, EdgeDeltaBlockHeader* current_block, uint64_t block_id);
         //validation delta chain writes before commit
         bool validation();
+        bool simple_validation();
         //eagerly abort my deltas. If a transaction validated for a block, then the block enters Installation phase, this txn will not eager abort for that block.
         void eager_abort();
         //for pessimistic mode: release all locks in the current block
@@ -449,7 +489,11 @@ namespace bwgraph{
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 return ReclaimDeltaChainResult::RETRY;
             }
+#if LAZY_LOCKING
             auto reclaim_delta_chains_result = txn_offset_cache.reclaim_delta_chain_lock(current_block,current_label_entry,local_txn_id,read_timestamp,current_combined_offset);
+#else
+            auto reclaim_delta_chains_result = txn_offset_cache.reclaim_delta_chain_lock(current_block,current_label_entry,local_txn_id,read_timestamp,current_combined_offset,&lazy_update_records);
+#endif //LAZY_LOCKING
             if(!reclaim_delta_chains_result){
                 //abort my deltas and track the number
                 auto abort_delta_count = txn_offset_cache.eager_abort(current_block,current_label_entry,local_txn_id,current_combined_offset);
@@ -479,6 +523,7 @@ namespace bwgraph{
         std::unordered_map<uint64_t, BwLabelEntry*> accessed_edge_label_entry_cache;
         std::unordered_set<vertex_t> updated_vertices;//cache the vertex deltas that the transaction has touched
         std::queue<vertex_t>& thread_local_recycled_vertices;
+        std::unordered_set<vertex_t> created_vertices;
     };
 }
 #endif //BWGRAPH_V2_BW_TRANSACTION_HPP
