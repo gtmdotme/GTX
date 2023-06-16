@@ -151,11 +151,29 @@ namespace bwgraph{
         /*
          * after a write to the delta chain, cache the most recent txn local head
          */
-        inline void cache_vid_offset(vertex_t vid, uint32_t new_offset){
+        inline void cache_vid_offset_exist(vertex_t vid, uint32_t new_offset){
             already_modified_edges.emplace(vid);
             already_updated_delta_chain_head_offsets[calculate_owner_delta_chain_id(vid,delta_chain_num)]=new_offset;
         }
-
+        /*
+         * after a write to the delta chain, cache the most recent txn local head
+         */
+        inline void cache_vid_offset_new(vertex_t vid, uint32_t new_offset){
+            already_modified_edges.emplace(vid);
+            auto result = already_updated_delta_chain_head_offsets.try_emplace(calculate_owner_delta_chain_id(vid,delta_chain_num),new_offset);
+            if(!result.second){
+                result.first->second= new_offset;
+            }
+            //already_updated_delta_chain_head_offsets[calculate_owner_delta_chain_id(vid,delta_chain_num)]=new_offset;
+        }
+        void release_protections(EdgeDeltaBlockHeader* current_block){
+            for(auto it = already_updated_delta_chain_head_offsets.begin();it!=already_updated_delta_chain_head_offsets.end();it++){
+                if(!it->second){
+                    continue;
+                }
+                current_block->release_protection_delta_chain(it->first);
+            }
+        }
         /*
          * function invoked only after protection is grabbed and offset is not overflowing
          * when possible, use the cached offset to abort. If timestamps are different, use scan to abort.
@@ -163,6 +181,7 @@ namespace bwgraph{
         int64_t eager_abort(EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry, uint64_t txn_id,uint64_t current_block_offset){
             int64_t total_abort_count=0;
             //use offset cache to eager abort
+            //I have locks must release
             if(current_label_entry->block_version_number.load()==block_version_num){
                 for(auto it = already_updated_delta_chain_head_offsets.begin();it!=already_updated_delta_chain_head_offsets.end();it++){
 #if EDGE_DELTA_TEST
@@ -198,7 +217,7 @@ namespace bwgraph{
                         current_delta = current_block->get_edge_delta(current_delta_offset);
                     }
                 }
-            }else{//use scan to abort
+            }else{//use scan to abort; I have no locks
                 uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_block_offset);
                 auto current_delta = current_block->get_edge_delta(current_delta_offset);
                 while(current_delta_offset>0){

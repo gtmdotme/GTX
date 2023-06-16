@@ -49,7 +49,7 @@ public:
         std::cout<<"test graph allocated"<<std::endl;
     }
     ~MiniBwGraph(){
-        commit_manager_worker.join();
+        //commit_manager_worker.join();
         auto& block_manager = bwGraph.get_block_manager();
         for(uint64_t i=0; i<vertex_id_range; i++){
             vertex_t vid =  i+1;
@@ -81,12 +81,12 @@ public:
                 if(!is_visible_check(placeholder_txn_id,read_ts,current_delta)){
                     throw TransactionReadException();
                 }
-                char* data = edge_delta_iterator.get_data(current_delta->data_offset);
+               /* char* data = edge_delta_iterator.get_data(current_delta->data_offset);
                 for(size_t z=0; z<current_delta->data_length; z++){
                     if(static_cast<char>(current_delta->toID%32)!=data[z]){
                         throw TransactionReadException();
                     }
-                }
+                }*/
             }
             edge_delta_iterator.close();
         }
@@ -143,6 +143,7 @@ public:
         }
         std::cout<<"txn execution finished"<<std::endl;
         bwGraph.get_commit_manager().shutdown_signal();//for all remaining transactions in the commit group to commit.
+        commit_manager_worker.join();
         //return;
         //execute a readonly txn
         cleanup_read_only_txn();
@@ -163,6 +164,7 @@ public:
             }
             for(uint64_t i=0; i<vertex_id_range; i++){
                 vertex_t vid =  i+1;
+                execute_manual_delta_block_checking(vid);
                 auto& vertex_entry = bwGraph.get_vertex_index_entry(vid);
                 auto vertex_delta = bwGraph.get_block_manager().convert<VertexDeltaHeader>(vertex_entry.vertex_delta_chain_head_ptr);
                 order_nums[vertex_delta->get_order()]++;
@@ -174,6 +176,103 @@ public:
             for(int i=0; i<40; i++){
                 std::cout<<"order "<<i<<" has "<<order_nums[i]<<" blocks"<<std::endl;
             }
+        }
+    }
+    void execute_manual_delta_block_checking(vertex_t vid){
+        auto& vertex_index_entry = bwGraph.get_vertex_index_entry(vid);
+        auto label_block = bwGraph.get_block_manager().convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
+        BwLabelEntry* current_label_entry;
+        size_t total_committed_delta_count_from_secondary_index = 0;
+        size_t total_committed_delta_count_from_pure_scan = 0;
+        if(!label_block->reader_lookup_label(1,current_label_entry)){
+            throw LabelEntryMissingException();
+        }
+        auto current_block = bwGraph.get_block_manager().convert<EdgeDeltaBlockHeader>(current_label_entry->block_ptr);
+        auto delta_chains_num = current_block->get_delta_chain_num();
+        if(delta_chains_num!= static_cast<int32_t>(current_label_entry->delta_chain_index->size())){
+            throw std::runtime_error("delta chain num mismatch");
+        }
+        std::unordered_map<vertex_t , timestamp_t>track_invalidate_ts;
+        struct pair_hash{
+            std::size_t operator()(std::pair<vertex_t , uint32_t>const & v)const{
+                return std::hash<int64_t>()(v.first)+std::hash<uint32_t>()(v.second);
+            }
+        };
+        std::unordered_set<std::pair<vertex_t ,uint32_t>,pair_hash>secondary_index_committed_entries;
+        for(size_t i=0; i<current_label_entry->delta_chain_index->size();i++){
+            uint32_t offset = current_label_entry->delta_chain_index->at(i).get_offset();
+            if(offset&LOCK_MASK){
+                throw std::runtime_error("locks should be unlocked already");
+            }
+            while(offset){
+                BaseEdgeDelta* delta = current_block->get_edge_delta(offset);
+                if(is_txn_id(delta->creation_ts.load())){
+                    throw LazyUpdateException();
+                }
+                if(delta->creation_ts==ABORT){
+                    throw LazyUpdateException();
+                }
+                if(static_cast<delta_chain_id_t>(delta->toID)%delta_chains_num!=static_cast<delta_chain_id_t>(i)){
+                    throw DeltaChainCorruptionException();
+                }
+                total_committed_delta_count_from_secondary_index++;
+                char* data = current_block->get_edge_data(delta->data_offset);
+                char to_compare = static_cast<char>(delta->toID%32);
+                for(uint32_t j=0; j<delta->data_length;j++){
+                    if(data[j]!=to_compare){
+                        throw TransactionReadException();
+                    }
+                }
+                if(!secondary_index_committed_entries.emplace(std::pair<int64_t,uint32_t>(delta->toID,offset)).second){
+                    throw new std::runtime_error("error, duplicate entry");
+                }
+                offset = delta->previous_offset;
+            }
+        }
+        size_t total_size =0;
+        uint64_t current_offsets = current_block->get_current_offset();
+        uint64_t original_data_offset = current_offsets>>32;
+        uint64_t original_delta_offset = current_offsets&SIZE2MASK;
+        uint32_t current_delta_offset = static_cast<uint32_t>(current_offsets&SIZE2MASK);
+        BaseEdgeDelta* current_delta = current_block->get_edge_delta(current_delta_offset);
+        while(current_delta_offset){
+            total_size+=current_delta->data_length+ENTRY_DELTA_SIZE;
+            if(is_txn_id((current_delta->creation_ts.load()))){
+                throw LazyUpdateException();
+            }else if(current_delta->creation_ts!=ABORT){
+                if(!secondary_index_committed_entries.count(std::pair<vertex_t, uint32_t>(current_delta->toID,current_delta_offset))){
+                    throw std::runtime_error("found an entry not captured by the delta chains");
+                }
+                if(track_invalidate_ts.count(current_delta->toID)){
+                    if(current_delta->invalidate_ts!=track_invalidate_ts.at(current_delta->toID)){
+                        throw std::runtime_error("invalidation ts mismatch");
+                    }
+                    track_invalidate_ts.insert_or_assign(current_delta->toID, current_delta->creation_ts.load());
+                }else{
+                    if(current_delta->invalidate_ts!=0){
+                        throw std::runtime_error("invalidation ts mismatch");
+                    }
+                    if(!track_invalidate_ts.try_emplace(current_delta->toID,current_delta->creation_ts.load()).second){
+                        throw std::runtime_error("should succeed");
+                    }
+                }
+                total_committed_delta_count_from_pure_scan++;
+            }
+            char* data = current_block->get_edge_data(current_delta->data_offset);
+            char to_compare = static_cast<char>(current_delta->toID%32);
+            for(uint32_t j=0; j<current_delta->data_length;j++){
+                if(data[j]!=to_compare){
+                    throw TransactionReadException();
+                }
+            }
+            current_delta++;
+            current_delta_offset-=ENTRY_DELTA_SIZE;
+        }
+        if(original_data_offset+original_delta_offset!=total_size){
+            throw new std::runtime_error("error, the offset did not correctly represent the delta allocation");
+        }
+        if(total_committed_delta_count_from_pure_scan!=total_committed_delta_count_from_secondary_index){
+            throw new std::runtime_error("error, secondary index does not contain all committed deltas");
         }
     }
     void thread_execute_edge_txn_operation(uint8_t thread_id){
