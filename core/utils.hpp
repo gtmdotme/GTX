@@ -2,8 +2,8 @@
 // Created by zhou822 on 5/22/23.
 //
 
-#ifndef BWGRAPH_V2_UTILS_HPP
-#define BWGRAPH_V2_UTILS_HPP
+//#ifndef BWGRAPH_V2_UTILS_HPP
+//#define BWGRAPH_V2_UTILS_HPP
 #pragma once
 
 #include <string>
@@ -65,4 +65,4 @@ namespace bwgraph{
         return static_cast<uint64_t>(delta_offset)+ (static_cast<uint64_t>(data_offset)<<32);
     }
 }
-#endif //BWGRAPH_V2_UTILS_HPP
+//#endif //BWGRAPH_V2_UTILS_HPP

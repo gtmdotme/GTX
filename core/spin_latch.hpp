@@ -2,9 +2,9 @@
 // Created by zhou822 on 5/28/23.
 //
 //reference:: https://rigtorp.se/spinlock/
-#ifndef BWGRAPH_V2_SPIN_LATCH_HPP
-#define BWGRAPH_V2_SPIN_LATCH_HPP
-
+//#ifndef BWGRAPH_V2_SPIN_LATCH_HPP
+//#define BWGRAPH_V2_SPIN_LATCH_HPP
+#pragma once
 #include <atomic>
 
 namespace bwgraph{
@@ -38,4 +38,4 @@ namespace bwgraph{
         }
     };
 }
-#endif //BWGRAPH_V2_SPIN_LATCH_HPP
+//#endif //BWGRAPH_V2_SPIN_LATCH_HPP

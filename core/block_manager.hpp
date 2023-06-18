@@ -2,8 +2,8 @@
 // Created by zhou822 on 5/22/23.
 //
 
-#ifndef BWGRAPH_V2_BLOCK_MANAGER_HPP
-#define BWGRAPH_V2_BLOCK_MANAGER_HPP
+//#ifndef BWGRAPH_V2_BLOCK_MANAGER_HPP
+//#define BWGRAPH_V2_BLOCK_MANAGER_HPP
 #pragma once
 //adopted from https://github.com/thu-pacman/LiveGraph
 #include <atomic>
@@ -201,4 +201,4 @@ namespace bwgraph
         }
     };*/
 }//namespace bwgraph
-#endif //BWGRAPH_V2_BLOCK_MANAGER_HPP
+//#endif //BWGRAPH_V2_BLOCK_MANAGER_HPP

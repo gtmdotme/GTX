@@ -14,12 +14,21 @@ using namespace bwgraph;
         label_block->deallocate_all_delta_chains_indices();
     }
 }*/
-/*ROTransaction BwGraph::begin_read_only_transaction() {
+
+ROTransaction BwGraph::begin_read_only_transaction() {
     auto read_ts = commit_manager.get_current_read_ts();
-    std::thread::id this_id = std::this_thread::get_id();
-    //auto worker_thread_id = static_cast<uint8_t>(this_id%worker_thread_num);
-    ROTransaction transaction();
+    uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
+    block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
+    return ROTransaction(*this,read_ts,txn_tables,block_manager,garbage_queues[worker_thread_id],block_access_ts_table,worker_thread_id);
+
 }
+
 RWTransaction BwGraph::begin_read_write_transaction() {
-    return RWTransaction();
-}*/
+    auto read_ts = commit_manager.get_current_read_ts();
+    uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
+    auto txn_id = txn_tables.get_table(worker_thread_id).generate_txn_id();
+    auto txn_entry =  txn_tables.get_table(worker_thread_id).put_entry(txn_id);
+    block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
+    return RWTransaction(*this,txn_id,read_ts,txn_entry,txn_tables,commit_manager,block_manager,garbage_queues[worker_thread_id],block_access_ts_table,recycled_vids[worker_thread_id]);
+}
+

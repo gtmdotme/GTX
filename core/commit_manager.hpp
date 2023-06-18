@@ -1,9 +1,9 @@
 //
 // Created by zhou822 on 5/28/23.
 //
-
-#ifndef BWGRAPH_V2_COMMIT_MANAGER_HPP
-#define BWGRAPH_V2_COMMIT_MANAGER_HPP
+#pragma once
+//#ifndef BWGRAPH_V2_COMMIT_MANAGER_HPP
+//#define BWGRAPH_V2_COMMIT_MANAGER_HPP
 #include "spin_latch.hpp"
 #include <queue>
 #include "graph_global.hpp"
@@ -119,4 +119,4 @@ namespace bwgraph{
     };
     using CommitManager = ConcurrentArrayCommitManager;
 }
-#endif //BWGRAPH_V2_COMMIT_MANAGER_HPP
+//#endif //BWGRAPH_V2_COMMIT_MANAGER_HPP

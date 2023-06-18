@@ -1,9 +1,9 @@
 //
 // Created by zhou822 on 5/27/23.
 //
-
-#ifndef BWGRAPH_V2_BW_INDEX_HPP
-#define BWGRAPH_V2_BW_INDEX_HPP
+#pragma once
+//#ifndef BWGRAPH_V2_BW_INDEX_HPP
+//#define BWGRAPH_V2_BW_INDEX_HPP
 
 #include "types.hpp"
 #include "block.hpp"
@@ -113,4 +113,4 @@ namespace bwgraph {
         BlockManager& block_manager;
     };
 }
-#endif //BWGRAPH_V2_BW_INDEX_HPP
+//#endif //BWGRAPH_V2_BW_INDEX_HPP

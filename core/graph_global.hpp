@@ -1,8 +1,8 @@
 //
 // Created by zhou822 on 5/23/23.
 //
-
-#ifndef BWGRAPH_V2_GRAPH_GLOBAL_HPP
+#pragma once
+//#ifndef BWGRAPH_V2_GRAPH_GLOBAL_HPP
 #define BWGRAPH_V2_GRAPH_GLOBAL_HPP
 //system-wise worker thread count
 /*#ifndef WORKER_THREAD_NUM
@@ -28,5 +28,6 @@ constexpr uint32_t per_thread_table_size = 32;
 #define USING_WAL false
 #define USING_PESSIMISTIC_MODE true
 constexpr uint64_t placeholder_txn_id = 0x80FFFFFFFFFFFFFF;//all commit ts is greater than 0, and initial
+constexpr uint64_t tombstone_vid = 0xFFFFFFFFFFFFFFFF;
 #define COMMIT_TEST true
-#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP
+//#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

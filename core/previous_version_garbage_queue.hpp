@@ -1,9 +1,9 @@
 //
 // Created by zhou822 on 5/28/23.
 //
-
-#ifndef BWGRAPH_V2_PREVIOUS_VERSION_GARBAGE_QUEUE_HPP
-#define BWGRAPH_V2_PREVIOUS_VERSION_GARBAGE_QUEUE_HPP
+#pragma once
+//#ifndef BWGRAPH_V2_PREVIOUS_VERSION_GARBAGE_QUEUE_HPP
+//#define BWGRAPH_V2_PREVIOUS_VERSION_GARBAGE_QUEUE_HPP
 #include "types.hpp"
 #include "block_manager.hpp"
 #include <queue>
@@ -57,4 +57,4 @@ namespace bwgraph{
         BlockManager* block_manager;
     };
 }
-#endif //BWGRAPH_V2_PREVIOUS_VERSION_GARBAGE_QUEUE_HPP
+//#endif //BWGRAPH_V2_PREVIOUS_VERSION_GARBAGE_QUEUE_HPP

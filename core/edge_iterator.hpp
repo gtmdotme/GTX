@@ -2,9 +2,9 @@
 // Created by zhou822 on 5/29/23.
 //
 
-#ifndef BWGRAPH_V2_EDGE_ITERATOR_HPP
-#define BWGRAPH_V2_EDGE_ITERATOR_HPP
-
+//#ifndef BWGRAPH_V2_EDGE_ITERATOR_HPP
+//#define BWGRAPH_V2_EDGE_ITERATOR_HPP
+#pragma once
 #include "block.hpp"
 #include "bwgraph.hpp"
 //#include "block_access_ts_table.hpp"
@@ -53,7 +53,7 @@ namespace bwgraph {
                 throw EdgeIteratorNoBlockToReadException();
             }
         }
-        BaseEdgeDelta *next() {
+        BaseEdgeDelta *next_delta() {
             //keep scanning the current block with lazy update, when the current block is exhausted, set "read_current_block" to false and move on
             if(read_current_block){
                 //scan the current block, return pointers as appropriate, then maybe switch to the previous block
@@ -133,9 +133,104 @@ namespace bwgraph {
              }
             return nullptr;
         }
-        char* get_data(uint32_t offset){
+        inline char* get_data(uint32_t offset){
             return current_delta_block->get_edge_data(offset);
         }
+  /*      void next(){
+            current_visible_delta = nullptr;
+            //keep scanning the current block with lazy update, when the current block is exhausted, set "read_current_block" to false and move on
+            if(read_current_block){
+                //scan the current block, return pointers as appropriate, then maybe switch to the previous block
+                while(current_delta_offset>0){
+                    if(!current_delta->valid){
+                        current_delta_offset-=ENTRY_DELTA_SIZE;
+                        current_delta++;
+                        continue;
+                    }
+                    uint64_t original_ts = current_delta->creation_ts.load();
+#if EDGE_DELTA_TEST
+                    if(!original_ts){
+                        throw LazyUpdateException();
+                    }
+#endif
+                    if(is_txn_id(original_ts)){
+                        uint64_t status=0;
+                        if(txn_tables->get_status(original_ts,status)){
+                            if(status == IN_PROGRESS){
+                                current_delta_offset-=ENTRY_DELTA_SIZE;
+                                current_delta++;
+                                continue;
+                            }else{
+                                if(status!=ABORT){
+                                    current_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
+                                    if(current_delta->lazy_update(original_ts,status)){
+#if LAZY_LOCKING
+                                        if(current_delta->is_last_delta.load()){
+                                            current_delta_block-> release_protection(current_delta->toID);
+                                        }
+#endif
+                                        //record lazy update
+                                        record_lazy_update_record(txn_lazy_update_records,original_ts);
+                                    }
+                                }
+#if EDGE_DELTA_TEST
+                                if(current_delta->creation_ts!=status){
+                                    throw LazyUpdateException();
+                                }
+#endif
+                            }
+                        }
+                    }
+                    if(current_delta->creation_ts.load()==txn_id){
+                        current_delta_offset-=  ENTRY_DELTA_SIZE;
+                        current_visible_delta= current_delta++;
+                        return;
+                    }
+                    if((current_delta->creation_ts.load()<=txn_read_ts)&&(current_delta->invalidate_ts.load()==0||current_delta->invalidate_ts.load()>txn_read_ts)){
+                        current_delta_offset-=  ENTRY_DELTA_SIZE;
+                        current_visible_delta = current_delta++;
+                        return;
+                    }
+                    current_delta_offset-=ENTRY_DELTA_SIZE;
+                    current_delta++;
+                }
+                read_current_block=false;
+                while(txn_read_ts<current_delta_block->get_creation_time()){
+                    if(current_delta_block->get_previous_ptr()){
+                        current_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_delta_block->get_previous_ptr());
+                    }else{
+                        throw EdgeIteratorNoBlockToReadException();
+                    }
+                }
+                auto previous_block_offset = current_delta_block->get_current_offset();
+                current_delta_offset = static_cast<uint32_t>(previous_block_offset&SIZE2MASK);
+                current_delta = current_delta_block->get_edge_delta(current_delta_offset);
+            }
+            if((!read_current_block)&&read_previous_block){
+                while(current_delta_offset>0){
+                    //abort deltas will always have larger creation ts than any read ts
+                    if(current_delta->creation_ts.load()<=txn_read_ts&&(current_delta->invalidate_ts==0||current_delta->invalidate_ts>txn_read_ts)){
+                        current_delta_offset-=  ENTRY_DELTA_SIZE;
+                        current_visible_delta= current_delta++;
+                        return;
+                    }
+                    current_delta_offset-=ENTRY_DELTA_SIZE;
+                    current_delta++;
+                }
+            }
+        }
+
+        inline bool valid(){
+            return(!current_delta_offset);
+        }
+        inline std::string_view get_data(){
+            if(current_visible_delta)
+                return std::string_view ( current_delta_block->get_edge_data(current_visible_delta->data_offset),current_visible_delta->data_length);
+            else
+                return std::string_view ();
+        }
+        //for test
+        inline BaseEdgeDelta* get_current_visible_delta(){return current_visible_delta;}*/
     private:
         EdgeDeltaBlockHeader *current_delta_block;
         timestamp_t txn_read_ts;
@@ -145,6 +240,7 @@ namespace bwgraph {
         bool read_current_block = false;
         bool read_previous_block = false;
         BaseEdgeDelta* current_delta = nullptr;
+        //BaseEdgeDelta* current_visible_delta = nullptr;
         TxnTables* txn_tables;
         BlockManager* block_manager;
         lazy_update_map* txn_lazy_update_records;
@@ -152,4 +248,4 @@ namespace bwgraph {
     };
 
 }
-#endif //BWGRAPH_V2_EDGE_ITERATOR_HPP
+//#endif //BWGRAPH_V2_EDGE_ITERATOR_HPP

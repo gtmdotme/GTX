@@ -1,10 +1,9 @@
 //
 // Created by zhou822 on 5/22/23.
 //
-
-#ifndef BWGRAPH_V2_TYPES_HPP
-#define BWGRAPH_V2_TYPES_HPP
 #pragma once
+//#ifndef BWGRAPH_V2_TYPES_HPP
+//#define BWGRAPH_V2_TYPES_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -72,4 +71,4 @@ namespace bwgraph
         FAIL
     };
 }
-#endif //BWGRAPH_V2_TYPES_HPP
+//#endif //BWGRAPH_V2_TYPES_HPP

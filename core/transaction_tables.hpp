@@ -1,9 +1,9 @@
 //
 // Created by zhou822 on 5/23/23.
 //
-
-#ifndef BWGRAPH_V2_TRANSACTION_TABLES_HPP
-#define BWGRAPH_V2_TRANSACTION_TABLES_HPP
+#pragma once
+//#ifndef BWGRAPH_V2_TRANSACTION_TABLES_HPP
+//#define BWGRAPH_V2_TRANSACTION_TABLES_HPP
 
 #include <cstdint>
 #include <atomic>
@@ -408,4 +408,4 @@ namespace bwgraph {
 
 }//namespace bwgraph
 
-#endif //BWGRAPH_V2_TRANSACTION_TABLES_HPP
+//#endif //BWGRAPH_V2_TRANSACTION_TABLES_HPP

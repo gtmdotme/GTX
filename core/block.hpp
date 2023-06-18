@@ -2,8 +2,9 @@
 // Created by zhou822 on 5/22/23.
 //
 
-#ifndef BWGRAPH_V2_BLOCK_HPP
-#define BWGRAPH_V2_BLOCK_HPP
+//#ifndef BWGRAPH_V2_BLOCK_HPP
+//#define BWGRAPH_V2_BLOCK_HPP
+#pragma once
 #include <atomic>
 #include <cassert>
 #include <cstddef>
@@ -766,4 +767,4 @@ namespace bwgraph{
     static_assert(sizeof(EdgeDeltaBlockHeader)==64);
     static_assert(sizeof(VertexDeltaHeader)==32);
 }
-#endif //BWGRAPH_V2_BLOCK_HPP
+//#endif //BWGRAPH_V2_BLOCK_HPP

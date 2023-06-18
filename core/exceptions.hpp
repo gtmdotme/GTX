@@ -2,9 +2,9 @@
 // Created by zhou822 on 5/22/23.
 //
 
-#ifndef BWGRAPH_V2_EXCEPTIONS_HPP
-#define BWGRAPH_V2_EXCEPTIONS_HPP
-
+//#ifndef BWGRAPH_V2_EXCEPTIONS_HPP
+//#define BWGRAPH_V2_EXCEPTIONS_HPP
+#pragma once
 #include <iostream>
 #include <exception>
 
@@ -155,4 +155,4 @@ namespace bwgraph {
         }
     };
 }
-#endif //BWGRAPH_V2_EXCEPTIONS_HPP
+//#endif //BWGRAPH_V2_EXCEPTIONS_HPP

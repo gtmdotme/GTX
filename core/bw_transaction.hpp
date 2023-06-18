@@ -1,9 +1,9 @@
 //
 // Created by zhou822 on 5/28/23.
 //
-
-#ifndef BWGRAPH_V2_BW_TRANSACTION_HPP
-#define BWGRAPH_V2_BW_TRANSACTION_HPP
+#pragma once
+//#ifndef BWGRAPH_V2_BW_TRANSACTION_HPP
+//#define BWGRAPH_V2_BW_TRANSACTION_HPP
 
 //#include <unordered_set>
 //#include <map>
@@ -295,6 +295,8 @@ namespace bwgraph{
     public:
         ROTransaction(BwGraph& source_graph,timestamp_t input_ts,TxnTables& input_txn_tables, BlockManager& input_block_manager, GarbageBlockQueue& input_garbage_queue, BlockAccessTimestampTable& input_block_ts_table, uint8_t input_thread_id):graph(source_graph),read_timestamp(input_ts),txn_tables(input_txn_tables),
         block_manager(input_block_manager),per_thread_garbage_queue(input_garbage_queue),block_access_ts_table(input_block_ts_table), thread_id(input_thread_id){}
+        ROTransaction(ROTransaction&& other):graph(other.graph),read_timestamp(other.read_timestamp),txn_tables(other.txn_tables),
+                                             block_manager(other.block_manager),per_thread_garbage_queue(other.per_thread_garbage_queue),block_access_ts_table(other.block_access_ts_table), thread_id(other.thread_id){}
         std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label);
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label);
         std::string_view get_vertex(vertex_t src);
@@ -349,6 +351,10 @@ namespace bwgraph{
         RWTransaction(BwGraph& source_graph,uint64_t input_txn_id, timestamp_t input_ts, entry_ptr input_txn_ptr, TxnTables& input_txn_tables, CommitManager& input_commit_manager,  BlockManager& input_block_manager,GarbageBlockQueue& input_garbage_queue, BlockAccessTimestampTable& input_bts_table,std::queue<vertex_t>& input_thread_local_recycled_vertices):graph(source_graph),  local_txn_id(input_txn_id),read_timestamp(input_ts),
         self_entry(input_txn_ptr),txn_tables(input_txn_tables),commit_manager(input_commit_manager), block_manager(input_block_manager),per_thread_garbage_queue(input_garbage_queue), block_access_ts_table(input_bts_table),thread_local_recycled_vertices(input_thread_local_recycled_vertices){
             thread_id = get_threadID(local_txn_id);
+        }
+        RWTransaction( RWTransaction&& other):graph(other.graph),  local_txn_id(other.local_txn_id),read_timestamp(other.read_timestamp),
+                                              self_entry(other.self_entry),txn_tables(other.txn_tables),commit_manager(other.commit_manager), block_manager(other.block_manager),per_thread_garbage_queue(other.per_thread_garbage_queue), block_access_ts_table(other.block_access_ts_table),thread_local_recycled_vertices(other.thread_local_recycled_vertices){
+
         }
         //transaction graph write operations
         //for edge creation and update
@@ -526,4 +532,4 @@ namespace bwgraph{
         std::unordered_set<vertex_t> created_vertices;
     };
 }
-#endif //BWGRAPH_V2_BW_TRANSACTION_HPP
+//#endif //BWGRAPH_V2_BW_TRANSACTION_HPP

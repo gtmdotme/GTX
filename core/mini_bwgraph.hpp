@@ -1,9 +1,9 @@
 //
 // Created by zhou822 on 6/11/23.
 //
-
-#ifndef BWGRAPH_V2_MINI_BWGRAPH_HPP
-#define BWGRAPH_V2_MINI_BWGRAPH_HPP
+#pragma once
+//#ifndef BWGRAPH_V2_MINI_BWGRAPH_HPP
+//#define BWGRAPH_V2_MINI_BWGRAPH_HPP
 #include"../core/bwgraph.hpp"
 #include "../core/previous_version_garbage_queue.hpp"
 #include "../core/bw_transaction.hpp"
@@ -136,7 +136,7 @@ public:
             }
             auto& edge_delta_iterator = scan_response.second;
             BaseEdgeDelta* current_delta;
-            while((current_delta=edge_delta_iterator.next())!= nullptr){
+            while((current_delta=edge_delta_iterator.next_delta())!= nullptr){
                 if(!is_visible_check(placeholder_txn_id,read_ts,current_delta)){
                     throw TransactionReadException();
                 }
@@ -335,6 +335,7 @@ public:
         }
     }
     void thread_execute_edge_txn_operation(uint8_t thread_id){
+        thread_id = bwGraph.get_worker_thread_id();
         //stats
         size_t local_abort=0;
         size_t local_commit =0 ;
@@ -409,7 +410,7 @@ public:
                             }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
                                 auto& edge_delta_iterator = op_response.second;
                                 BaseEdgeDelta* current_delta;
-                                while((current_delta=edge_delta_iterator.next())!= nullptr){
+                                while((current_delta=edge_delta_iterator.next_delta())!= nullptr){
                                     if(!is_visible_check(txn_id,read_ts,current_delta)){
                                         throw TransactionReadException();
                                     }
@@ -475,7 +476,7 @@ public:
                     }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
                         auto& edge_delta_iterator = op_response.second;
                         BaseEdgeDelta* current_delta;
-                        while((current_delta=edge_delta_iterator.next())!= nullptr){
+                        while((current_delta=edge_delta_iterator.next_delta())!= nullptr){
                             if(current_delta->creation_ts.load()>read_ts|| (current_delta->invalidate_ts!=0&&current_delta->invalidate_ts<=read_ts)){
                                 throw TransactionReadException();
                             }
@@ -495,6 +496,7 @@ public:
         txn.commit();
     }
     void thread_execute_vertex_edge_txn_operation(uint8_t thread_id){
+        thread_id = bwGraph.get_worker_thread_id();
         //stats
         size_t local_abort=0;
         size_t local_commit =0 ;
@@ -607,7 +609,7 @@ public:
                                 }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
                                     auto& edge_delta_iterator = op_response.second;
                                     BaseEdgeDelta* current_delta;
-                                    while((current_delta=edge_delta_iterator.next())!= nullptr){
+                                    while((current_delta=edge_delta_iterator.next_delta())!= nullptr){
                                         if(!is_visible_check(txn_id,read_ts,current_delta)){
                                             throw TransactionReadException();
                                         }
@@ -670,4 +672,4 @@ private:
 };
 
 
-#endif //BWGRAPH_V2_MINI_BWGRAPH_HPP
+//#endif //BWGRAPH_V2_MINI_BWGRAPH_HPP

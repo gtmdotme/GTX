@@ -1,9 +1,9 @@
 //
 // Created by zhou822 on 6/18/23.
 //
-
-#ifndef BWGRAPH_V2_WORKER_THREAD_MANAGER_HPP
-#define BWGRAPH_V2_WORKER_THREAD_MANAGER_HPP
+#pragma once
+//#ifndef BWGRAPH_V2_WORKER_THREAD_MANAGER_HPP
+//#define BWGRAPH_V2_WORKER_THREAD_MANAGER_HPP
 //todo:: 2 versions, one use parallel hashmap, the other uses tbb
 #include "Libraries/parallel_hashmap/phmap.h"
 #include <thread>
@@ -21,18 +21,17 @@ namespace bwgraph{
     class WorkerThreadManager{
     public:
         inline uint8_t get_worker_thread_id(){
-            auto result = thread_id_map.find(std::this_thread::get_id());
-            if(result!=thread_id_map.end()){
-                return result->second;
-            }else{
-                result->second = global_thread_if_allocation.fetch_add(1);
-                return result->second;
+            uint8_t thread_id;
+            if(!thread_id_map.if_contains(std::this_thread::get_id(),[&thread_id](typename ThreadIDMap::value_type& pair){ thread_id = pair.second;})) {
+                thread_id = global_thread_id_allocation.fetch_add(1);
+                thread_id_map.try_emplace(std::this_thread::get_id(),thread_id);
             }
+            return thread_id;
         }
     private:
         ThreadIDMap thread_id_map;
-        std::atomic_uint8_t global_thread_if_allocation = 0;
+        std::atomic_uint8_t global_thread_id_allocation = 0;
     };
 }//bwgraph
 
-#endif //BWGRAPH_V2_WORKER_THREAD_MANAGER_HPP
+//#endif //BWGRAPH_V2_WORKER_THREAD_MANAGER_HPP
