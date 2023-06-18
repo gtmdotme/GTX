@@ -1,7 +1,7 @@
 //
 // Created by zhou822 on 5/28/23.
 //
-#include "commit_manager.hpp"
+#include "core/commit_manager.hpp"
 #include <random>
 namespace bwgraph{
 #if USING_WAL
@@ -75,6 +75,7 @@ namespace bwgraph{
         std::random_device rd; // obtain a random number from hardware
         std::mt19937 gen(rd());
         while(running.load()){
+            size_t commit_count =0;
             offset = offset_distribution(gen);
             uint32_t current_offset = offset;
             global_write_epoch++;
@@ -83,10 +84,15 @@ namespace bwgraph{
                 if(current_txn_entry){
                     current_txn_entry->status.store(global_write_epoch);
                     commit_array[current_offset].txn_ptr.store(nullptr);
+                    commit_count++;
                 }
                 current_offset = (current_offset+1)%worker_thread_num;
             }while(current_offset!=offset);
-            global_read_epoch.fetch_add(1);
+            if(commit_count){
+                global_read_epoch.fetch_add(1);
+            }else{
+                global_write_epoch--;
+            }
         }
         //now the stop running signal is sent
         global_write_epoch++;

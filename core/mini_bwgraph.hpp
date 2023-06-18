@@ -14,11 +14,11 @@
 using namespace bwgraph;
 constexpr vertex_t vertex_id_range = 1000000;
 constexpr vertex_t dst_id_range = 1000000;
-constexpr int32_t total_txn_count = 600000;
-constexpr int32_t op_count_range = 25;
+constexpr int32_t total_txn_count = 10000;
+constexpr int32_t op_count_range = 30;
 constexpr float write_ratio = 0.6;
 constexpr double vertex_operation_ratio = 0.1;
-constexpr bool print_block_stats = true;
+constexpr bool print_block_stats = false;
 class MiniBwGraph{
 public:
     MiniBwGraph(): bwGraph("",1ul << 36){
@@ -46,7 +46,7 @@ public:
             vertex_entry.valid.store(true);
         }
         commit_manager_worker = std::thread(&CommitManager::server_loop, &commit_manager);//start executing the commit manager
-        std::cout<<"test graph allocated"<<std::endl;
+        std::cout<<"test graph allocated with current vid as "<<vertex_index.get_current_allocated_vid()<< std::endl;
     }
     //assume initialization_thread_count can evenly divide vertex id range
     MiniBwGraph(int32_t initialization_thread_count): bwGraph("",1ul << 36){
@@ -82,7 +82,7 @@ public:
             vertex_entry.valid.store(true);
         }*/
         commit_manager_worker = std::thread(&CommitManager::server_loop, &commit_manager);//start executing the commit manager
-        std::cout<<"test graph allocated"<<std::endl;
+        std::cout<<"test graph allocated with current vid as "<<vertex_index.get_current_allocated_vid()<< std::endl;
     }
     //use multi threading to initialize the graph, test its performance.
     void setup_graph(size_t workload_size){
@@ -109,14 +109,14 @@ public:
     }
     ~MiniBwGraph(){
         //commit_manager_worker.join();
-        auto& block_manager = bwGraph.get_block_manager();
+     /*  auto& block_manager = bwGraph.get_block_manager();
         for(uint64_t i=0; i<vertex_id_range; i++){
             vertex_t vid =  i+1;
             auto& vertex_entry = bwGraph.get_vertex_index_entry(vid);
             EdgeLabelBlock* edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_entry.edge_label_block_ptr);
             auto entry = edge_label_block->writer_lookup_label(1,&bwGraph.get_txn_tables(),0);
             delete entry->delta_chain_index;
-        }
+        }*/
 
     }
     void cleanup_read_only_txn(){

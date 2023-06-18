@@ -1,11 +1,22 @@
 //
 // Created by zhou822 on 5/27/23.
 //
-#include "bw_index.hpp"
-#include "block_manager.hpp"
-#include "utils.hpp"
-#include "block.hpp"
+#include "core/bw_index.hpp"
+#include "core/block_manager.hpp"
+#include "core/utils.hpp"
+#include "core/block.hpp"
 namespace bwgraph{
+    void EdgeLabelBlock::deallocate_all_delta_chains_indices() {
+        uint8_t current_offset = offset.load();
+        for(uint8_t i=0; i<current_offset;i++){
+            if(label_entries[i].delta_chain_index)
+                delete label_entries[i].delta_chain_index;
+        }
+        if(next_ptr){
+            EdgeLabelBlock* next_block = block_manager->convert<EdgeLabelBlock>(next_ptr);
+            next_block->deallocate_all_delta_chains_indices();
+        }
+    }
     bool EdgeLabelBlock::reader_lookup_label(bwgraph::label_t target_label, bwgraph::BwLabelEntry *&target_entry) {
         uint8_t current_offset=0;
         do{

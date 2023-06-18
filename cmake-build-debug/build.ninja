@@ -84,42 +84,42 @@ build cmake_object_order_depends_target_bwgraph_lib: phony || CMakeFiles/bwgraph
 build CMakeFiles/bwgraph_lib.dir/src/block.cpp.o: CXX_COMPILER__bwgraph_lib_Debug /home/zhou822/BwGraph_v2/src/block.cpp || cmake_object_order_depends_target_bwgraph_lib
   DEP_FILE = CMakeFiles/bwgraph_lib.dir/src/block.cpp.o.d
   FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
-  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core
+  INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph_lib.dir/src
 
 build CMakeFiles/bwgraph_lib.dir/src/transaction_tables.cpp.o: CXX_COMPILER__bwgraph_lib_Debug /home/zhou822/BwGraph_v2/src/transaction_tables.cpp || cmake_object_order_depends_target_bwgraph_lib
   DEP_FILE = CMakeFiles/bwgraph_lib.dir/src/transaction_tables.cpp.o.d
   FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
-  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core
+  INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph_lib.dir/src
 
 build CMakeFiles/bwgraph_lib.dir/src/bw_index.cpp.o: CXX_COMPILER__bwgraph_lib_Debug /home/zhou822/BwGraph_v2/src/bw_index.cpp || cmake_object_order_depends_target_bwgraph_lib
   DEP_FILE = CMakeFiles/bwgraph_lib.dir/src/bw_index.cpp.o.d
   FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
-  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core
+  INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph_lib.dir/src
 
 build CMakeFiles/bwgraph_lib.dir/src/commit_manager.cpp.o: CXX_COMPILER__bwgraph_lib_Debug /home/zhou822/BwGraph_v2/src/commit_manager.cpp || cmake_object_order_depends_target_bwgraph_lib
   DEP_FILE = CMakeFiles/bwgraph_lib.dir/src/commit_manager.cpp.o.d
   FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
-  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core
+  INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph_lib.dir/src
 
 build CMakeFiles/bwgraph_lib.dir/src/bwgraph.cpp.o: CXX_COMPILER__bwgraph_lib_Debug /home/zhou822/BwGraph_v2/src/bwgraph.cpp || cmake_object_order_depends_target_bwgraph_lib
   DEP_FILE = CMakeFiles/bwgraph_lib.dir/src/bwgraph.cpp.o.d
   FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
-  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core
+  INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph_lib.dir/src
 
 build CMakeFiles/bwgraph_lib.dir/src/bw_transaction.cpp.o: CXX_COMPILER__bwgraph_lib_Debug /home/zhou822/BwGraph_v2/src/bw_transaction.cpp || cmake_object_order_depends_target_bwgraph_lib
   DEP_FILE = CMakeFiles/bwgraph_lib.dir/src/bw_transaction.cpp.o.d
   FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
-  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core
+  INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph_lib.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph_lib.dir/src
 
@@ -140,6 +140,90 @@ build libbwgraph_lib.a: CXX_STATIC_LIBRARY_LINKER__bwgraph_lib_Debug CMakeFiles/
   TARGET_PDB = bwgraph_lib.a.dbg
 
 # =============================================================================
+# Object build statements for SHARED_LIBRARY target bwgraph
+
+
+#############################################
+# Order-only phony target for bwgraph
+
+build cmake_object_order_depends_target_bwgraph: phony || cmake_object_order_depends_target_bwgraph_lib
+
+build CMakeFiles/bwgraph.dir/bind/bwgraph.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/bind/bwgraph.cpp || cmake_object_order_depends_target_bwgraph
+  DEFINES = -Dbwgraph_EXPORTS
+  DEP_FILE = CMakeFiles/bwgraph.dir/bind/bwgraph.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2
+  OBJECT_DIR = CMakeFiles/bwgraph.dir
+  OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/bind
+
+build CMakeFiles/bwgraph.dir/src/block.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/block.cpp || cmake_object_order_depends_target_bwgraph
+  DEFINES = -Dbwgraph_EXPORTS
+  DEP_FILE = CMakeFiles/bwgraph.dir/src/block.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2
+  OBJECT_DIR = CMakeFiles/bwgraph.dir
+  OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
+
+build CMakeFiles/bwgraph.dir/src/bw_index.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/bw_index.cpp || cmake_object_order_depends_target_bwgraph
+  DEFINES = -Dbwgraph_EXPORTS
+  DEP_FILE = CMakeFiles/bwgraph.dir/src/bw_index.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2
+  OBJECT_DIR = CMakeFiles/bwgraph.dir
+  OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
+
+build CMakeFiles/bwgraph.dir/src/bw_transaction.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/bw_transaction.cpp || cmake_object_order_depends_target_bwgraph
+  DEFINES = -Dbwgraph_EXPORTS
+  DEP_FILE = CMakeFiles/bwgraph.dir/src/bw_transaction.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2
+  OBJECT_DIR = CMakeFiles/bwgraph.dir
+  OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
+
+build CMakeFiles/bwgraph.dir/src/bwgraph.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/bwgraph.cpp || cmake_object_order_depends_target_bwgraph
+  DEFINES = -Dbwgraph_EXPORTS
+  DEP_FILE = CMakeFiles/bwgraph.dir/src/bwgraph.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2
+  OBJECT_DIR = CMakeFiles/bwgraph.dir
+  OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
+
+build CMakeFiles/bwgraph.dir/src/commit_manager.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/commit_manager.cpp || cmake_object_order_depends_target_bwgraph
+  DEFINES = -Dbwgraph_EXPORTS
+  DEP_FILE = CMakeFiles/bwgraph.dir/src/commit_manager.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2
+  OBJECT_DIR = CMakeFiles/bwgraph.dir
+  OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
+
+build CMakeFiles/bwgraph.dir/src/transaction_tables.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/transaction_tables.cpp || cmake_object_order_depends_target_bwgraph
+  DEFINES = -Dbwgraph_EXPORTS
+  DEP_FILE = CMakeFiles/bwgraph.dir/src/transaction_tables.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2
+  OBJECT_DIR = CMakeFiles/bwgraph.dir
+  OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
+
+
+# =============================================================================
+# Link build statements for SHARED_LIBRARY target bwgraph
+
+
+#############################################
+# Link the shared library libbwgraph.so
+
+build libbwgraph.so: CXX_SHARED_LIBRARY_LINKER__bwgraph_Debug CMakeFiles/bwgraph.dir/bind/bwgraph.cpp.o CMakeFiles/bwgraph.dir/src/block.cpp.o CMakeFiles/bwgraph.dir/src/bw_index.cpp.o CMakeFiles/bwgraph.dir/src/bw_transaction.cpp.o CMakeFiles/bwgraph.dir/src/bwgraph.cpp.o CMakeFiles/bwgraph.dir/src/commit_manager.cpp.o CMakeFiles/bwgraph.dir/src/transaction_tables.cpp.o | libbwgraph_lib.a || libbwgraph_lib.a
+  LANGUAGE_COMPILE_FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined
+  LINK_LIBRARIES = libbwgraph_lib.a
+  OBJECT_DIR = CMakeFiles/bwgraph.dir
+  POST_BUILD = :
+  PRE_LINK = :
+  SONAME = libbwgraph.so
+  SONAME_FLAG = -Wl,-soname,
+  TARGET_FILE = libbwgraph.so
+  TARGET_PDB = bwgraph.so.dbg
+
+# =============================================================================
 # Object build statements for EXECUTABLE target tests
 
 
@@ -152,7 +236,7 @@ build CMakeFiles/tests.dir/tests/main.cpp.o: CXX_COMPILER__tests_Debug /home/zho
   DEFINES = -DTBB_USE_DEBUG
   DEP_FILE = CMakeFiles/tests.dir/tests/main.cpp.o.d
   FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
-  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core -I/home/zhou822/BwGraph_v2/doctest -I/home/zhou822/BwGraph_v2/parallel_hashmap
+  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/doctest -I/home/zhou822/BwGraph_v2/parallel_hashmap
   OBJECT_DIR = CMakeFiles/tests.dir
   OBJECT_FILE_DIR = CMakeFiles/tests.dir/tests
 
@@ -160,7 +244,7 @@ build CMakeFiles/tests.dir/tests/bw_index.cpp.o: CXX_COMPILER__tests_Debug /home
   DEFINES = -DTBB_USE_DEBUG
   DEP_FILE = CMakeFiles/tests.dir/tests/bw_index.cpp.o.d
   FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
-  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core -I/home/zhou822/BwGraph_v2/doctest -I/home/zhou822/BwGraph_v2/parallel_hashmap
+  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/doctest -I/home/zhou822/BwGraph_v2/parallel_hashmap
   OBJECT_DIR = CMakeFiles/tests.dir
   OBJECT_FILE_DIR = CMakeFiles/tests.dir/tests
 
@@ -168,7 +252,7 @@ build CMakeFiles/tests.dir/tests/txn_tables.cpp.o: CXX_COMPILER__tests_Debug /ho
   DEFINES = -DTBB_USE_DEBUG
   DEP_FILE = CMakeFiles/tests.dir/tests/txn_tables.cpp.o.d
   FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
-  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core -I/home/zhou822/BwGraph_v2/doctest -I/home/zhou822/BwGraph_v2/parallel_hashmap
+  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/doctest -I/home/zhou822/BwGraph_v2/parallel_hashmap
   OBJECT_DIR = CMakeFiles/tests.dir
   OBJECT_FILE_DIR = CMakeFiles/tests.dir/tests
 
@@ -176,7 +260,7 @@ build CMakeFiles/tests.dir/tests/bwgraph_allocation.cpp.o: CXX_COMPILER__tests_D
   DEFINES = -DTBB_USE_DEBUG
   DEP_FILE = CMakeFiles/tests.dir/tests/bwgraph_allocation.cpp.o.d
   FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
-  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/public -I/home/zhou822/BwGraph_v2/core -I/home/zhou822/BwGraph_v2/doctest -I/home/zhou822/BwGraph_v2/parallel_hashmap
+  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/doctest -I/home/zhou822/BwGraph_v2/parallel_hashmap
   OBJECT_DIR = CMakeFiles/tests.dir
   OBJECT_FILE_DIR = CMakeFiles/tests.dir/tests
 
@@ -393,6 +477,8 @@ build doctest/install/strip: phony doctest/CMakeFiles/install/strip.util
 # =============================================================================
 # Target aliases.
 
+build bwgraph: phony libbwgraph.so
+
 build bwgraph_lib: phony libbwgraph_lib.a
 
 build doctest_with_main: phony doctest/libdoctest_with_main.a
@@ -409,7 +495,7 @@ build parallel_hashmap_lib: phony libparallel_hashmap_lib.a
 #############################################
 # Folder: /home/zhou822/BwGraph_v2/cmake-build-debug
 
-build all: phony libparallel_hashmap_lib.a libbwgraph_lib.a tests
+build all: phony libparallel_hashmap_lib.a libbwgraph_lib.a libbwgraph.so tests
 
 # =============================================================================
 
@@ -425,14 +511,14 @@ build doctest/all: phony
 #############################################
 # Re-run CMake if any of its inputs changed.
 
-build build.ninja: RERUN_CMAKE | /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/BasicConfigVersion-SameMajorVersion.cmake.in /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCXXInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCommonLanguageInclude.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeGenericSystem.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeInitializeConfigs.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeLanguageInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakePackageConfigHelpers.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeSystemSpecificInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeSystemSpecificInitialize.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU-C.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU-CXX.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/GNUInstallDirs.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU-C.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU-CXX.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/UnixPaths.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/WriteBasicConfigVersionFile.cmake /home/zhou822/BwGraph_v2/CMakeLists.txt /home/zhou822/BwGraph_v2/doctest/CMakeLists.txt /home/zhou822/BwGraph_v2/doctest/scripts/cmake/Config.cmake.in /home/zhou822/BwGraph_v2/doctest/scripts/cmake/doctest.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBConfig.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBConfigVersion.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBTargets-none.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBTargets.cmake CMakeCache.txt CMakeFiles/3.25.2/CMakeCCompiler.cmake CMakeFiles/3.25.2/CMakeCXXCompiler.cmake CMakeFiles/3.25.2/CMakeSystem.cmake
+build build.ninja: RERUN_CMAKE | /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/BasicConfigVersion-SameMajorVersion.cmake.in /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCXXInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCommonLanguageInclude.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeGenericSystem.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeInitializeConfigs.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeLanguageInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakePackageConfigHelpers.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeSystemSpecificInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeSystemSpecificInitialize.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CheckCSourceCompiles.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CheckIncludeFile.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CheckLibraryExists.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU-C.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU-CXX.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/FindPackageHandleStandardArgs.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/FindPackageMessage.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/FindThreads.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/GNUInstallDirs.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Internal/CheckSourceCompiles.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU-C.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU-CXX.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/UnixPaths.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/WriteBasicConfigVersionFile.cmake /home/zhou822/BwGraph_v2/CMakeLists.txt /home/zhou822/BwGraph_v2/doctest/CMakeLists.txt /home/zhou822/BwGraph_v2/doctest/scripts/cmake/Config.cmake.in /home/zhou822/BwGraph_v2/doctest/scripts/cmake/doctest.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBConfig.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBConfigVersion.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBTargets-none.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBTargets.cmake CMakeCache.txt CMakeFiles/3.25.2/CMakeCCompiler.cmake CMakeFiles/3.25.2/CMakeCXXCompiler.cmake CMakeFiles/3.25.2/CMakeSystem.cmake
   pool = console
 
 
 #############################################
 # A missing CMake input file is not an error.
 
-build /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/BasicConfigVersion-SameMajorVersion.cmake.in /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCXXInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCommonLanguageInclude.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeGenericSystem.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeInitializeConfigs.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeLanguageInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakePackageConfigHelpers.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeSystemSpecificInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeSystemSpecificInitialize.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU-C.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU-CXX.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/GNUInstallDirs.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU-C.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU-CXX.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/UnixPaths.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/WriteBasicConfigVersionFile.cmake /home/zhou822/BwGraph_v2/CMakeLists.txt /home/zhou822/BwGraph_v2/doctest/CMakeLists.txt /home/zhou822/BwGraph_v2/doctest/scripts/cmake/Config.cmake.in /home/zhou822/BwGraph_v2/doctest/scripts/cmake/doctest.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBConfig.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBConfigVersion.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBTargets-none.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBTargets.cmake CMakeCache.txt CMakeFiles/3.25.2/CMakeCCompiler.cmake CMakeFiles/3.25.2/CMakeCXXCompiler.cmake CMakeFiles/3.25.2/CMakeSystem.cmake: phony
+build /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/BasicConfigVersion-SameMajorVersion.cmake.in /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCXXInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeCommonLanguageInclude.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeGenericSystem.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeInitializeConfigs.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeLanguageInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakePackageConfigHelpers.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeSystemSpecificInformation.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CMakeSystemSpecificInitialize.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CheckCSourceCompiles.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CheckIncludeFile.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/CheckLibraryExists.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/CMakeCommonCompilerMacros.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU-C.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU-CXX.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Compiler/GNU.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/FindPackageHandleStandardArgs.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/FindPackageMessage.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/FindThreads.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/GNUInstallDirs.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Internal/CheckSourceCompiles.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU-C.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU-CXX.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux-GNU.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/Linux.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/Platform/UnixPaths.cmake /home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25/Modules/WriteBasicConfigVersionFile.cmake /home/zhou822/BwGraph_v2/CMakeLists.txt /home/zhou822/BwGraph_v2/doctest/CMakeLists.txt /home/zhou822/BwGraph_v2/doctest/scripts/cmake/Config.cmake.in /home/zhou822/BwGraph_v2/doctest/scripts/cmake/doctest.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBConfig.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBConfigVersion.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBTargets-none.cmake /usr/lib/x86_64-linux-gnu/cmake/TBB/TBBTargets.cmake CMakeCache.txt CMakeFiles/3.25.2/CMakeCCompiler.cmake CMakeFiles/3.25.2/CMakeCXXCompiler.cmake CMakeFiles/3.25.2/CMakeSystem.cmake: phony
 
 
 #############################################

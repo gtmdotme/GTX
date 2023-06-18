@@ -1,8 +1,8 @@
 //
 // Created by zhou822 on 5/25/23.
 //
-#include "block.hpp"
-#include "exceptions.hpp"
+#include "core/block.hpp"
+#include "core/exceptions.hpp"
 using namespace bwgraph;
 
 Delta_Chain_Lock_Response EdgeDeltaBlockHeader::lock_inheritance(vertex_t vid,

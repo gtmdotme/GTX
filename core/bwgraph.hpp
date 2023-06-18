@@ -27,8 +27,19 @@ namespace bwgraph{
             std::string wal_path = ""): block_manager(block_path,_max_block_size), vertex_index(block_manager){
     }
 #endif
-        ROTransaction begin_read_only_transaction();
-        RWTransaction begin_read_write_transaction();
+        ~BwGraph(){
+            auto max_vid = vertex_index.get_current_allocated_vid();
+            for(vertex_t vid = 1; vid<=max_vid; vid++){
+                auto& vertex_index_entry = vertex_index.get_vertex_index_entry(vid);
+                auto label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
+                label_block->deallocate_all_delta_chains_indices();
+            }
+        }
+      /*  ROTransaction begin_read_only_transaction();
+        RWTransaction begin_read_write_transaction();*/
+        inline vertex_t get_max_allocated_vid(){
+            return vertex_index.get_current_allocated_vid();
+        }
         inline VertexIndexEntry& get_vertex_index_entry(vertex_t vid){
             return vertex_index.get_vertex_index_entry(vid);
         }
@@ -44,6 +55,7 @@ namespace bwgraph{
         //CommitManager commit_manager;
         CommitManager commit_manager;
         BlockAccessTimestampTable block_access_ts_table;
+
         friend class ROTransaction;
         friend class RWTransaction;
     };

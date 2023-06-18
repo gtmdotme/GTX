@@ -3,7 +3,7 @@
 //
 #include "../core/bw_transaction.hpp"
 #include "../core/edge_delta_block_state_protection.hpp"
-#include "commit_manager.hpp"
+#include "core/commit_manager.hpp"
 using namespace bwgraph;
 //pessimistic mode
 #if USING_PESSIMISTIC_MODE
@@ -327,6 +327,10 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     auto new_order = size_to_order(new_block_size);
     auto new_block_ptr = block_manager.alloc(new_order);
     auto new_block = block_manager.convert<EdgeDeltaBlockHeader>(new_block_ptr);
+    //for debug
+  /*  if(largest_invalidation_ts){
+        std::cout<<"found"<<std::endl;
+    }*/
     new_block->fill_metadata(current_block->get_owner_id(),largest_invalidation_ts,current_label_entry->block_ptr,new_order, &txn_tables,current_label_entry->delta_chain_index);
     int32_t new_block_delta_chain_num = new_block->get_delta_chain_num();
     std::vector<AtomicDeltaOffset> new_delta_chains_index(new_block_delta_chain_num);

@@ -2,11 +2,11 @@
 // Created by zhou822 on 5/23/23.
 //
 
-#include "transaction_tables.hpp"
-#include "edge_delta_block_state_protection.hpp"
-#include "bwgraph.hpp"
-#include "exceptions.hpp"
-#include "previous_version_garbage_queue.hpp"
+#include "core/transaction_tables.hpp"
+#include "core/edge_delta_block_state_protection.hpp"
+#include "core/bwgraph.hpp"
+#include "core/exceptions.hpp"
+#include "core/previous_version_garbage_queue.hpp"
 namespace bwgraph{
     inline bool lazy_update(VertexDeltaHeader* vertex_delta, uint64_t txn_id, uint64_t status){
         return vertex_delta->lazy_update(txn_id,status);
@@ -212,7 +212,7 @@ namespace bwgraph{
             }
         }*/
         while(entry.op_count.load()){
-            if(count++==100000000){
+            if(count++==1000000000){
                 throw EagerCleanException();
             }
         }
