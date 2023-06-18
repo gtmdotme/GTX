@@ -1105,7 +1105,7 @@ std::pair<Txn_Operation_Response, std::string_view>
 ROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
-        return std::pair<Txn_Operation_Response, std::string_view>(Txn_Operation_Response::FAIL,std::string_view());
+        return std::pair<Txn_Operation_Response, std::string_view>(Txn_Operation_Response::SUCCESS,std::string_view());
     }
     auto block_id = generate_block_id(src,label);
     if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table)){

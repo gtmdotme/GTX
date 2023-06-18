@@ -49,6 +49,9 @@ EdgeDeltaIterator ROTransaction::get_edges(bg::vertex_t src, bg::label_t label) 
 void ROTransaction::commit() {txn->commit();}
 
 //read-write transactions
+
+RWTransaction::RWTransaction(std::unique_ptr<bwgraph::RWTransaction> _txn):txn(std::move(_txn)) {}
+
 vertex_t RWTransaction::new_vertex() {return txn->create_vertex();}
 
 void RWTransaction::put_vertex(bg::vertex_t vertex_id, std::string_view data) {
@@ -62,7 +65,7 @@ void RWTransaction::put_vertex(bg::vertex_t vertex_id, std::string_view data) {
 
 void RWTransaction::put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst, std::string_view edge_data) {
     while(true){
-        auto result = txn->put_edge(src,label,dst,edge_data);
+        auto result = txn->put_edge(src,dst,label,edge_data);
         if(result == bwgraph::Txn_Operation_Response::SUCCESS){
             return;
         }else if(result ==bwgraph::Txn_Operation_Response::FAIL){
@@ -73,7 +76,7 @@ void RWTransaction::put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t d
 
 void RWTransaction::delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst) {
     while(true){
-        auto result = txn->delete_edge(src,label,dst);
+        auto result = txn->delete_edge(src,dst,label);
         if(result == bwgraph::Txn_Operation_Response::SUCCESS){
             return;
         }else if(result ==bwgraph::Txn_Operation_Response::FAIL){
