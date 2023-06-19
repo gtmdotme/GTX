@@ -28,6 +28,10 @@ void Graph::commit_server_start() {
 void Graph::commit_server_shutdown() {
     graph->get_commit_manager().shutdown_signal();
 }
+
+uint8_t Graph::get_worker_thread_id() {
+    return graph->get_worker_thread_id();
+}
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}
 

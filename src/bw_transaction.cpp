@@ -943,6 +943,8 @@ vertex_t RWTransaction::create_vertex() {
     //allocate an initial label block
     vertex_index_entry.valid.store(true);
     vertex_index_entry.edge_label_block_ptr = block_manager.alloc(size_to_order(sizeof(EdgeLabelBlock)));
+    auto edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
+    edge_label_block->fill_information(new_vid,&block_manager);//allocate and fill in new initial label block
     //vertex_index.make_valid(new_vid);
     created_vertices.emplace(new_vid);
     return new_vid;

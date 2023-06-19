@@ -23,7 +23,9 @@ namespace bwgraph{
 #if USING_ARRAY_TABLE
         BwGraph(std::string block_path = "",size_t _max_block_size = 1ul << 32,
             std::string wal_path = ""): block_manager(block_path,_max_block_size), vertex_index(block_manager),txn_tables(this),garbage_queues(worker_thread_num, GarbageBlockQueue(&block_manager))/*,commit_manager(txn_tables)*/{
-
+            for(uint32_t i=0; i<worker_thread_num;i++){
+                txn_tables.get_table(i).set_garbage_queue(&garbage_queues[i]);
+            }
     }
 #else
         BwGraph(std::string block_path = "",size_t _max_block_size = 1ul << 32,

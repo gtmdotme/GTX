@@ -41,6 +41,7 @@ namespace bg {
         vertex_t get_max_allocated_vid();
         void commit_server_start();
         void commit_server_shutdown();
+        uint8_t get_worker_thread_id();
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
     };
@@ -56,14 +57,14 @@ namespace bg {
     private:
         const std::unique_ptr<bwgraph::ROTransaction> txn;
     };
+    class RollbackExcept : public std::runtime_error
+    {
+    public:
+        RollbackExcept(const std::string &what_arg) : std::runtime_error(what_arg) {}
+        RollbackExcept(const char *what_arg) : std::runtime_error(what_arg) {}
+    };
     class RWTransaction{
     public:
-        class RollbackExcept : public std::runtime_error
-        {
-        public:
-            RollbackExcept(const std::string &what_arg) : std::runtime_error(what_arg) {}
-            RollbackExcept(const char *what_arg) : std::runtime_error(what_arg) {}
-        };
         RWTransaction(std::unique_ptr<bwgraph::RWTransaction> _txn);
         ~RWTransaction();
         bool commit();
