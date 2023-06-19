@@ -934,13 +934,16 @@ vertex_t RWTransaction::create_vertex() {
         return reuse_vid;
     }
     auto new_vid = vertex_index.get_next_vid();
-#if TXN_TEST
     auto& vertex_index_entry = vertex_index.get_vertex_index_entry(new_vid);
+#if TXN_TEST
     if(vertex_index_entry.valid){
         throw VertexCreationException();
     }
 #endif
-    vertex_index.make_valid(new_vid);
+    //allocate an initial label block
+    vertex_index_entry.valid.store(true);
+    vertex_index_entry.edge_label_block_ptr = block_manager.alloc(size_to_order(sizeof(EdgeLabelBlock)));
+    //vertex_index.make_valid(new_vid);
     created_vertices.emplace(new_vid);
     return new_vid;
 }

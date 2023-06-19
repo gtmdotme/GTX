@@ -21,6 +21,13 @@ RWTransaction Graph::begin_read_write_transaction() {
 ROTransaction Graph::begin_read_only_transaction() {
     return std::make_unique<impl::ROTransaction>(graph->begin_read_only_transaction());
 }
+
+void Graph::commit_server_start() {
+    graph->get_commit_manager().server_loop();
+}
+void Graph::commit_server_shutdown() {
+    graph->get_commit_manager().shutdown_signal();
+}
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}
 

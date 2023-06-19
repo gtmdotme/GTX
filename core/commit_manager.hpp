@@ -92,7 +92,9 @@ namespace bwgraph{
     class ConcurrentArrayCommitManager{
     public:
         ConcurrentArrayCommitManager(){
-
+            for(int i=0; i<worker_thread_num;i++){
+                commit_array[i].txn_ptr = nullptr;
+            }
         }
         inline bool txn_commit(uint8_t thread_id,entry_ptr txn_entry, bool willing_to_wait){
             entry_ptr null_ptr = nullptr;

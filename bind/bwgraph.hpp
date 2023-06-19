@@ -39,6 +39,8 @@ namespace bg {
         ROTransaction begin_read_only_transaction();
         RWTransaction begin_read_write_transaction();
         vertex_t get_max_allocated_vid();
+        void commit_server_start();
+        void commit_server_shutdown();
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
     };
