@@ -35,3 +35,14 @@
 3	4830	1687134361476155573	CMakeFiles/bwgraph_lib.dir/src/bw_transaction.cpp.o	423696558c41d252
 4830	4995	1687134361648155010	libbwgraph_lib.a	6516365d74fbf997
 4995	5279	1687134361936154068	libbwgraph.so	f58194eb6e9da000
+3	1431	1687138538658257241	CMakeFiles/bwgraph_lib.dir/src/commit_manager.cpp.o	57058e6906bfe653
+2	2132	1687138539354254916	CMakeFiles/bwgraph_lib.dir/src/transaction_tables.cpp.o	cf06ab4f9c48943c
+3	2526	1687138539750253593	CMakeFiles/bwgraph_lib.dir/src/bwgraph.cpp.o	51be1d322eb6433f
+5	2790	1687138540014252712	CMakeFiles/tests.dir/tests/txn_tables.cpp.o	787a89429287e1d2
+4	3701	1687138540922249679	CMakeFiles/tests.dir/tests/bw_index.cpp.o	f537318eb390a288
+6	4163	1687138541382248143	CMakeFiles/tests.dir/tests/bwgraph_allocation.cpp.o	d4f456aa58708a98
+4	4733	1687138541950246246	CMakeFiles/bwgraph_lib.dir/src/bw_transaction.cpp.o	423696558c41d252
+4733	4867	1687138542090245778	libbwgraph_lib.a	6516365d74fbf997
+4867	5280	1687138542506244389	tests	6f4e19f49de0268c
+4867	5280	1687138542506244389	tests_tests-b858cb2.cmake	6f4e19f49de0268c
+4867	5280	1687138542506244389	/home/zhou822/BwGraph_v2/cmake-build-debug/tests_tests-b858cb2.cmake	6f4e19f49de0268c

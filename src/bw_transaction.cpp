@@ -1021,8 +1021,8 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
     order_t new_order = size_to_order(sizeof(VertexDeltaHeader)+vertex_data.size());
     auto new_delta_ptr = block_manager.alloc(new_order);
     auto new_vertex_delta = block_manager.convert<VertexDeltaHeader>(new_delta_ptr);
-    //common case, updating upon a committed previous version or null
-    if(current_vertex_delta->get_creation_ts()!=local_txn_id){
+    //common case, initial vertex version creation, no update
+    if(!current_vertex_delta_ptr){
         new_vertex_delta->fill_metadata(local_txn_id,vertex_data.size(),new_order,current_vertex_delta_ptr);
         new_vertex_delta->write_data(data);
         if(vertex_index_entry.install_vertex_delta(current_vertex_delta_ptr,new_delta_ptr)){
@@ -1034,20 +1034,35 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
             return Txn_Operation_Response::FAIL;
         }
     }else{
-        new_vertex_delta->fill_metadata(local_txn_id,vertex_data.size(),new_order,current_vertex_delta->get_previous_ptr());
-        new_vertex_delta->write_data(data);
+        //updating a vertex version
+        if(current_vertex_delta->get_creation_ts()!=local_txn_id){
+            new_vertex_delta->fill_metadata(local_txn_id,vertex_data.size(),new_order,current_vertex_delta_ptr);
+            new_vertex_delta->write_data(data);
+            if(vertex_index_entry.install_vertex_delta(current_vertex_delta_ptr,new_delta_ptr)){
+                updated_vertices.emplace(src);
+                op_count++;
+                return Txn_Operation_Response::SUCCESS;
+            }else{
+                block_manager.free(new_delta_ptr,new_order);
+                return Txn_Operation_Response::FAIL;
+            }
+        }else{
+            new_vertex_delta->fill_metadata(local_txn_id,vertex_data.size(),new_order,current_vertex_delta->get_previous_ptr());
+            new_vertex_delta->write_data(data);
 #if TXN_TEST
-        if(!vertex_index_entry.install_vertex_delta(current_vertex_delta_ptr,new_delta_ptr)) {
-            throw VertexDeltaException();
-        }
+            if(!vertex_index_entry.install_vertex_delta(current_vertex_delta_ptr,new_delta_ptr)||updated_vertices.find(src)==updated_vertices.end()) {
+                throw VertexDeltaException();
+            }
 #else
-        vertex_index_entry.vertex_delta_chain_head_ptr.store(new_delta_ptr);
+            vertex_index_entry.vertex_delta_chain_head_ptr.store(new_delta_ptr);
 #endif
-        updated_vertices.emplace(src);
-        //op_count++; we are replacing our delta so no increase in op count, also garbage collect replaced entry
-        per_thread_garbage_queue.register_entry(current_vertex_delta_ptr,current_vertex_delta->get_order(),commit_manager.get_current_read_ts());
-        return Txn_Operation_Response::SUCCESS;
+            //updated_vertices.emplace(src); no need, updated_vertices should already contain it
+            //op_count++; we are replacing our delta so no increase in op count, also garbage collect replaced entry
+            per_thread_garbage_queue.register_entry(current_vertex_delta_ptr,current_vertex_delta->get_order(),commit_manager.get_current_read_ts());
+            return Txn_Operation_Response::SUCCESS;
+        }
     }
+
 }
 
 std::string_view RWTransaction::get_vertex(bwgraph::vertex_t src) {
