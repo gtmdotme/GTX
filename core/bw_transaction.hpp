@@ -19,6 +19,7 @@ namespace bwgraph{
 #define TXN_TEST true
     struct LockOffsetCache{
         LockOffsetCache(uint64_t input_version, int32_t input_size):block_version_num(input_version),delta_chain_num(input_size){}
+        ~LockOffsetCache() = default;
         inline bool is_outdated(uint64_t current_version){
             return current_version != block_version_num;
         }
@@ -298,6 +299,9 @@ namespace bwgraph{
         ROTransaction(ROTransaction&& other):graph(other.graph),read_timestamp(other.read_timestamp),txn_tables(other.txn_tables),
                                              block_manager(other.block_manager),per_thread_garbage_queue(other.per_thread_garbage_queue),block_access_ts_table(other.block_access_ts_table), thread_id(other.thread_id){}
         std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label);
+        ROTransaction(const ROTransaction &) = delete;
+        ROTransaction& operator =(const ROTransaction &)=delete;
+        ~ROTransaction();
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label);
         std::string_view get_vertex(vertex_t src);
         inline void commit(){
@@ -343,7 +347,6 @@ namespace bwgraph{
         BlockAccessTimestampTable& block_access_ts_table;
         uint8_t thread_id;
         std::unordered_map<uint64_t, BwLabelEntry*> accessed_edge_label_entry_cache;
-        std::unordered_set<vertex_t> updated_vertices;//cache the vertex deltas that the transaction has touched
     };
     class RWTransaction{
     public:
@@ -354,8 +357,11 @@ namespace bwgraph{
         }
         RWTransaction( RWTransaction&& other):graph(other.graph),  local_txn_id(other.local_txn_id),read_timestamp(other.read_timestamp),
                                               self_entry(other.self_entry),txn_tables(other.txn_tables),commit_manager(other.commit_manager), block_manager(other.block_manager),per_thread_garbage_queue(other.per_thread_garbage_queue), block_access_ts_table(other.block_access_ts_table),thread_local_recycled_vertices(other.thread_local_recycled_vertices){
-
+            thread_id = other.thread_id;
         }
+        RWTransaction(const RWTransaction &)=delete;
+        RWTransaction& operator = (const RWTransaction &)=delete;
+        ~RWTransaction();
         //transaction graph write operations
         //for edge creation and update
         Txn_Operation_Response put_edge(vertex_t src, vertex_t dst, label_t label, std::string_view edge_data);
@@ -381,11 +387,7 @@ namespace bwgraph{
         //eagerly abort my deltas. If a transaction validated for a block, then the block enters Installation phase, this txn will not eager abort for that block.
         void eager_abort();
         //for pessimistic mode: release all locks in the current block
-        inline void release_all_locks_of_a_block(EdgeDeltaBlockHeader* current_block, LockOffsetCache& lock_cache);//todo: finish signature
         //abort all my deltas using scans
-        void abort_all_my_deltas(EdgeDeltaBlockHeader* current_block,uint64_t current_offset);
-        //abort all my deltas using cache
-        void abort_all_my_deltas_using_cache();//todo: finish signature
         //todo:: only concern is with delete vertex, what if the vertex entry is deleted? then we should return error
         inline BwLabelEntry* writer_access_label(vertex_t vid, label_t label){
             auto block_id = generate_block_id(vid,label);
@@ -446,31 +448,6 @@ namespace bwgraph{
         }
         //scan the previous block for an edge delta
         std::string_view scan_previous_block_find_edge(EdgeDeltaBlockHeader* previous_block, vertex_t vid);
-
-        //helper inline functions
-        //lazy update
-        inline bool lazy_update(BaseEdgeDelta* edgeDelta, uint64_t original_ts, uint64_t status){
-            if(edgeDelta->lazy_update(original_ts,status)){
-                return true;
-            }
-#if EDGE_DELTA_TEST
-            if(edgeDelta->creation_ts.load()!=status){
-                throw LazyUpdateException();
-            }
-#endif
-            return false;
-        }
-        //check whether the current offset refers to overflow offsets
-        inline bool overflow_offset_detected(EdgeDeltaBlockHeader* current_block, uint64_t current_offset){
-            auto size = current_block->get_size();
-            uint32_t tem_current_data_offset = static_cast<uint32_t>((current_offset>>32));
-            uint32_t temp_current_delta_offset = static_cast<uint32_t>(current_offset&SIZE2MASK);
-            if((tem_current_data_offset+temp_current_delta_offset)>size){
-                return true;
-            }else{
-                return false;
-            }
-        }
         inline void batch_lazy_updates(){
             for(auto it = lazy_update_records.begin();it!=lazy_update_records.end();it++){
                 if(it->second>0){

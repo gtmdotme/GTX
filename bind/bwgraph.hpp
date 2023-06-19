@@ -63,6 +63,7 @@ namespace bg {
             RollbackExcept(const char *what_arg) : std::runtime_error(what_arg) {}
         };
         RWTransaction(std::unique_ptr<bwgraph::RWTransaction> _txn);
+        ~RWTransaction();
         bool commit();
         void abort();
         //read operations:

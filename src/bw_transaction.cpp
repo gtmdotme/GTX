@@ -662,17 +662,6 @@ RWTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     }
 }
 
-void RWTransaction::release_all_locks_of_a_block(EdgeDeltaBlockHeader* current_block, LockOffsetCache& lock_cache) {
-    //blocks that we are not able to reclaim will be aborted in the reclamation phase, so they will be deleted from lock_cache already.
-    for(auto it = lock_cache.already_updated_delta_chain_head_offsets.begin();it!=lock_cache.already_updated_delta_chain_head_offsets.end();it++){
-#if TXN_TEST
-        if(!it->second){
-            throw LockReleaseException();
-        }
-#endif
-        current_block->release_protection(it->first);
-    }
-}
 /*
  * if invoked during normal execution, the txn should eager abort all its deltas in this function
  * if invoked during validation, the txn will try to eager abort the blocks the txn already validated
@@ -1101,6 +1090,8 @@ std::string_view RWTransaction::get_vertex(bwgraph::vertex_t src) {
     return std::string_view();
 }
 
+RWTransaction::~RWTransaction() = default;
+
 std::pair<Txn_Operation_Response, std::string_view>
 ROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
@@ -1231,4 +1222,5 @@ ROTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *prev
     }
     return std::string_view();
 }
+ROTransaction::~ROTransaction() = default;
 #endif

@@ -49,6 +49,7 @@ EdgeDeltaIterator ROTransaction::get_edges(bg::vertex_t src, bg::label_t label) 
 void ROTransaction::commit() {txn->commit();}
 
 //read-write transactions
+RWTransaction::~RWTransaction() = default;
 
 RWTransaction::RWTransaction(std::unique_ptr<bwgraph::RWTransaction> _txn):txn(std::move(_txn)) {}
 
