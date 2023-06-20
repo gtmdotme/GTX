@@ -24,7 +24,8 @@ namespace bwgraph {
         EdgeDeltaIterator(){}//empty iterator
         //when iterator ends, need to exit the block protection
         void close(){
-            block_access_ts_table->release_block_access(get_threadID(txn_id));
+            if(block_access_ts_table)
+                block_access_ts_table->release_block_access(get_threadID(txn_id));
         }
         //give the current block, determine what to read
         EdgeDeltaIterator(EdgeDeltaBlockHeader* input_block, timestamp_t input_ts, uint64_t input_id, bool has_deltas, uint32_t input_offset, BwGraph& source_graph, lazy_update_map* lazy_update_record_ptr, BlockAccessTimestampTable* access_table):current_delta_block(input_block),
@@ -41,7 +42,8 @@ namespace bwgraph {
                         if(current_delta_block->get_previous_ptr()){
                             current_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_delta_block->get_previous_ptr());
                         }else{
-                            throw EdgeIteratorNoBlockToReadException();
+                            break;
+                            //throw EdgeIteratorNoBlockToReadException();
                         }
                     }
                     auto previous_block_offset = current_delta_block->get_current_offset();
@@ -49,9 +51,10 @@ namespace bwgraph {
                     current_delta = current_delta_block->get_edge_delta(current_delta_offset);
                 }
             }
-            if(current_delta== nullptr){
+            //todo::if it is null, then there just does not exist any visible blocks at all.
+           /* if(current_delta== nullptr){
                 throw EdgeIteratorNoBlockToReadException();
-            }
+            }*/
         }
         BaseEdgeDelta *next_delta() {
             //keep scanning the current block with lazy update, when the current block is exhausted, set "read_current_block" to false and move on
@@ -113,7 +116,8 @@ namespace bwgraph {
                     if(current_delta_block->get_previous_ptr()){
                         current_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_delta_block->get_previous_ptr());
                     }else{
-                        throw EdgeIteratorNoBlockToReadException();
+                        current_delta= nullptr;
+                        return current_delta;
                     }
                 }
                 auto previous_block_offset = current_delta_block->get_current_offset();
@@ -244,7 +248,7 @@ namespace bwgraph {
         TxnTables* txn_tables;
         BlockManager* block_manager;
         lazy_update_map* txn_lazy_update_records;
-        BlockAccessTimestampTable* block_access_ts_table;//necessary at destructor, need to release the protection
+        BlockAccessTimestampTable* block_access_ts_table=nullptr;//necessary at destructor, need to release the protection
     };
 
 }

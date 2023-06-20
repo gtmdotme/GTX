@@ -429,14 +429,29 @@ namespace bwgraph{
         }
         //allocate space in the current block for delta
         EdgeDeltaInstallResult allocate_delta(EdgeDeltaBlockHeader* current_block, int32_t data_size){
+            //todo:; for debug
+            if(data_size>128){
+                throw std::runtime_error("for debug, too large delta");
+            }
             uint32_t block_size = current_block->get_size();
             uint64_t original_block_offset = current_block->allocate_space_for_new_delta(data_size);
+#if EDGE_DELTA_TEST
+            uint64_t current_new_block_offset = current_block->get_current_offset();
+            if(original_block_offset>=current_new_block_offset){
+                throw std::runtime_error("for debug, offset overflow");
+            }
+#endif
             uint32_t original_data_offset = static_cast<uint32_t>(original_block_offset>>32);
             uint32_t original_delta_offset = static_cast<uint32_t>(original_block_offset&SIZE2MASK);
             uint32_t new_data_offset = original_data_offset+data_size;
             uint32_t new_delta_offset = original_delta_offset+ENTRY_DELTA_SIZE;
             current_data_offset = original_data_offset;//grow from left to right;
             current_delta_offset = new_delta_offset; //grow from right to left
+#if EDGE_DELTA_TEST
+            if(current_delta_offset>10000000){
+                throw std::runtime_error("for debug, too large delta 2");
+            }
+#endif
             if((new_delta_offset+new_data_offset)>block_size){
                 if(original_delta_offset+original_data_offset<=block_size){
                     return EdgeDeltaInstallResult::CAUSE_OVERFLOW;
@@ -486,6 +501,9 @@ namespace bwgraph{
                 return ReclaimDeltaChainResult::FAIL;
             }
             return ReclaimDeltaChainResult::SUCCESS;
+        }
+        void print_edge_delta_block_metadata(EdgeDeltaBlockHeader* current_block){
+            std::cout<<"owner id is "<<current_block->get_owner_id()<<" creation ts is "<<current_block->get_creation_time()<<" order is "<<static_cast<int32_t>(current_block->get_order())<<" previous ptr is "<<current_block->get_previous_ptr()<<" delta chain num is "<<current_block->get_delta_chain_num()<<std::endl;
         }
         //txn local fields
         BwGraph& graph;

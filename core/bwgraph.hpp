@@ -64,6 +64,7 @@ namespace bwgraph{
         WorkerThreadManager thread_manager;
         std::vector<GarbageBlockQueue> garbage_queues;
         std::array<std::queue<vertex_t>,worker_thread_num> recycled_vids;
+        tbb::enumerable_thread_specific<size_t> executed_txn_count;
         friend class ROTransaction;
         friend class RWTransaction;
     };

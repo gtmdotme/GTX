@@ -14,13 +14,35 @@
 using namespace bwgraph;
 constexpr vertex_t vertex_id_range = 1000000;
 constexpr vertex_t dst_id_range = 1000000;
-constexpr int32_t total_txn_count = 10000;
+constexpr int32_t total_txn_count = 100000;
 constexpr int32_t op_count_range = 30;
 constexpr float write_ratio = 0.6;
 constexpr double vertex_operation_ratio = 0.1;
-constexpr bool print_block_stats = false;
+constexpr bool print_block_stats = true;
 class MiniBwGraph{
 public:
+    struct vertex_op{
+        vertex_op(vertex_t v):src(v){}
+        vertex_op(vertex_t v, std::string_view vd):src(v),data(std::move(vd)){}
+        vertex_t src;
+        std::string data;
+    };
+    struct edge_op{
+        edge_op(vertex_t s, label_t l):src(s), label(l){}
+        edge_op(vertex_t s, vertex_t t, label_t l):src(s),dst(t), label(l){}
+        edge_op(vertex_t s, vertex_t t, label_t l, std::string_view ed):src(s),dst(t), label(l), data(std::move(ed)){}
+        vertex_t src;
+        vertex_t dst;
+        label_t label;
+        std::string data;
+    };
+    struct rw_txn_workload{
+        std::vector<vertex_op> vertex_read_op;
+        std::vector<edge_op> edge_read_op;
+        std::vector<edge_op> edge_scan_op;
+        std::vector<vertex_op> vertex_write_op;
+        std::vector<edge_op> edge_write_op;
+    };
     MiniBwGraph(): bwGraph("",1ul << 36){
         auto& commit_manager = bwGraph.get_commit_manager();
         //manually setup some blocks
@@ -130,24 +152,26 @@ public:
                     throw TransactionReadException();
                 }
             }
-            auto scan_response = cleanup_txn.get_edges(i,1);
-            if(scan_response.first!=bwgraph::Txn_Operation_Response::SUCCESS){
-                throw TransactionReadException();
-            }
-            auto& edge_delta_iterator = scan_response.second;
-            BaseEdgeDelta* current_delta;
-            while((current_delta=edge_delta_iterator.next_delta())!= nullptr){
-                if(!is_visible_check(placeholder_txn_id,read_ts,current_delta)){
+            for(label_t l=1; l<=3; l++){
+                auto scan_response = cleanup_txn.get_edges(i,l);
+                if(scan_response.first!=bwgraph::Txn_Operation_Response::SUCCESS){
                     throw TransactionReadException();
                 }
-               /* char* data = edge_delta_iterator.get_data(current_delta->data_offset);
-                for(size_t z=0; z<current_delta->data_length; z++){
-                    if(static_cast<char>(current_delta->toID%32)!=data[z]){
+                auto& edge_delta_iterator = scan_response.second;
+                BaseEdgeDelta* current_delta;
+                while((current_delta=edge_delta_iterator.next_delta())!= nullptr){
+                    if(!is_visible_check(placeholder_txn_id,read_ts,current_delta)){
                         throw TransactionReadException();
                     }
-                }*/
+                    /* char* data = edge_delta_iterator.get_data(current_delta->data_offset);
+                     for(size_t z=0; z<current_delta->data_length; z++){
+                         if(static_cast<char>(current_delta->toID%32)!=data[z]){
+                             throw TransactionReadException();
+                         }
+                     }*/
+                }
+                edge_delta_iterator.close();
             }
-            edge_delta_iterator.close();
         }
         cleanup_txn.commit();
     }
@@ -195,7 +219,8 @@ public:
     void execute_edge_vertex_test(){
         std::vector<std::thread>workers;
         for(uint8_t i=0; i<worker_thread_num;i++){
-            workers.push_back(std::thread(&MiniBwGraph::thread_execute_vertex_edge_txn_operation, this, i));
+           // workers.push_back(std::thread(&MiniBwGraph::thread_execute_vertex_edge_txn_operation, this, i));
+            workers.push_back(std::thread(&MiniBwGraph:: thread_execute_edge_txn_operation_non_random, this));
         }
         for(uint8_t i=0; i<worker_thread_num;i++){
             workers.at(i).join();
@@ -445,6 +470,228 @@ public:
         total_commit.fetch_add(local_commit);
         total_abort.fetch_add(local_abort);
         total_op_count.fetch_add(local_op_count);
+    }
+    void thread_execute_edge_txn_operation_non_random(){
+        uint8_t  thread_id = bwGraph.get_worker_thread_id();
+        size_t local_abort=0;
+        size_t local_commit =0 ;
+        std::uniform_int_distribution<> vid_random(1,vertex_id_range);
+        std::random_device rd; // obtain a random number from hardware
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> delta_size_random(1,128);
+        for(int32_t i=0; i<total_txn_count;i++){
+            rw_txn_workload workload;
+            int32_t counter =0;
+            //generate txn operation
+            if(i<total_txn_count/4){
+                for(int j=0; j<2; j++){
+                    vertex_t vid = vid_random(gen);
+                    int32_t size = delta_size_random(gen);
+                    char to_write = static_cast<char>(vid%32);
+                    std::string data = generate_string_random_length(to_write,size);
+                    workload.vertex_write_op.emplace_back(vid,data);
+                }
+                for(int j=0; j<3; j++){
+                    vertex_t src = vid_random(gen);
+                    vertex_t dst = vid_random(gen);
+                    label_t label = static_cast<label_t>(j+1);
+                    int32_t size = delta_size_random(gen);
+                    char to_write = static_cast<char>((dst)%32);
+                    std::string data = generate_string_random_length(to_write,size);
+                    workload.edge_write_op.emplace_back(src,dst,label,data);
+                }
+                while(true){
+                    bool to_abort = false;
+                    if(counter++==2){
+                       // std::cout<<"too many retries"<<std::endl;
+                        break;
+                    }
+                    RWTransaction txn = bwGraph.begin_read_write_transaction();
+                    for(size_t z=0; z<workload.vertex_write_op.size();z++){
+                        if(to_abort){
+                            break;
+                        }
+                        auto& vertex_write_op = workload.vertex_write_op.at(z);
+                        while(1){
+                            auto response = txn.update_vertex(vertex_write_op.src,vertex_write_op.data);
+                            if(response==bwgraph::Txn_Operation_Response::SUCCESS){
+                                break;
+                            }else if(response==bwgraph::Txn_Operation_Response::FAIL){
+                                to_abort=true;
+                                break;
+                            }
+                        }
+
+                    }
+                    for(size_t z=0; z<workload.edge_write_op.size();z++){
+                        if(to_abort){
+                            break;
+                        }
+                        auto& edge_write_op = workload.edge_write_op.at(z);
+                        while(1){
+                            auto response = txn.put_edge(edge_write_op.src,edge_write_op.dst,edge_write_op.label,edge_write_op.data);
+                            if(response==bwgraph::Txn_Operation_Response::SUCCESS){
+                                break;
+                            }else if(response==bwgraph::Txn_Operation_Response::FAIL){
+                                to_abort=true;
+                                break;
+                            }
+                        }
+                        //txn.put_edge(edge_write_op.src,edge_write_op.label,edge_write_op.dst,edge_write_op.data);
+                    }
+                    if(!to_abort){
+                        if(txn.commit()){
+                            local_commit++;
+                            break;
+                        }else{
+                            local_abort++;
+                        }
+                    }else{
+                        txn.abort();
+                        local_abort++;
+                    }
+                }
+            }else{
+                for(int j=0; j<1; j++){
+                    vertex_t vid = vid_random(gen);
+                    int32_t size = delta_size_random(gen);
+                    char to_write = static_cast<char>(vid%32);
+                    std::string data = generate_string_random_length(to_write,size);
+                    workload.vertex_write_op.emplace_back(vid,data);
+                }
+                for(int j=0; j<2; j++){
+                    vertex_t vid = vid_random(gen);
+                    workload.vertex_read_op.emplace_back(vid);
+                }
+                for(int j=0; j<3; j++){
+                    vertex_t src = vid_random(gen);
+                    vertex_t dst = vid_random(gen);
+                    label_t label = static_cast<label_t>(j+1);
+                    workload.edge_read_op.emplace_back(src,dst,label);
+                }
+                for(int j=0; j<2; j++){
+                    vertex_t src = vid_random(gen);
+                    label_t label = static_cast<label_t>(j+1);
+                    workload.edge_scan_op.emplace_back(src,label);
+                }
+                for(int j=0; j<3; j++){
+                    vertex_t src = vid_random(gen);
+                    vertex_t dst = vid_random(gen);
+                    label_t label = static_cast<label_t>(j+1);
+                    int32_t size = delta_size_random(gen);
+                    char to_write = static_cast<char>((dst)%32);
+                    std::string data = generate_string_random_length(to_write,size);
+                    workload.edge_write_op.emplace_back(src,dst,label,data);
+                }
+                while(true){
+                    bool to_abort = false;
+                    if(counter++==2){
+                       // std::cout<<"too many retries"<<std::endl;
+                        break;
+                    }
+                    RWTransaction txn = bwGraph.begin_read_write_transaction();
+                    for(size_t z=0; z<workload.vertex_read_op.size();z++){
+                        auto& vertex_r_op = workload.vertex_read_op.at(z);
+                        std::string_view data = txn.get_vertex(vertex_r_op.src);
+                        //in this experiment always visible vertex deltas
+                        if(data.empty()){
+                            throw TransactionReadException();
+                        }
+                        for(size_t t=0; t<data.size();t++){
+                            if(data.at(t)!=static_cast<char>(vertex_r_op.src%32)){
+                                throw TransactionReadException();
+                            }
+                        }
+                    }
+                    for(size_t z=0; z<workload.edge_read_op.size();){
+                        auto& edge_read_op = workload.edge_read_op.at(z);
+                        auto result = txn.get_edge(edge_read_op.src,edge_read_op.dst,edge_read_op.label);
+                        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                            auto& data = result.second;
+                            for(size_t t=0; t<data.size();t++){
+                                if(data.at(t)!=static_cast<char>((edge_read_op.dst)%32)){
+                                    throw TransactionReadException();
+                                }
+                            }
+                            z++;
+                        }
+                    }
+                    for(size_t z=0; z<workload.edge_scan_op.size();){
+                        auto& edge_scan_op = workload.edge_scan_op.at(z);
+                        auto result = txn.get_edges(edge_scan_op.src,edge_scan_op.label);
+                        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                            auto& iterator = result.second;
+                            BaseEdgeDelta* current_delta = nullptr;
+                            while(current_delta=iterator.next_delta()){
+                                vertex_t vid = current_delta->toID;
+                                char to_compare = static_cast<char>((vid)%32);
+                                char* e_data = iterator.get_data(current_delta->data_offset);
+                                for(int32_t x=0; x<current_delta->data_length;x++){
+                                    if(to_compare!=e_data[x]){
+                                        throw TransactionReadException();
+                                    }
+                                }
+                            }
+                            iterator.close();
+                            z++;
+                        }
+                        //need an iterator valid function
+                    }
+
+                    for(size_t z=0; z<workload.vertex_write_op.size();z++){
+                        if(to_abort){
+                            break;
+                        }
+                        auto& vertex_write_op = workload.vertex_write_op.at(z);
+                        while(1){
+                            auto response = txn.update_vertex(vertex_write_op.src,vertex_write_op.data);
+                            if(response==bwgraph::Txn_Operation_Response::SUCCESS){
+                                break;
+                            }else if(response==bwgraph::Txn_Operation_Response::FAIL){
+                                to_abort=true;
+                                break;
+                            }
+
+                        }
+
+                    }
+                    for(size_t z=0; z<workload.edge_write_op.size();z++){
+                        if(to_abort){
+                            break;
+                        }
+                        size_t inf_cunter = 0;
+                        auto& edge_write_op = workload.edge_write_op.at(z);
+                        while(1){
+                            auto response = txn.put_edge(edge_write_op.src,edge_write_op.dst,edge_write_op.label,edge_write_op.data);
+                            if(response==bwgraph::Txn_Operation_Response::SUCCESS){
+                                break;
+                            }else if(response==bwgraph::Txn_Operation_Response::FAIL){
+                                to_abort=true;
+                                break;
+                            }
+                            if(inf_cunter++==1000000000){
+                                throw std::runtime_error("waiting forever");
+                            }
+                        }
+                        //txn.put_edge(edge_write_op.src,edge_write_op.label,edge_write_op.dst,edge_write_op.data);
+                    }
+                    if(!to_abort){
+                        if(txn.commit()){
+                            local_commit++;
+                            break;
+                        }else{
+                            local_abort++;
+                        }
+                    }else{
+                        txn.abort();
+                        local_abort++;
+                    }
+                }
+            }
+        }
+        bwGraph.get_block_access_ts_table().store_current_ts(thread_id,std::numeric_limits<uint64_t>::max());//exit the thread in the global table
+        total_commit.fetch_add(local_commit);
+        total_abort.fetch_add(local_abort);
     }
     void execute_read_only_txn(ROTransaction& txn, int32_t op_count, timestamp_t read_ts){
         std::random_device rd; // obtain a random number from hardware

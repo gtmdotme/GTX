@@ -20,6 +20,8 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
     BwLabelEntry* target_label_entry = edge_label_block->writer_lookup_label(label,&txn_tables);*/
     BwLabelEntry* target_label_entry =writer_access_label(src,label);
     if(!target_label_entry){
+        //todo:: this should not happen?
+       // std::cout<<"should never happen"<<std::endl;
         return Txn_Operation_Response::FAIL;
     }
     //calculate block id
@@ -32,7 +34,25 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
         auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
         //if the block is already overflow, return and wait
         if(current_block->already_overflow()){
+            //for debug
+            auto combined_offset = current_block->get_current_offset();
+            uint32_t data_size = (uint32_t)(combined_offset>>32);
+            uint32_t delta_size = (uint32_t)(combined_offset&SIZE2MASK);
+            if(delta_size>current_block->get_size()*10||delta_size%64){
+                std::cout<<"source is "<<src<<" destination is "<<dst<<" label is "<<static_cast<int32_t>(label)<<std::endl;
+              /*  std::cout<<"creation ts is "<<current_block->get_creation_time()<<" owner id is "<<current_block->get_owner_id()<<std::endl;*/
+                print_edge_delta_block_metadata(current_block);
+                if(target_label_entry->state.load()==EdgeDeltaBlockState::NORMAL){
+                    std::cout<<"state is normal"<<std::endl;
+                }
+                std::cout<<"version is "<<target_label_entry->block_version_number<<std::endl;
+                std::cout<<combined_offset<<std::endl;
+                std::cout<<data_size<<" "<<delta_size<<" "<<current_block->get_size()<<std::endl;
+                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                return Txn_Operation_Response::FAIL;
+            }
             BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+          //  std::cout<<"1"<<std::endl;
             return Txn_Operation_Response::WRITER_WAIT;
         }
         int32_t total_delta_chain_num = current_block->get_delta_chain_num();
@@ -44,6 +64,7 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
                 uint64_t current_block_offset = current_block->get_current_offset();
                 if(current_block->is_overflow_offset(current_block_offset)){
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+               //     std::cout<<"2"<<std::endl;
                     return Txn_Operation_Response::WRITER_WAIT;
                 }
 #if LAZY_LOCKING
@@ -82,6 +103,7 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
                 return Txn_Operation_Response::FAIL; //abort on write-write conflict
             }else if(lock_result == Delta_Chain_Lock_Response::UNCLEAR){
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+             //   std::cout<<"3"<<std::endl;
                 return Txn_Operation_Response::WRITER_WAIT;
             }
 #endif //LAZY_LOCKING
@@ -97,6 +119,7 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
             }else if (allocate_delta_result==EdgeDeltaInstallResult::ALREADY_OVERFLOW){
                // current_block->release_protection_delta_chain(target_delta_chain_id);// actually no need to release the lock at all
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+              //  std::cout<<"4"<<std::endl;
                 return Txn_Operation_Response::WRITER_WAIT;
             }else{//I caused overflow
                 //current_block->release_protection_delta_chain(target_delta_chain_id);
@@ -115,6 +138,7 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
             }else if(allocate_delta_result==EdgeDeltaInstallResult::ALREADY_OVERFLOW){
                 //do not release lock
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                std::cout<<"5"<<std::endl;
                 return Txn_Operation_Response::WRITER_WAIT;
             }else{
                 consolidation(target_label_entry, current_block, block_id);
@@ -122,6 +146,7 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
             }
         }
     }else{
+      //  std::cout<<"6"<<std::endl;
         return Txn_Operation_Response::WRITER_WAIT;
     }
 }
@@ -245,6 +270,11 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     uint32_t overflow_delta_size = (uint32_t)(current_block_offset&SIZE2MASK)-original_delta_offset;
 
     uint64_t to_restore_offset = combine_offset(original_delta_offset, original_data_offset);
+#if CONSOLIDATION_TEST
+    if(to_restore_offset<0x0000000100000000){
+        throw std::runtime_error("overflow offsets");
+    }
+#endif
     current_block->set_offset(to_restore_offset);
     BlockStateVersionProtectionScheme::install_shared_state(EdgeDeltaBlockState::CONSOLIDATION,current_label_entry);
     std::unordered_set<vertex_t> edge_latest_versions_records;
@@ -356,7 +386,13 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     //now we start the exclusive installation phase
     BlockStateVersionProtectionScheme::install_exclusive_state(EdgeDeltaBlockState::INSTALLATION,thread_id,block_id,current_label_entry,block_access_ts_table);
     //wait for all validating transactions to finish
+    //todo::for debug
+    size_t inf_loop_counter = 0;
     while(true){
+        if(inf_loop_counter++==100000000){
+            std::cout<<"shit"<<std::endl;
+            throw ConsolidationException();
+        }
         for(auto it = to_check_delta_chains.begin(); it!= to_check_delta_chains.end();){
             //get the delta chain head of this delta chain in the original block, check if a validation is happening
             current_delta = current_block->get_edge_delta(current_label_entry->delta_chain_index->at(*it).get_raw_offset());
@@ -515,6 +551,9 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     per_thread_garbage_queue.register_entry(current_label_entry->block_ptr,current_block->get_order(),largest_invalidation_ts);
     *current_label_entry->delta_chain_index = std::move(new_delta_chains_index);//todo::check its correctness
     current_label_entry->block_ptr = new_block_ptr;
+    if(new_block->already_overflow()){
+        throw ConsolidationException();
+    }
     current_label_entry->block_version_number.fetch_add(1);//increase version by 1 /*consolidation_time.store(commit_manager.get_current_read_ts());*/
     BlockStateVersionProtectionScheme::install_shared_state(EdgeDeltaBlockState::NORMAL,current_label_entry);
     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
@@ -543,7 +582,7 @@ std::pair<Txn_Operation_Response, std::string_view>
 RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
-        return std::pair<Txn_Operation_Response, std::string_view>(Txn_Operation_Response::FAIL,std::string_view());
+        return std::pair<Txn_Operation_Response, std::string_view>(Txn_Operation_Response::SUCCESS,std::string_view());
     }
     auto block_id = generate_block_id(src,label);
     if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table)){
@@ -588,16 +627,7 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
             return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS, std::string_view(data,target_delta->data_length));
         }else{
             //determine which block to read
-            if(read_timestamp<current_block->get_creation_time()){
-                EdgeDeltaBlockHeader* previous_block = block_manager.convert<EdgeDeltaBlockHeader>(current_block->get_previous_ptr());
-                //rare, but we may need to go even further
-                while(read_timestamp<previous_block->get_creation_time()){
-                    previous_block = block_manager.convert<EdgeDeltaBlockHeader>(previous_block->get_previous_ptr());
-                }
-                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);//reading previous block needs no protection, it is protected by read epoch
-                return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,
-                                                                          scan_previous_block_find_edge(previous_block,dst));
-            }else{
+            if(read_timestamp>=current_block->get_creation_time()){
                 auto& delta_chains_index_entry = target_label_entry->delta_chain_index->at(current_block->get_delta_chain_id(dst));
                 offset = delta_chains_index_entry.get_raw_offset();//may be locked
                 //BaseEdgeDelta* target_delta = current_block->get_edge_delta(offset);
@@ -615,9 +645,29 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                     return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS, std::string_view(data,target_delta->data_length));
                 }
+            }else{
+                if(current_block->get_previous_ptr()){
+                    EdgeDeltaBlockHeader* previous_block = block_manager.convert<EdgeDeltaBlockHeader>(current_block->get_previous_ptr());
+                    BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);//reading previous block needs no protection, it is protected by read epoch
+                    //if current block is still too old
+                    while(read_timestamp<previous_block->get_creation_time()){
+                        //if can go even further, then go there
+                        if(previous_block->get_previous_ptr()){
+                            previous_block = block_manager.convert<EdgeDeltaBlockHeader>(previous_block->get_previous_ptr());
+                        }else{//if no more previous block exist, just return empty view
+                            return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,
+                                                                                      std::string_view());
+                        }
+                    }
+                    return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,
+                                                                              scan_previous_block_find_edge(previous_block,dst));
+                }else{
+                    BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);//reading previous block needs no protection, it is protected by read epoch
+                    return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,
+                                                                              std::string_view());
+                }
             }
         }
-
     }else{
         return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::READER_WAIT,std::string_view());
     }
@@ -627,7 +677,7 @@ std::pair<Txn_Operation_Response, EdgeDeltaIterator>
 RWTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
-        return std::pair<Txn_Operation_Response, EdgeDeltaIterator>(Txn_Operation_Response::FAIL,EdgeDeltaIterator());
+        return std::pair<Txn_Operation_Response, EdgeDeltaIterator>(Txn_Operation_Response::SUCCESS,EdgeDeltaIterator());
     }
     auto block_id = generate_block_id(src, label);
     if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table)){
@@ -788,6 +838,7 @@ bool RWTransaction::validation() {
                 op_count -= validated_offsets_cache->second.eager_abort(current_block,current_label_entry,local_txn_id,0);//must use cache
                 per_block_cached_delta_chain_offsets.erase(validated_offsets_cache);
                 reverse_it++;
+                BlockStateVersionProtectionScheme::release_protection(thread_id, block_access_ts_table);
             }else if(validation_state== EdgeDeltaBlockState::INSTALLATION){//mutex state already entered, so we will move forward, let consolidation thread observes our state and abort our deltas
                 per_block_cached_delta_chain_offsets.erase(reverse_it->first);
                 reverse_it++;
@@ -971,6 +1022,7 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
                 uint64_t status;
                 if(txn_tables.get_status(original_ts,status)){
                     if(status==IN_PROGRESS){
+                       // std::cout<<original_ts<<std::endl;
                         return Txn_Operation_Response::FAIL;
                     }else if(status!=ABORT){
                         if(current_vertex_delta->lazy_update(original_ts,status)){
@@ -987,6 +1039,8 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
                         }
 #endif
                         if(status>read_timestamp){
+                            //std::cout<<"2"<<std::endl;
+                           // std::cout<<status<<" "<<read_timestamp<<std::endl;
                             return Txn_Operation_Response::FAIL;
                         }else{
                             break;
@@ -999,6 +1053,7 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
                 }
             }else if(original_ts!=ABORT){
                 if(original_ts>read_timestamp){
+                   // std::cout<<"3"<<std::endl;
                     return Txn_Operation_Response::FAIL;
                 }
                 break;
@@ -1032,7 +1087,10 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
             op_count++;
             return Txn_Operation_Response::SUCCESS;
         }else{
+            auto zero_out_ptr = block_manager.convert<uint8_t>(new_delta_ptr);
+            memset(zero_out_ptr,'\0',1ul<<new_order);
             block_manager.free(new_delta_ptr,new_order);
+            //std::cout<<"4"<<std::endl;
             return Txn_Operation_Response::FAIL;
         }
     }else{
@@ -1045,7 +1103,10 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
                 op_count++;
                 return Txn_Operation_Response::SUCCESS;
             }else{
+                auto zero_out_ptr = block_manager.convert<uint8_t>(new_delta_ptr);
+                memset(zero_out_ptr,'\0',1ul<<new_order);
                 block_manager.free(new_delta_ptr,new_order);
+                //std::cout<<"5"<<std::endl;
                 return Txn_Operation_Response::FAIL;
             }
         }else{
@@ -1167,7 +1228,7 @@ std::pair<Txn_Operation_Response, EdgeDeltaIterator>
 ROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
-        return std::pair<Txn_Operation_Response, EdgeDeltaIterator>(Txn_Operation_Response::FAIL,EdgeDeltaIterator());
+        return std::pair<Txn_Operation_Response, EdgeDeltaIterator>(Txn_Operation_Response::SUCCESS,EdgeDeltaIterator());
     }
     auto block_id = generate_block_id(src, label);
     if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table)){

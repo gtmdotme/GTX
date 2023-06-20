@@ -73,9 +73,20 @@ namespace bwgraph{
                     current_label_block->label_entries[current_offset].block_ptr = block_manager->alloc(DEFAULT_EDGE_DELTA_BLOCK_ORDER);
                     auto new_edge_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_label_block->label_entries[current_offset].block_ptr);
                     current_label_block->label_entries[current_offset].delta_chain_index = new std::vector<AtomicDeltaOffset>();
+                    //todo::debug
+                    if(new_edge_delta_block->get_current_offset()!=0){
+                        std::cout<<"owner id is "<<new_edge_delta_block->get_owner_id()<<" creation ts is "<<new_edge_delta_block->get_creation_time()<<" order is "<<static_cast<int32_t>(new_edge_delta_block->get_order())<<" previous ptr is "<<new_edge_delta_block->get_previous_ptr()<<" delta chain num is "<<new_edge_delta_block->get_delta_chain_num()<<std::endl;
+                        auto debug_vertex_delta = block_manager->convert<VertexDeltaHeader>(current_label_block->label_entries[current_offset].block_ptr);
+                        std::cout<<" creation ts is "<<debug_vertex_delta->get_creation_ts()<<" order is "<<static_cast<int32_t>(debug_vertex_delta->get_order())<<" previous ptr is "<<debug_vertex_delta->get_previous_ptr()<<" data size is "<<debug_vertex_delta->get_data_size()<<" data storage is "<<debug_vertex_delta->get_max_data_storage()<<std::endl;
+                        throw std::runtime_error("bad block allocation before");
+                    }
                     //todo:: now we are testing using large blocks Libin:reversed
                     //new_edge_delta_block->fill_metadata(owner_id,txn_read_ts,0,24,txn_tables,current_label_block->label_entries[current_offset].delta_chain_index);
                     new_edge_delta_block->fill_metadata(owner_id,txn_read_ts,0,DEFAULT_EDGE_DELTA_BLOCK_ORDER,txn_tables,current_label_block->label_entries[current_offset].delta_chain_index);
+                    //todo::debug
+                    if(new_edge_delta_block->get_current_offset()!=0){
+                        throw std::runtime_error("bad block allocation after");
+                    }
                     current_label_block->label_entries[current_offset].delta_chain_index->resize(new_edge_delta_block->get_delta_chain_num());
                     current_label_block->label_entries[current_offset].state=EdgeDeltaBlockState::NORMAL;
                     current_label_block->label_entries[current_offset].block_version_number = 0;
@@ -109,7 +120,11 @@ namespace bwgraph{
                     }else{
                         //deallocate failed installation
                         delete new_block->label_entries[0].delta_chain_index;
+                        auto zero_out_ptr = block_manager->convert<uint8_t>(new_block->label_entries[0].block_ptr);
+                        memset(zero_out_ptr,'\0',1ul<<DEFAULT_EDGE_DELTA_BLOCK_ORDER);
                         block_manager->free(new_block->label_entries[0].block_ptr,DEFAULT_EDGE_DELTA_BLOCK_ORDER);
+                        zero_out_ptr = block_manager->convert<uint8_t>(new_next_ptr);
+                        memset(zero_out_ptr,'\0',1ul<<new_order);
                         block_manager->free(new_next_ptr,new_order);
                         current_label_block =  block_manager->convert<EdgeLabelBlock>(current_label_block->next_ptr.load());
                         continue;

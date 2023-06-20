@@ -88,6 +88,7 @@ namespace bg {
         ~EdgeDeltaIterator();
 
         //bool valid() const;
+        bool valid();
         void close();
         void next();
         vertex_t dst_id() const;

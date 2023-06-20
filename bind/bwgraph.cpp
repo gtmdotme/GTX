@@ -71,7 +71,7 @@ void RWTransaction::put_vertex(bg::vertex_t vertex_id, std::string_view data) {
     if(result==bwgraph::Txn_Operation_Response::SUCCESS){
         return;
     }else{
-        throw RollbackExcept("write write conflict");
+        throw RollbackExcept("write write conflict vertex");
     }
 }
 
@@ -81,7 +81,7 @@ void RWTransaction::put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t d
         if(result == bwgraph::Txn_Operation_Response::SUCCESS){
             return;
         }else if(result ==bwgraph::Txn_Operation_Response::FAIL){
-            throw RollbackExcept("write write conflict");
+            throw RollbackExcept("write write conflict edge");
         }
     }
 }
@@ -92,7 +92,7 @@ void RWTransaction::delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_
         if(result == bwgraph::Txn_Operation_Response::SUCCESS){
             return;
         }else if(result ==bwgraph::Txn_Operation_Response::FAIL){
-            throw RollbackExcept("write write conflict");
+            throw RollbackExcept("write write conflict edge");
         }
     }
 }
@@ -107,7 +107,7 @@ std::string_view RWTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg:
         if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
             return result.second;
         }else if(result.first == bwgraph::Txn_Operation_Response::FAIL){
-            throw RollbackExcept("write write conflict on previous write");
+            throw RollbackExcept("found write write conflict on previous write when reading edge");
         }
     }
 }
@@ -118,7 +118,7 @@ EdgeDeltaIterator RWTransaction::get_edges(bg::vertex_t src, bg::label_t label) 
         if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
             return std::make_unique<impl::EdgeDeltaIterator>(result.second);
         }else if(result.first == bwgraph::Txn_Operation_Response::FAIL){
-            throw RollbackExcept("write write conflict on previous write");
+            throw RollbackExcept("found write write conflict on previous write when scanning edges");
         }
     }
 }
@@ -140,7 +140,10 @@ void EdgeDeltaIterator::close() {iterator->close();}
 void EdgeDeltaIterator::next() {
     current_delta = iterator->next_delta();
 }
-
+bool EdgeDeltaIterator::valid() {
+    next();
+    return current_delta!= nullptr;
+}
 vertex_t EdgeDeltaIterator::dst_id() const {
     return current_delta->toID;
 }

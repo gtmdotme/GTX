@@ -5,7 +5,7 @@
 //#ifndef BWGRAPH_V2_WORKER_THREAD_MANAGER_HPP
 //#define BWGRAPH_V2_WORKER_THREAD_MANAGER_HPP
 //todo:: 2 versions, one use parallel hashmap, the other uses tbb
-#include "Libraries/parallel_hashmap/phmap.h"
+#include "../Libraries/parallel_hashmap/phmap.h"
 #include <thread>
 #include <atomic>
 namespace bwgraph{

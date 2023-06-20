@@ -59,17 +59,26 @@ namespace bwgraph{
         }
         inline static void install_exclusive_state(EdgeDeltaBlockState new_state, uint8_t thread_id, uint64_t block_id, BwLabelEntry* target_label_entry,BlockAccessTimestampTable& block_ts_table){
 #if STATE_PROTECTION_TEST
+            size_t counter =0;
             if(new_state==EdgeDeltaBlockState::OVERFLOW){
                 auto current_state = EdgeDeltaBlockState::NORMAL;
                 if(target_label_entry->state.compare_exchange_strong(current_state,new_state)){
-                    while(!block_ts_table.is_safe(thread_id,block_id));
+                    while(!block_ts_table.is_safe(thread_id,block_id)){
+                        if(counter++==1000000000){
+                            throw BlockStateException();
+                        }
+                    }
                 }else{
                     throw BlockStateException();
                 }
             }else if(new_state == EdgeDeltaBlockState::INSTALLATION){
                 auto current_state = EdgeDeltaBlockState::CONSOLIDATION;
                 if(target_label_entry->state.compare_exchange_strong(current_state,new_state)){
-                    while(!block_ts_table.is_safe(thread_id,block_id));
+                    while(!block_ts_table.is_safe(thread_id,block_id)){
+                        if(counter++==1000000000){
+                            throw BlockStateException();
+                        }
+                    }
                 }else{
                     throw BlockStateException();
                 }

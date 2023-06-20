@@ -20,6 +20,7 @@ constexpr uint32_t worker_thread_num = 32;
 #define NO_TXN_ENTRY 0
 //#define Per_Thread_Table_Size 32
 constexpr uint32_t per_thread_table_size = 32;
+constexpr uint64_t garbage_collection_threshold = 20;
 //block allocation
 #define DEFAULT_EDGE_DELTA_BLOCK_ORDER 8
 #define BUCKET_SIZE 33554432//536870912/16 //for test use smaller bucket size
