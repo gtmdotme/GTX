@@ -36,6 +36,15 @@ uint8_t Graph::get_worker_thread_id() {
 void Graph::execute_manual_checking(bg::vertex_t vid) {
     graph->execute_manual_delta_block_checking(vid);
 }
+bool Graph::is_txn_table_empty() {
+    auto& txn_tables = graph->get_txn_tables();
+    for(auto i=0; i<worker_thread_num-1; i++){
+        if(!txn_tables.get_table(i).is_empty()){
+            return false;
+        }
+    }
+    return true;
+}
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}
 
