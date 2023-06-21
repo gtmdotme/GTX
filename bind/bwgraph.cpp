@@ -32,6 +32,10 @@ void Graph::commit_server_shutdown() {
 uint8_t Graph::get_worker_thread_id() {
     return graph->get_worker_thread_id();
 }
+
+void Graph::execute_manual_checking(bg::vertex_t vid) {
+    graph->execute_manual_delta_block_checking(vid);
+}
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}
 

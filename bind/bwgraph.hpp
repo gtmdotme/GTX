@@ -42,6 +42,7 @@ namespace bg {
         void commit_server_start();
         void commit_server_shutdown();
         uint8_t get_worker_thread_id();
+        void execute_manual_checking(vertex_t vid);
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
     };

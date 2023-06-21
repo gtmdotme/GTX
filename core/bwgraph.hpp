@@ -54,6 +54,7 @@ namespace bwgraph{
         inline TxnTables & get_txn_tables(){return txn_tables;}
         inline VertexIndex& get_vertex_index(){return vertex_index;}
         inline uint8_t get_worker_thread_id(){return thread_manager.get_worker_thread_id();}
+        void execute_manual_delta_block_checking(vertex_t vid);
     private:
         BlockManager block_manager;
         VertexIndex vertex_index;
