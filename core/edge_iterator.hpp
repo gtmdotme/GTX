@@ -100,11 +100,12 @@ namespace bwgraph {
                             }
                         }
                     }
-                    if(current_delta->creation_ts.load()==txn_id){
+                    if(current_delta->creation_ts.load()==txn_id&&current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
                     }
-                    if((current_delta->creation_ts.load()<=txn_read_ts)&&(current_delta->invalidate_ts.load()==0||current_delta->invalidate_ts.load()>txn_read_ts)){
+                    //cannot be delete delta
+                    if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&(current_delta->creation_ts.load()<=txn_read_ts)&&(current_delta->invalidate_ts.load()==0||current_delta->invalidate_ts.load()>txn_read_ts)){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
                     }
@@ -127,7 +128,7 @@ namespace bwgraph {
             if((!read_current_block)&&read_previous_block){
                  while(current_delta_offset>0){
                      //abort deltas will always have larger creation ts than any read ts
-                     if(current_delta->creation_ts.load()<=txn_read_ts&&(current_delta->invalidate_ts==0||current_delta->invalidate_ts>txn_read_ts)){
+                     if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&current_delta->creation_ts.load()<=txn_read_ts&&(current_delta->invalidate_ts==0||current_delta->invalidate_ts>txn_read_ts)){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
                      }

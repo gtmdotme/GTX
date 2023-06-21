@@ -58,3 +58,14 @@
 6217	6708	1687273185492375254	tests	6f4e19f49de0268c
 6217	6708	1687273185492375254	tests_tests-b858cb2.cmake	6f4e19f49de0268c
 6217	6708	1687273185492375254	/home/zhou822/BwGraph_v2/cmake-build-debug/tests_tests-b858cb2.cmake	6f4e19f49de0268c
+3	2268	1687353165845154933	CMakeFiles/bwgraph_lib.dir/src/bw_index.cpp.o	67dc56c3468804bd
+2	2761	1687353166337153291	CMakeFiles/bwgraph_lib.dir/src/transaction_tables.cpp.o	cf06ab4f9c48943c
+4	3069	1687353166645152263	CMakeFiles/bwgraph_lib.dir/src/bwgraph.cpp.o	51be1d322eb6433f
+6	3796	1687353167369149847	CMakeFiles/tests.dir/tests/txn_tables.cpp.o	787a89429287e1d2
+5	5227	1687353168797145080	CMakeFiles/tests.dir/tests/bw_index.cpp.o	f537318eb390a288
+4	6302	1687353169869141500	CMakeFiles/bwgraph_lib.dir/src/bw_transaction.cpp.o	423696558c41d252
+6302	6469	1687353170041140926	libbwgraph_lib.a	6516365d74fbf997
+6	7174	1687353170741138590	CMakeFiles/tests.dir/tests/bwgraph_allocation.cpp.o	d4f456aa58708a98
+7175	7649	1687353171229136960	tests	6f4e19f49de0268c
+7175	7649	1687353171229136960	tests_tests-b858cb2.cmake	6f4e19f49de0268c
+7175	7649	1687353171229136960	/home/zhou822/BwGraph_v2/cmake-build-debug/tests_tests-b858cb2.cmake	6f4e19f49de0268c

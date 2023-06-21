@@ -502,7 +502,7 @@ public:
                 }
                 while(true){
                     bool to_abort = false;
-                    if(counter++==2){
+                    if(counter++==20){
                        // std::cout<<"too many retries"<<std::endl;
                         break;
                     }
@@ -585,7 +585,7 @@ public:
                 }
                 while(true){
                     bool to_abort = false;
-                    if(counter++==2){
+                    if(counter++==20){
                        // std::cout<<"too many retries"<<std::endl;
                         break;
                     }
@@ -659,7 +659,7 @@ public:
                         if(to_abort){
                             break;
                         }
-                        size_t inf_cunter = 0;
+                        size_t inf_counter = 0;
                         auto& edge_write_op = workload.edge_write_op.at(z);
                         while(1){
                             auto response = txn.put_edge(edge_write_op.src,edge_write_op.dst,edge_write_op.label,edge_write_op.data);
@@ -669,7 +669,7 @@ public:
                                 to_abort=true;
                                 break;
                             }
-                            if(inf_cunter++==1000000000){
+                            if(inf_counter++==1000000000){
                                 throw std::runtime_error("waiting forever");
                             }
                         }

@@ -35,12 +35,12 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
         //if the block is already overflow, return and wait
         if(current_block->already_overflow()){
             //for debug
-            auto combined_offset = current_block->get_current_offset();
+          /*  auto combined_offset = current_block->get_current_offset();
             uint32_t data_size = (uint32_t)(combined_offset>>32);
             uint32_t delta_size = (uint32_t)(combined_offset&SIZE2MASK);
             if(delta_size>current_block->get_size()*10||delta_size%64){
                 std::cout<<"source is "<<src<<" destination is "<<dst<<" label is "<<static_cast<int32_t>(label)<<std::endl;
-              /*  std::cout<<"creation ts is "<<current_block->get_creation_time()<<" owner id is "<<current_block->get_owner_id()<<std::endl;*/
+
                 print_edge_delta_block_metadata(current_block);
                 if(target_label_entry->state.load()==EdgeDeltaBlockState::NORMAL){
                     std::cout<<"state is normal"<<std::endl;
@@ -50,7 +50,7 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
                 std::cout<<data_size<<" "<<delta_size<<" "<<current_block->get_size()<<std::endl;
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 return Txn_Operation_Response::FAIL;
-            }
+            }*/
             BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
           //  std::cout<<"1"<<std::endl;
             return Txn_Operation_Response::WRITER_WAIT;
@@ -386,13 +386,7 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     //now we start the exclusive installation phase
     BlockStateVersionProtectionScheme::install_exclusive_state(EdgeDeltaBlockState::INSTALLATION,thread_id,block_id,current_label_entry,block_access_ts_table);
     //wait for all validating transactions to finish
-    //todo::for debug
-    size_t inf_loop_counter = 0;
     while(true){
-        if(inf_loop_counter++==100000000){
-            std::cout<<"shit"<<std::endl;
-            throw ConsolidationException();
-        }
         for(auto it = to_check_delta_chains.begin(); it!= to_check_delta_chains.end();){
             //get the delta chain head of this delta chain in the original block, check if a validation is happening
             current_delta = current_block->get_edge_delta(current_label_entry->delta_chain_index->at(*it).get_raw_offset());
@@ -551,9 +545,9 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     per_thread_garbage_queue.register_entry(current_label_entry->block_ptr,current_block->get_order(),largest_invalidation_ts);
     *current_label_entry->delta_chain_index = std::move(new_delta_chains_index);//todo::check its correctness
     current_label_entry->block_ptr = new_block_ptr;
-    if(new_block->already_overflow()){
+/*    if(new_block->already_overflow()){
         throw ConsolidationException();
-    }
+    }*/
     current_label_entry->block_version_number.fetch_add(1);//increase version by 1 /*consolidation_time.store(commit_manager.get_current_read_ts());*/
     BlockStateVersionProtectionScheme::install_shared_state(EdgeDeltaBlockState::NORMAL,current_label_entry);
     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
