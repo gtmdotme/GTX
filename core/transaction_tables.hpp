@@ -16,7 +16,7 @@
 #include "utils.hpp"
 
 namespace bwgraph {
-#define TXN_TABLE_TEST true
+#define TXN_TABLE_TEST false
     class BwGraph;
     class GarbageBlockQueue;
     struct touched_block_entry{
@@ -261,7 +261,7 @@ namespace bwgraph {
                 throw std::runtime_error("error, should not use this approach");
             }
 #else
-            uint64_t index =txn_id % Per_Thread_Table_Size;
+            uint64_t index =txn_id % per_thread_table_size;
 #endif
 
             status_result= local_table[index].status.load();
@@ -285,7 +285,7 @@ namespace bwgraph {
                 throw std::runtime_error("error, should not use this approach");
             }
 #else
-            uint64_t index =txn_id % Per_Thread_Table_Size;
+            uint64_t index =txn_id % per_thread_table_size;
 #endif
 #if TXN_TABLE_TEST
             if(local_table[index].txn_id!=txn_id){
@@ -308,7 +308,7 @@ namespace bwgraph {
                 throw std::runtime_error("error, should not use this approach");
             }
 #else
-            uint64_t index =txn_id % Per_Thread_Table_Size;
+            uint64_t index =txn_id % per_thread_table_size;
 #endif
 #if TXN_TABLE_TEST
             //assert(!local_table[index].txn_id.load());

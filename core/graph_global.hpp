@@ -30,5 +30,5 @@ constexpr uint64_t garbage_collection_threshold = 20;
 #define USING_PESSIMISTIC_MODE true
 constexpr uint64_t placeholder_txn_id = 0x80FFFFFFFFFFFFFF;//all commit ts is greater than 0, and initial
 constexpr uint64_t tombstone_vid = 0xFFFFFFFFFFFFFFFF;
-#define COMMIT_TEST true
+#define COMMIT_TEST false
 //#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

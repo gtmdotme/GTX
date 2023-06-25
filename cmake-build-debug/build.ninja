@@ -140,7 +140,7 @@ build libbwgraph_lib.a: CXX_STATIC_LIBRARY_LINKER__bwgraph_lib_Debug CMakeFiles/
   TARGET_PDB = bwgraph_lib.a.dbg
 
 # =============================================================================
-# Object build statements for SHARED_LIBRARY target bwgraph
+# Object build statements for STATIC_LIBRARY target bwgraph
 
 
 #############################################
@@ -149,79 +149,69 @@ build libbwgraph_lib.a: CXX_STATIC_LIBRARY_LINKER__bwgraph_lib_Debug CMakeFiles/
 build cmake_object_order_depends_target_bwgraph: phony || cmake_object_order_depends_target_bwgraph_lib
 
 build CMakeFiles/bwgraph.dir/bind/bwgraph.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/bind/bwgraph.cpp || cmake_object_order_depends_target_bwgraph
-  DEFINES = -Dbwgraph_EXPORTS
   DEP_FILE = CMakeFiles/bwgraph.dir/bind/bwgraph.cpp.o.d
-  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
   INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/bind
 
 build CMakeFiles/bwgraph.dir/src/block.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/block.cpp || cmake_object_order_depends_target_bwgraph
-  DEFINES = -Dbwgraph_EXPORTS
   DEP_FILE = CMakeFiles/bwgraph.dir/src/block.cpp.o.d
-  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
   INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
 
 build CMakeFiles/bwgraph.dir/src/bw_index.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/bw_index.cpp || cmake_object_order_depends_target_bwgraph
-  DEFINES = -Dbwgraph_EXPORTS
   DEP_FILE = CMakeFiles/bwgraph.dir/src/bw_index.cpp.o.d
-  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
   INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
 
 build CMakeFiles/bwgraph.dir/src/bw_transaction.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/bw_transaction.cpp || cmake_object_order_depends_target_bwgraph
-  DEFINES = -Dbwgraph_EXPORTS
   DEP_FILE = CMakeFiles/bwgraph.dir/src/bw_transaction.cpp.o.d
-  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
   INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
 
 build CMakeFiles/bwgraph.dir/src/bwgraph.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/bwgraph.cpp || cmake_object_order_depends_target_bwgraph
-  DEFINES = -Dbwgraph_EXPORTS
   DEP_FILE = CMakeFiles/bwgraph.dir/src/bwgraph.cpp.o.d
-  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
   INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
 
 build CMakeFiles/bwgraph.dir/src/commit_manager.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/commit_manager.cpp || cmake_object_order_depends_target_bwgraph
-  DEFINES = -Dbwgraph_EXPORTS
   DEP_FILE = CMakeFiles/bwgraph.dir/src/commit_manager.cpp.o.d
-  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
   INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
 
 build CMakeFiles/bwgraph.dir/src/transaction_tables.cpp.o: CXX_COMPILER__bwgraph_Debug /home/zhou822/BwGraph_v2/src/transaction_tables.cpp || cmake_object_order_depends_target_bwgraph
-  DEFINES = -Dbwgraph_EXPORTS
   DEP_FILE = CMakeFiles/bwgraph.dir/src/transaction_tables.cpp.o.d
-  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fPIC -fdiagnostics-color=always
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
   INCLUDES = -I/home/zhou822/BwGraph_v2
   OBJECT_DIR = CMakeFiles/bwgraph.dir
   OBJECT_FILE_DIR = CMakeFiles/bwgraph.dir/src
 
 
 # =============================================================================
-# Link build statements for SHARED_LIBRARY target bwgraph
+# Link build statements for STATIC_LIBRARY target bwgraph
 
 
 #############################################
-# Link the shared library libbwgraph.so
+# Link the static library libbwgraph.a
 
-build libbwgraph.so: CXX_SHARED_LIBRARY_LINKER__bwgraph_Debug CMakeFiles/bwgraph.dir/bind/bwgraph.cpp.o CMakeFiles/bwgraph.dir/src/block.cpp.o CMakeFiles/bwgraph.dir/src/bw_index.cpp.o CMakeFiles/bwgraph.dir/src/bw_transaction.cpp.o CMakeFiles/bwgraph.dir/src/bwgraph.cpp.o CMakeFiles/bwgraph.dir/src/commit_manager.cpp.o CMakeFiles/bwgraph.dir/src/transaction_tables.cpp.o | libbwgraph_lib.a || libbwgraph_lib.a
+build libbwgraph.a: CXX_STATIC_LIBRARY_LINKER__bwgraph_Debug CMakeFiles/bwgraph.dir/bind/bwgraph.cpp.o CMakeFiles/bwgraph.dir/src/block.cpp.o CMakeFiles/bwgraph.dir/src/bw_index.cpp.o CMakeFiles/bwgraph.dir/src/bw_transaction.cpp.o CMakeFiles/bwgraph.dir/src/bwgraph.cpp.o CMakeFiles/bwgraph.dir/src/commit_manager.cpp.o CMakeFiles/bwgraph.dir/src/transaction_tables.cpp.o || libbwgraph_lib.a
   LANGUAGE_COMPILE_FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined
-  LINK_LIBRARIES = libbwgraph_lib.a
   OBJECT_DIR = CMakeFiles/bwgraph.dir
   POST_BUILD = :
   PRE_LINK = :
-  SONAME = libbwgraph.so
-  SONAME_FLAG = -Wl,-soname,
-  TARGET_FILE = libbwgraph.so
-  TARGET_PDB = bwgraph.so.dbg
+  TARGET_FILE = libbwgraph.a
+  TARGET_PDB = bwgraph.a.dbg
 
 # =============================================================================
 # Object build statements for EXECUTABLE target tests
@@ -477,7 +467,7 @@ build doctest/install/strip: phony doctest/CMakeFiles/install/strip.util
 # =============================================================================
 # Target aliases.
 
-build bwgraph: phony libbwgraph.so
+build bwgraph: phony libbwgraph.a
 
 build bwgraph_lib: phony libbwgraph_lib.a
 
@@ -495,7 +485,7 @@ build parallel_hashmap_lib: phony libparallel_hashmap_lib.a
 #############################################
 # Folder: /home/zhou822/BwGraph_v2/cmake-build-debug
 
-build all: phony libparallel_hashmap_lib.a libbwgraph_lib.a libbwgraph.so tests
+build all: phony libparallel_hashmap_lib.a libbwgraph_lib.a libbwgraph.a tests
 
 # =============================================================================
 

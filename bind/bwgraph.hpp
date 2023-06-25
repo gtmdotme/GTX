@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <stdexcept>
+#include <thread>
 
 namespace  bwgraph{
     class BwGraph;
@@ -46,6 +47,7 @@ namespace bg {
         bool is_txn_table_empty();
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
+        std::thread commit_manager_worker;
     };
     class ROTransaction{
     public:

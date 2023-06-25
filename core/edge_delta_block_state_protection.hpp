@@ -9,7 +9,7 @@
 //#include "bwgraph.hpp"
 #include "block_access_ts_table.hpp"
 namespace bwgraph{
-#define STATE_PROTECTION_TEST true
+#define STATE_PROTECTION_TEST false
     //protects blocks to always be in consistent states
     class BlockStateVersionProtectionScheme{
     public:

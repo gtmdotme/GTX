@@ -7,9 +7,13 @@
 using namespace bg;
 namespace impl = bwgraph;
 
-Graph:: ~Graph()= default;
+Graph:: ~Graph(){
+    commit_server_shutdown();
+    commit_manager_worker.join();
+}
 Graph::Graph(std::string block_path, size_t _max_block_size, std::string wal_path) :graph(std::make_unique<impl::BwGraph>(block_path, _max_block_size, wal_path)){
-
+    commit_manager_worker =std::thread(&Graph::commit_server_start, this);
+    //commit_manager_worker =
 }
 
 vertex_t Graph::get_max_allocated_vid() {return graph->get_max_allocated_vid();}
