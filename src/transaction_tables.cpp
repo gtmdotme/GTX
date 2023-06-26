@@ -213,6 +213,7 @@ namespace bwgraph{
         }*/
         while(entry.op_count.load()){
             if(count++==10000000000){
+                std::cout<<"status is "<<entry.status<<" op count is "<<entry.op_count.load()<<std::endl;
                 throw EagerCleanException();
             }
         }

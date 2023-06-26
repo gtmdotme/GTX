@@ -377,7 +377,7 @@ namespace bwgraph{
         //transaction status operation
         void abort();
         bool commit();
-
+        inline BwGraph& get_graph(){return graph;}
     private:
         //handle the scenario that block becomes overflow
         void consolidation(BwLabelEntry* current_label_entry, EdgeDeltaBlockHeader* current_block, uint64_t block_id);
@@ -478,6 +478,10 @@ namespace bwgraph{
         inline uint64_t calculate_nw_block_size_from_lifespan(uint64_t delta_storage_size,uint64_t lifespan, uint64_t min_lifespan_threshold){
             lifespan = (lifespan > min_lifespan_threshold)?lifespan:min_lifespan_threshold;
             uint64_t ratio = std::max(500/lifespan, static_cast<uint64_t>(2));
+            //todo: optimize for pwoer law graph
+            /*if(delta_storage_size>8192)
+                delta_storage_size*=2;*/
+            //delta_storage_size *= std::max(static_cast<uint64_t>(1),delta_storage_size/2048);
             return delta_storage_size*ratio + sizeof(EdgeDeltaBlockHeader);
         }
         //don't forget to subtract op_count

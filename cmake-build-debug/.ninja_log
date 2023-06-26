@@ -7,7 +7,7 @@
 4810	4938	1686009167789592953	BwGraph_v2	d5044b6819b490b2
 11	5963	1687653647746618684	CMakeFiles/tests.dir/tests/bwgraph_allocation.cpp.o	d4f456aa58708a98
 6307	6874	1687653648666615443	tests	6f4e19f49de0268c
-1	49	1687654269124445384	build.ninja	648c92d10389015a
+1	49	1687714188446100383	build.ninja	648c92d10389015a
 9	5633	1687653647414619853	CMakeFiles/tests.dir/tests/main.cpp.o	aaca5604c153790b
 7	1582	1687131478629752470	CMakeFiles/bwgraph.dir/src/commit_manager.cpp.o	9eff7b0c66e789f4
 5	2569	1687134359224162941	CMakeFiles/bwgraph.dir/src/bwgraph.cpp.o	d625767978faefce
@@ -28,3 +28,16 @@
 4	3526	1687134360180159813	CMakeFiles/bwgraph.dir/bind/bwgraph.cpp.o	6828384f9af35b07
 8	3958	1687653645746625727	CMakeFiles/bwgraph_lib.dir/src/bwgraph.cpp.o	51be1d322eb6433f
 6307	6874	1687653648666615443	/home/zhou822/BwGraph_v2/cmake-build-debug/tests_tests-b858cb2.cmake	6f4e19f49de0268c
+4	1581	1687718900539196464	CMakeFiles/bwgraph_lib.dir/src/block.cpp.o	efe45bd86a9e3653
+6	1639	1687718900599196273	CMakeFiles/bwgraph_lib.dir/src/commit_manager.cpp.o	57058e6906bfe653
+5	2320	1687718901279194095	CMakeFiles/bwgraph_lib.dir/src/bw_index.cpp.o	67dc56c3468804bd
+5	2717	1687718901675192828	CMakeFiles/bwgraph_lib.dir/src/transaction_tables.cpp.o	cf06ab4f9c48943c
+9	4270	1687718903223187872	CMakeFiles/tests.dir/tests/txn_tables.cpp.o	787a89429287e1d2
+7	4312	1687718903267187731	CMakeFiles/bwgraph_lib.dir/src/bwgraph.cpp.o	51be1d322eb6433f
+9	5568	1687718904519183722	CMakeFiles/tests.dir/tests/bw_index.cpp.o	f537318eb390a288
+8	6497	1687718905447180751	CMakeFiles/bwgraph_lib.dir/src/bw_transaction.cpp.o	423696558c41d252
+6497	6651	1687718905607180239	libbwgraph_lib.a	6516365d74fbf997
+10	7092	1687718906039178855	CMakeFiles/tests.dir/tests/bwgraph_allocation.cpp.o	d4f456aa58708a98
+7093	7673	1687718906631176960	tests	6f4e19f49de0268c
+7093	7673	1687718906631176960	tests_tests-b858cb2.cmake	6f4e19f49de0268c
+7093	7673	1687718906631176960	/home/zhou822/BwGraph_v2/cmake-build-debug/tests_tests-b858cb2.cmake	6f4e19f49de0268c

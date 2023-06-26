@@ -84,7 +84,15 @@ RWTransaction::RWTransaction(std::unique_ptr<bwgraph::RWTransaction> _txn):txn(s
 vertex_t RWTransaction::new_vertex() {return txn->create_vertex();}
 
 void RWTransaction::put_vertex(bg::vertex_t vertex_id, std::string_view data) {
+#if TRACK_EXECUTION_TIME
+    auto start = std::chrono::high_resolution_clock::now();
+#endif
     auto result = txn->update_vertex(vertex_id,data);
+#if TRACK_EXECUTION_TIME
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    txn->get_graph().local_thread_vertex_write_time.local()+= duration.count();
+#endif
     if(result==bwgraph::Txn_Operation_Response::SUCCESS){
         return;
     }else{
@@ -94,7 +102,15 @@ void RWTransaction::put_vertex(bg::vertex_t vertex_id, std::string_view data) {
 
 void RWTransaction::put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst, std::string_view edge_data) {
     while(true){
+#if TRACK_EXECUTION_TIME
+        auto start = std::chrono::high_resolution_clock::now();
+#endif
         auto result = txn->put_edge(src,dst,label,edge_data);
+#if TRACK_EXECUTION_TIME
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        txn->get_graph().local_thread_edge_write_time.local()+= duration.count();
+#endif
         if(result == bwgraph::Txn_Operation_Response::SUCCESS){
             return;
         }else if(result ==bwgraph::Txn_Operation_Response::FAIL){
@@ -105,7 +121,15 @@ void RWTransaction::put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t d
 
 void RWTransaction::delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst) {
     while(true){
+#if TRACK_EXECUTION_TIME
+        auto start = std::chrono::high_resolution_clock::now();
+#endif
         auto result = txn->delete_edge(src,dst,label);
+#if TRACK_EXECUTION_TIME
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        txn->get_graph().local_thread_edge_write_time.local()+= duration.count();
+#endif
         if(result == bwgraph::Txn_Operation_Response::SUCCESS){
             return;
         }else if(result ==bwgraph::Txn_Operation_Response::FAIL){

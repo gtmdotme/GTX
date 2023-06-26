@@ -924,6 +924,9 @@ bool RWTransaction::simple_validation() {
 }
 
 bool RWTransaction::commit() {
+#if TRACK_EXECUTION_TIME
+    auto start = std::chrono::high_resolution_clock::now();
+#endif
     batch_lazy_updates();
 #if LAZY_LOCKING
     if(!validation()){
@@ -935,6 +938,11 @@ bool RWTransaction::commit() {
     if(!simple_validation()){
         eager_abort();
         txn_tables.abort_txn(self_entry,op_count);//no need to cache the touched blocks of aborted txns due to eager abort
+#if TRACK_EXECUTION_TIME
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        graph.local_thread_abort_time.local()+= duration.count();
+#endif
         return false;
     }
 #endif //LAZY_LOCKING
@@ -946,21 +954,37 @@ bool RWTransaction::commit() {
     }
     self_entry->op_count.store(op_count);
     commit_manager.txn_commit(thread_id,self_entry,true);//now do it simple, just wait
+#if TRACK_EXECUTION_TIME
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    graph.local_thread_commit_time.local()+= duration.count();
+#endif
     return true;
 }
 
 
 void RWTransaction::abort() {
+#if TRACK_EXECUTION_TIME
+    auto start = std::chrono::high_resolution_clock::now();
+#endif
     batch_lazy_updates();
     //eager abort no need to cache
     eager_abort();
     txn_tables.abort_txn(self_entry,op_count);//no need to cache the touched blocks of aborted txns due to eager abort
+#if TRACK_EXECUTION_TIME
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    graph.local_thread_abort_time.local()+= duration.count();
+#endif
 }
 
 
 //vertex operations
 //maybe txn eager abort will recycle allocated vertices.
 vertex_t RWTransaction::create_vertex() {
+#if TRACK_EXECUTION_TIME
+    auto start = std::chrono::high_resolution_clock::now();
+#endif
     //todo: further design the reuse vertex part, currently assume no vertex deletion
     auto& vertex_index = graph.get_vertex_index();
     if(!thread_local_recycled_vertices.empty()){
@@ -976,6 +1000,11 @@ vertex_t RWTransaction::create_vertex() {
         created_vertices.emplace(reuse_vid);
 
         //vertex_index.make_valid(reuse_vid); already valid, but just deleted or no delta at all
+#if TRACK_EXECUTION_TIME
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        graph.local_thread_vertex_write_time.local()+= duration.count();
+#endif
         return reuse_vid;
     }
     auto new_vid = vertex_index.get_next_vid();
@@ -992,6 +1021,11 @@ vertex_t RWTransaction::create_vertex() {
     edge_label_block->fill_information(new_vid,&block_manager);//allocate and fill in new initial label block
     //vertex_index.make_valid(new_vid);
     created_vertices.emplace(new_vid);
+#if TRACK_EXECUTION_TIME
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    graph.local_thread_vertex_write_time.local()+= duration.count();
+#endif
     return new_vid;
 }
 
