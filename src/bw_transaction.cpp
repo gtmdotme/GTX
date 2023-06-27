@@ -261,6 +261,7 @@ RWTransaction::delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph
 }
 
 void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, EdgeDeltaBlockHeader* current_block, uint64_t block_id) {
+    //std::cout<<"consolidation starts"<<std::endl;
     BlockStateVersionProtectionScheme::install_exclusive_state(EdgeDeltaBlockState::OVERFLOW,thread_id,block_id,current_label_entry,block_access_ts_table);
     uint32_t original_delta_offset = current_delta_offset-ENTRY_DELTA_SIZE;
     uint32_t original_data_offset = current_data_offset;
@@ -483,7 +484,7 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
             for(int64_t i = txn_own_deltas_size-1; i>=0; i--){
                 uint64_t txn_id = it->first;
                 current_delta= current_block->get_edge_delta(all_delta_offsets_of_txn.at(i));
-                if(current_delta->creation_ts.compare_exchange_strong(txn_id,commit_ts)){
+                if(current_delta->lazy_update(txn_id,commit_ts)){
                     record_lazy_update_record(&lazy_update_records,txn_id);
                 }
                 //only install non-delete deltas
@@ -927,7 +928,6 @@ bool RWTransaction::commit() {
 #if TRACK_EXECUTION_TIME
     auto start = std::chrono::high_resolution_clock::now();
 #endif
-    batch_lazy_updates();
 #if LAZY_LOCKING
     if(!validation()){
         eager_abort();
@@ -943,6 +943,7 @@ bool RWTransaction::commit() {
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         graph.local_thread_abort_time.local()+= duration.count();
 #endif
+        batch_lazy_updates();
         return false;
     }
 #endif //LAZY_LOCKING
@@ -952,8 +953,13 @@ bool RWTransaction::commit() {
     for(auto it = updated_vertices.begin(); it!=updated_vertices.end();it++){
         self_entry->touched_blocks.emplace_back(*it,0);
     }
+    //todo:: only for insert per txn
+    /*if(op_count!=self_entry->touched_blocks.size()){
+        throw std::runtime_error("op count error");
+    }*/
     self_entry->op_count.store(op_count);
     commit_manager.txn_commit(thread_id,self_entry,true);//now do it simple, just wait
+    batch_lazy_updates();
 #if TRACK_EXECUTION_TIME
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
@@ -1199,7 +1205,13 @@ std::string_view RWTransaction::get_vertex(bwgraph::vertex_t src) {
     return std::string_view();
 }
 
-RWTransaction::~RWTransaction() = default;
+RWTransaction::~RWTransaction()=default;/*{
+    if(!lazy_update_records.empty()){
+        std::cout<<"error, txn neither committed or aborted"<<std::endl;
+        std::cout<<"txn id is "<<self_entry->txn_id<<" status is "<<self_entry->status<<" op count is "<<self_entry->op_count<<std::endl;
+        batch_lazy_updates();
+    }
+}*/
 
 std::pair<Txn_Operation_Response, std::string_view>
 ROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {

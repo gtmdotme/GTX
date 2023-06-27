@@ -609,6 +609,13 @@ namespace bwgraph{
             uint64_t to_atomic = ((static_cast<uint64_t>(data_size))<<32)+ENTRY_DELTA_SIZE;
             return combined_offsets.fetch_add(to_atomic);
         }
+        void print_metadata(){
+            std::cout<<"order is "<<static_cast<uint32_t>(order)<<std::endl;
+            std::cout<<"creation time is "<<creation_time<<std::endl;
+            std::cout<<"owner id is "<<owner_id<<std::endl;
+            std::cout<<"current offset is "<<combined_offsets.load()<<std::endl;
+            std::cout<<"previous address is "<<prev_pointer<<std::endl;
+        }
         //delta append
         void append_edge_delta(vertex_t toID, uint64_t txnID, EdgeDeltaType type, const char*edge_data, int data_size, uint32_t previous_delta_offset, uint32_t current_delta_offset, uint32_t current_data_offset){
             BaseEdgeDelta* edgeDelta=(get_edge_delta(current_delta_offset));

@@ -21,7 +21,7 @@ ROTransaction BwGraph::begin_read_only_transaction() {
     block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
     if(executed_txn_count.local()==garbage_collection_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_threshold){
         auto safe_ts = block_access_ts_table.calculate_safe_ts();
-        garbage_queues[worker_thread_id].free_block(safe_ts);
+        //garbage_queues[worker_thread_id].free_block(safe_ts);
         executed_txn_count.local()=1;
     }
     return ROTransaction(*this,read_ts,txn_tables,block_manager,garbage_queues[worker_thread_id],block_access_ts_table,worker_thread_id);
@@ -35,6 +35,7 @@ RWTransaction BwGraph::begin_read_write_transaction() {
     uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
     auto stop_thread_id = std::chrono::high_resolution_clock::now();
     auto txn_id = txn_tables.get_table(worker_thread_id).generate_txn_id();
+    auto stop_txn_id = std::chrono::high_resolution_clock::now();
     auto txn_entry =  txn_tables.get_table(worker_thread_id).put_entry(txn_id);
     auto stop_txn_entry= std::chrono::high_resolution_clock::now();
     block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
@@ -50,7 +51,9 @@ RWTransaction BwGraph::begin_read_write_transaction() {
     local_rwtxn_creation_time.local()+= duration.count();
     auto get_thread_id_time = std::chrono::duration_cast<std::chrono::microseconds>(stop_thread_id - start);
     local_get_thread_id_time.local()+=get_thread_id_time.count();
-    auto install_txn_entry_time = std::chrono::duration_cast<std::chrono::microseconds>(stop_txn_entry-stop_thread_id);
+    auto generate_txn_id_time = std::chrono::duration_cast<std::chrono::microseconds>(stop_txn_id-stop_thread_id);
+    local_generate_txn_id_time.local()+=generate_txn_id_time.count();
+    auto install_txn_entry_time = std::chrono::duration_cast<std::chrono::microseconds>(stop_txn_entry-stop_txn_id);
     local_install_txn_entry_time.local()+=install_txn_entry_time.count();
     auto garbage_collection_time = std::chrono::duration_cast<std::chrono::microseconds>(stop - stop_txn_entry);
     local_garbage_collection_time.local()+=garbage_collection_time.count();

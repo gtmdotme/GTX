@@ -21,6 +21,7 @@ namespace bwgraph{
         //if the offset is overflowing, a consolidation will happen soon, so let me exit and let consolidation do lazy update for me.
         if(current_edge_delta_block->is_overflow_offset(current_combined_offset)){
            // return false;
+           return;
         }
         std::unordered_map<uint64_t,int32_t>lazy_update_records;
         uint32_t current_delta_offset = static_cast<uint32_t>(current_combined_offset&SIZE2MASK);
@@ -60,12 +61,66 @@ namespace bwgraph{
         }
         //return true;
     }
+
+    int32_t ArrayTransactionTable::lazy_update_block(uintptr_t block_ptr, uint64_t txn_id) {
+        EdgeDeltaBlockHeader* current_edge_delta_block = bwGraph->get_block_manager().convert<EdgeDeltaBlockHeader>(block_ptr);
+        uint64_t current_combined_offset = current_edge_delta_block->get_current_offset();
+        //if the offset is overflowing, a consolidation will happen soon, so let me exit and let consolidation do lazy update for me.
+        if(current_edge_delta_block->is_overflow_offset(current_combined_offset)){
+            // return false;
+            return -1;
+        }
+        std::unordered_map<uint64_t,int32_t>lazy_update_records;
+        uint32_t current_delta_offset = static_cast<uint32_t>(current_combined_offset&SIZE2MASK);
+        BaseEdgeDelta* current_delta = current_edge_delta_block->get_edge_delta(current_delta_offset);
+        int32_t found =0;
+        while(current_delta_offset>0){
+            if(current_delta->valid.load()){
+                uint64_t original_ts = current_delta->creation_ts.load();
+                if(original_ts==txn_id){
+                    found++;
+                }
+                if(is_txn_id(original_ts)){
+                    uint64_t status =0;
+                    if(txn_tables->get_status(original_ts,status)){
+                        if(status!=IN_PROGRESS){
+                            if(status!=ABORT){
+                                current_edge_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
+                                if(current_delta->lazy_update(original_ts,status)){
+#if LAZY_LOCKING
+                                    if(current_delta->is_last_delta){
+                                        current_edge_delta_block->release_protection(current_delta->toID);
+                                    }
+#endif
+                                    record_lazy_update_record(&lazy_update_records,original_ts);
+                                }
+                            }
+#if EDGE_DELTA_TEST
+                            if(current_delta->creation_ts!=status){
+                                throw EagerCleanException();
+                            }
+#endif
+                        }
+                    }
+                }
+            }
+            current_delta++;
+            current_delta_offset-=ENTRY_DELTA_SIZE;
+        }
+        for(auto it = lazy_update_records.begin();it!=lazy_update_records.end();it++){
+            txn_tables->reduce_op_count(it->first,it->second);
+        }
+        return found;
+    }
     void ArrayTransactionTable::eager_clean(uint64_t index) {
         //need to access BwGraph and its block manager
         auto& entry = local_table[index];
+
         //for debug
-    /*    uint32_t number_of_cleaned_blocks = 0;
-        auto all_equal = true;
+      //  uint32_t number_of_cleaned_edge_blocks = 0;
+      //  uint32_t number_of_cleaned_vertex_blocks = 0;
+      //  int32_t found =0;
+    /*    auto all_equal = true;
         timestamp_t first_compare_ts = local_table[0].status.load();
         for(int i=0; i<Per_Thread_Table_Size;i++){
             if(local_table[i].status.load()!=first_compare_ts){
@@ -80,7 +135,9 @@ namespace bwgraph{
                 bool_all_in_progress = false;
             }
         }*/
-
+#if TRACK_EXECUTION_TIME
+        auto start = std::chrono::high_resolution_clock::now();
+#endif
         for(size_t i=0; i<entry.touched_blocks.size();i++){
             //if already cleaned-up, can quickly return
             if(!entry.op_count.load()){
@@ -92,10 +149,14 @@ namespace bwgraph{
             //if the entry is already invalid, its edge delta blocks must already be lazy updated and freed.
             //todo: check its correctness
             if (!index_entry.valid.load()){
+                //throw std::runtime_error("touched block not valid?");
                 continue;
             }
             //if it refers to labeled edge block
             if(target_vid_label_pair.second){
+#if TRACK_EXECUTION_TIME
+                auto edge_clean_start = std::chrono::high_resolution_clock::now();
+#endif
                 //label block never gets deleted because we can reuse it
                 EdgeLabelBlock* target_label_block = bwGraph->get_block_manager().convert<EdgeLabelBlock>(index_entry.edge_label_block_ptr.load());
                 BwLabelEntry* target_label_entry;
@@ -106,8 +167,12 @@ namespace bwgraph{
                      //  if(touched_block_entry.block_version_num==target_label_entry->block_version_number.load()){
                            //if the block still exists
                            if(target_label_entry->block_ptr){
-                               //todo: change back from debug mode
+
+                              // lazy_update_block(target_label_entry->block_ptr);
+                               //todo::remove this later
                                lazy_update_block(target_label_entry->block_ptr);
+                              // found = lazy_update_block(target_label_entry->block_ptr,entry.txn_id);
+                              // number_of_cleaned_edge_blocks++;
                            }
                       // }
                        BlockStateVersionProtectionScheme::release_protection(thread_id,bwGraph->get_block_access_ts_table());
@@ -119,7 +184,15 @@ namespace bwgraph{
                     //never delete entries, at the worst mark the block ptr as 0. So if I modified this label, the entry must exist
                     throw LabelEntryMissingException();
                 }
+#if TRACK_EXECUTION_TIME
+                auto edge_clean_stop = std::chrono::high_resolution_clock::now();
+                auto edge_clean_duration = std::chrono::duration_cast<std::chrono::microseconds>(edge_clean_stop - edge_clean_start);
+                bwGraph->local_edge_clean_real_work_time.local()+=edge_clean_duration.count();
+#endif
             }else{
+#if TRACK_EXECUTION_TIME
+                auto vertex_clean_start = std::chrono::high_resolution_clock::now();
+#endif
                 auto current_vertex_ptr = index_entry.vertex_delta_chain_head_ptr.load();
                 if(current_vertex_ptr){
                     VertexDeltaHeader* vertex_delta = bwGraph->get_block_manager().convert<VertexDeltaHeader>(current_vertex_ptr);
@@ -144,9 +217,21 @@ namespace bwgraph{
                             }
                         }
                     }
+                    //todo::remove this later
+                   // number_of_cleaned_vertex_blocks++;
                 }
+#if TRACK_EXECUTION_TIME
+                auto vertex_clean_stop = std::chrono::high_resolution_clock::now();
+                auto vertex_clean_duration = std::chrono::duration_cast<std::chrono::microseconds>(vertex_clean_stop-vertex_clean_start );
+                bwGraph->local_vertex_clean_real_work_time.local()+=vertex_clean_duration.count();
+#endif
             }
         }
+#if TRACK_EXECUTION_TIME
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        bwGraph->local_eager_clean_real_work_time.local()+=duration.count();
+#endif
         //for debug
         size_t count =0;
     /*    bool all_equal_100 = true;
@@ -213,9 +298,80 @@ namespace bwgraph{
         }*/
         while(entry.op_count.load()){
             if(count++==10000000000){
+              /*  std::cout<<"found is "<<found<<std::endl;
+                std::cout<<"number of cleaned edge block is "<<number_of_cleaned_edge_blocks<<std::endl;
+                std::cout<<"number of cleaned vertex block is "<<number_of_cleaned_vertex_blocks<<std::endl;
+                std::cout<<"index is "<<index<<std::endl;
+                std::cout<<"txn id is "<<entry.txn_id<<std::endl;
+                std::cout<<"touched block size is "<<entry.touched_blocks.size()<<std::endl;
                 std::cout<<"status is "<<entry.status<<" op count is "<<entry.op_count.load()<<std::endl;
+                auto& touched_block_entry = entry.touched_blocks.at(0);
+                auto target_vid_label_pair =decompose_block_id(touched_block_entry.block_id);
+                std::cout<<"vid is "<<target_vid_label_pair.first<<std::endl;
+                std::cout<<"label is "<<static_cast<uint32_t>(target_vid_label_pair.second)<<std::endl;
+                auto& index_entry = bwGraph->get_vertex_index_entry(target_vid_label_pair.first);
+                EdgeLabelBlock* target_label_block = bwGraph->get_block_manager().convert<EdgeLabelBlock>(index_entry.edge_label_block_ptr.load());
+                BwLabelEntry* target_label_entry;
+                if(target_label_block->reader_lookup_label(target_vid_label_pair.second,target_label_entry)){
+                    if( BlockStateVersionProtectionScheme::reader_access_block(thread_id,touched_block_entry.block_id,target_label_entry,bwGraph->get_block_access_ts_table())){
+                        //todo:: we add the safety check here: but it requires we cache this value after validation phase
+                        //  if(touched_block_entry.block_version_num==target_label_entry->block_version_number.load()){
+                        //if the block still exists
+                        if(target_label_entry->block_ptr){
+                            EdgeDeltaBlockHeader* bad_block = bwGraph->get_block_manager().convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
+                            bad_block->print_metadata();
+                            uint64_t current_offset = bad_block->get_current_offset();
+                            uint32_t current_delta_offset = static_cast<uint32_t>(current_offset&SIZE2MASK);
+                            while(current_delta_offset>0){
+                                auto current_delta = bad_block->get_edge_delta(current_delta_offset);
+                                if(current_delta->creation_ts.load()==entry.txn_id){
+                                    std::cout<<"current delta with our txn ID found"<<std::endl;
+                                }
+                                if(current_delta->creation_ts.load()==entry.status.load()){
+                                    std::cout<<"current delta with our ts found"<<std::endl;
+                                }
+                                current_delta_offset-=ENTRY_DELTA_SIZE;
+                            }
+                            uint32_t previous_counter = 1;
+                            auto previous_block = bwGraph->get_block_manager().convert<EdgeDeltaBlockHeader>(bad_block->get_previous_ptr());
+                           // previous_block->print_metadata();
+                            uint64_t previous_block_offset = previous_block->get_current_offset();
+                            uint32_t previous_delta_offset = static_cast<uint32_t>(previous_block_offset&SIZE2MASK);
+                            while(previous_delta_offset>0){
+                                auto previous_delta = previous_block->get_edge_delta(previous_delta_offset);
+                                if(previous_delta->creation_ts.load()==entry.txn_id){
+                                    std::cout<<previous_counter<<" previous delta with our txn ID found"<<std::endl;
+                                }
+                                if(previous_delta->creation_ts.load()==entry.status.load()){
+                                    std::cout<<previous_counter<<" previous delta with our ts found"<<std::endl;
+                                }
+                                previous_delta_offset-=ENTRY_DELTA_SIZE;
+                            }
+                            while(previous_block->get_previous_ptr()){
+                                previous_counter++;
+                                previous_block = bwGraph->get_block_manager().convert<EdgeDeltaBlockHeader>(previous_block->get_previous_ptr());
+                               // previous_block->print_metadata();
+                                 previous_block_offset = previous_block->get_current_offset();
+                                 previous_delta_offset = static_cast<uint32_t>(previous_block_offset&SIZE2MASK);
+                                while(previous_delta_offset>0){
+                                    auto previous_delta = previous_block->get_edge_delta(previous_delta_offset);
+                                    if(previous_delta->creation_ts.load()==entry.txn_id){
+                                        std::cout<<previous_counter<<" previous delta with our txn ID found"<<std::endl;
+                                    }
+                                    if(previous_delta->creation_ts.load()==entry.status.load()){
+                                        std::cout<<previous_counter<<" previous delta with our ts found"<<std::endl;
+                                    }
+                                    previous_delta_offset-=ENTRY_DELTA_SIZE;
+                                }
+                            }
+                        }
+                        // }
+                        BlockStateVersionProtectionScheme::release_protection(thread_id,bwGraph->get_block_access_ts_table());
+                    }
+                }*/
                 throw EagerCleanException();
             }
         }
+        //std::cout<<"eager clean succeeds"<<std::endl;
     }
 }

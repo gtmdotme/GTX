@@ -336,6 +336,7 @@ namespace bwgraph{
                     txn_tables.reduce_op_count(it->first,it->second);
                 }
             }
+            lazy_update_records.clear();
         }
         std::string_view scan_previous_block_find_edge(EdgeDeltaBlockHeader* previous_block, vertex_t vid);
         BwGraph& graph;
@@ -430,9 +431,9 @@ namespace bwgraph{
         //allocate space in the current block for delta
         EdgeDeltaInstallResult allocate_delta(EdgeDeltaBlockHeader* current_block, int32_t data_size){
             //todo:; for debug
-            if(data_size>128){
+        /*    if(data_size>128){
                 throw std::runtime_error("for debug, too large delta");
-            }
+            }*/
             uint32_t block_size = current_block->get_size();
             uint64_t original_block_offset = current_block->allocate_space_for_new_delta(data_size);
 #if EDGE_DELTA_TEST
@@ -448,9 +449,9 @@ namespace bwgraph{
             current_data_offset = original_data_offset;//grow from left to right;
             current_delta_offset = new_delta_offset; //grow from right to left
 #if EDGE_DELTA_TEST
-            if(current_delta_offset>10000000){
+         /*   if(current_delta_offset>10000000){
                 throw std::runtime_error("for debug, too large delta 2");
-            }
+            }*/
 #endif
             if((new_delta_offset+new_data_offset)>block_size){
                 if(original_delta_offset+original_data_offset<=block_size){
@@ -469,6 +470,7 @@ namespace bwgraph{
                     txn_tables.reduce_op_count(it->first,it->second);
                 }
             }
+            lazy_update_records.clear();
         }
 
         //consolidation heuristics

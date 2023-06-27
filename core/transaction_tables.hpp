@@ -271,6 +271,7 @@ namespace bwgraph {
         inline bool is_empty(){
             for(uint32_t i=0; i<per_thread_table_size;i++){
                 if(local_table[i].op_count){
+                    std::cout<<"txn id is "<<local_table[i].txn_id<<" status is "<<local_table[i].status<<" op_count is "<<local_table[i].op_count<<" touched block count is "<<local_table[i].touched_blocks.size()<<std::endl;
                     return false;
                 }
             }
@@ -279,6 +280,7 @@ namespace bwgraph {
         //reduce op_count no longer deletes entry, it only reduces op_count to 0 at most. And an entry with no op_count becomes a candidate for new entry.
         inline void reduce_op_count(uint64_t txn_id,int64_t op_count){
 #if TXN_TABLE_TEST
+            //std::cout<<txn_id<<" "<<op_count<<std::endl;
             uint64_t index = get_local_txn_id(txn_id)%per_thread_table_size;
             uint64_t to_compare_index = txn_id % per_thread_table_size;
             if(index!=to_compare_index){
@@ -340,6 +342,11 @@ namespace bwgraph {
 
         inline uint64_t generate_txn_id(){
             uint64_t index = offset%per_thread_table_size;
+#if TXN_TABLE_TEST
+            if(offset>per_thread_table_size&&local_table[index].status==IN_PROGRESS){
+                throw new std::runtime_error("error, the txn did not get a final state");
+            }
+#endif
             if(local_table[index].op_count.load()){
                 eager_clean(index);
             }
@@ -352,6 +359,8 @@ namespace bwgraph {
         //put_entry, abort and commit txn don't need to be accessed by other threads
     private:
         void lazy_update_block(uintptr_t block_ptr);
+       //todo::for debug, add more values
+       int32_t lazy_update_block(uintptr_t block_ptr, uint64_t txn_id);
         uint8_t thread_id;
         uint64_t offset;
         Array local_table;

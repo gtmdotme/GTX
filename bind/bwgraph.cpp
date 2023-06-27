@@ -23,6 +23,7 @@ RWTransaction Graph::begin_read_write_transaction() {
 }
 
 ROTransaction Graph::begin_read_only_transaction() {
+   // std::cout<<"ro"<<std::endl;
     return std::make_unique<impl::ROTransaction>(graph->begin_read_only_transaction());
 }
 
@@ -54,9 +55,10 @@ ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(
 
 ROTransaction:: ~ROTransaction() = default;
 
-std::string_view ROTransaction::get_vertex(bg::vertex_t src) {return txn->get_vertex(src);}
+std::string_view ROTransaction::get_vertex(bg::vertex_t src) {std::cout<<"ro"<<std::endl;return txn->get_vertex(src);}
 
 std::string_view ROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
+   // std::cout<<"ro"<<std::endl;
     while(true){
         auto result = txn->get_edge(src,dst,label);
         if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
@@ -66,6 +68,7 @@ std::string_view ROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg:
 }
 
 EdgeDeltaIterator ROTransaction::get_edges(bg::vertex_t src, bg::label_t label) {
+   // std::cout<<"ro"<<std::endl;
     while(true){
         auto result = txn->get_edges(src,label);
         if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
@@ -139,10 +142,12 @@ void RWTransaction::delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_
 }
 
 std::string_view RWTransaction::get_vertex(bg::vertex_t src) {
+   // std::cout<<"rw r"<<std::endl;
     return txn->get_vertex(src);
 }
 
 std::string_view RWTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
+    //std::cout<<"rw r"<<std::endl;
     while(true){
         auto result = txn->get_edge(src,dst,label);
         if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
@@ -154,6 +159,7 @@ std::string_view RWTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg:
 }
 
 EdgeDeltaIterator RWTransaction::get_edges(bg::vertex_t src, bg::label_t label) {
+   // std::cout<<"rw r"<<std::endl;
     while(true){
         auto result = txn->get_edges(src,label);
         if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){

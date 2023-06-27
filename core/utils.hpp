@@ -50,6 +50,7 @@ namespace bwgraph{
         return std::pair<vertex_t,label_t>((block_id&VERTEX_ID_MASK),(static_cast<label_t>(block_id>>48)));
     }
     inline void record_lazy_update_record(lazy_update_map* txn_lazy_update_records, uint64_t original_txn_id){
+      //  std::cout<<original_txn_id<<std::endl;
       /*  if(!(original_txn_id&0x8000000000000000)){
             std::cout<<original_txn_id<<std::endl;
         }*/
