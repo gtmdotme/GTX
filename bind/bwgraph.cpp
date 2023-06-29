@@ -55,7 +55,7 @@ ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(
 
 ROTransaction:: ~ROTransaction() = default;
 
-std::string_view ROTransaction::get_vertex(bg::vertex_t src) {std::cout<<"ro"<<std::endl;return txn->get_vertex(src);}
+std::string_view ROTransaction::get_vertex(bg::vertex_t src) {return txn->get_vertex(src);}
 
 std::string_view ROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
    // std::cout<<"ro"<<std::endl;
@@ -122,6 +122,28 @@ void RWTransaction::put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t d
     }
 }
 
+bool
+RWTransaction::checked_put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst, std::string_view edge_data) {
+    while(true){
+#if TRACK_EXECUTION_TIME
+        auto start = std::chrono::high_resolution_clock::now();
+#endif
+        auto result = txn->checked_put_edge(src,dst,label,edge_data);
+#if TRACK_EXECUTION_TIME
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        txn->get_graph().local_thread_edge_write_time.local()+= duration.count();
+#endif
+        if(result == bwgraph::Txn_Operation_Response::SUCCESS_NEW_DELTA){
+            return true;
+        }else if(result == bwgraph::Txn_Operation_Response::SUCCESS_EXISTING_DELTA){
+            return false;
+        }
+        else if(result ==bwgraph::Txn_Operation_Response::FAIL){
+            throw RollbackExcept("write write conflict edge");
+        }
+    }
+}
 void RWTransaction::delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst) {
     while(true){
 #if TRACK_EXECUTION_TIME
@@ -141,6 +163,27 @@ void RWTransaction::delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_
     }
 }
 
+bool RWTransaction::checked_delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst) {
+    while(true){
+#if TRACK_EXECUTION_TIME
+        auto start = std::chrono::high_resolution_clock::now();
+#endif
+        auto result = txn->checked_delete_edge(src,dst,label);
+#if TRACK_EXECUTION_TIME
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        txn->get_graph().local_thread_edge_write_time.local()+= duration.count();
+#endif
+        if(result == bwgraph::Txn_Operation_Response::SUCCESS_EXISTING_DELTA){
+            return true;
+        }else if(result == bwgraph::Txn_Operation_Response::SUCCESS_NEW_DELTA){
+            return false;
+        }
+        else if(result ==bwgraph::Txn_Operation_Response::FAIL){
+            throw RollbackExcept("write write conflict edge");
+        }
+    }
+}
 std::string_view RWTransaction::get_vertex(bg::vertex_t src) {
    // std::cout<<"rw r"<<std::endl;
     return txn->get_vertex(src);

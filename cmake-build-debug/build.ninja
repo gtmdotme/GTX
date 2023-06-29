@@ -264,6 +264,14 @@ build CMakeFiles/tests.dir/tests/bwgraph_allocation.cpp.o: CXX_COMPILER__tests_D
   OBJECT_DIR = CMakeFiles/tests.dir
   OBJECT_FILE_DIR = CMakeFiles/tests.dir/tests
 
+build CMakeFiles/tests.dir/tests/checked_operation.cpp.o: CXX_COMPILER__tests_Debug /home/zhou822/BwGraph_v2/tests/checked_operation.cpp || cmake_object_order_depends_target_tests
+  DEFINES = -DTBB_USE_DEBUG
+  DEP_FILE = CMakeFiles/tests.dir/tests/checked_operation.cpp.o.d
+  FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined -fdiagnostics-color=always
+  INCLUDES = -I/home/zhou822/BwGraph_v2 -I/home/zhou822/BwGraph_v2/doctest -I/home/zhou822/BwGraph_v2/parallel_hashmap
+  OBJECT_DIR = CMakeFiles/tests.dir
+  OBJECT_FILE_DIR = CMakeFiles/tests.dir/tests
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target tests
@@ -272,7 +280,7 @@ build CMakeFiles/tests.dir/tests/bwgraph_allocation.cpp.o: CXX_COMPILER__tests_D
 #############################################
 # Link the executable tests
 
-build tests tests_tests-b858cb2.cmake | ${cmake_ninja_workdir}tests_tests-b858cb2.cmake: CXX_EXECUTABLE_LINKER__tests_Debug CMakeFiles/tests.dir/tests/main.cpp.o CMakeFiles/tests.dir/tests/bw_index.cpp.o CMakeFiles/tests.dir/tests/txn_tables.cpp.o CMakeFiles/tests.dir/tests/bwgraph_allocation.cpp.o | libbwgraph_lib.a /usr/lib/x86_64-linux-gnu/libtbb.so.12.5 libparallel_hashmap_lib.a || libbwgraph_lib.a libparallel_hashmap_lib.a
+build tests tests_tests-b858cb2.cmake | ${cmake_ninja_workdir}tests_tests-b858cb2.cmake: CXX_EXECUTABLE_LINKER__tests_Debug CMakeFiles/tests.dir/tests/main.cpp.o CMakeFiles/tests.dir/tests/bw_index.cpp.o CMakeFiles/tests.dir/tests/txn_tables.cpp.o CMakeFiles/tests.dir/tests/bwgraph_allocation.cpp.o CMakeFiles/tests.dir/tests/checked_operation.cpp.o | libbwgraph_lib.a /usr/lib/x86_64-linux-gnu/libtbb.so.12.5 libparallel_hashmap_lib.a || libbwgraph_lib.a libparallel_hashmap_lib.a
   FLAGS = -ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fsanitize=address,undefined
   LINK_LIBRARIES = libbwgraph_lib.a  /usr/lib/x86_64-linux-gnu/libtbb.so.12.5  libparallel_hashmap_lib.a
   OBJECT_DIR = CMakeFiles/tests.dir

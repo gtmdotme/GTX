@@ -331,6 +331,7 @@ namespace bwgraph{
             return emplace_result.first->second;
         }
         inline void batch_lazy_updates(){
+            std::cout<<"batch size is "<<lazy_update_records.size()<<std::endl;
             for(auto it = lazy_update_records.begin();it!=lazy_update_records.end();it++){
                 if(it->second>0){
                     txn_tables.reduce_op_count(it->first,it->second);
@@ -369,11 +370,16 @@ namespace bwgraph{
         Txn_Operation_Response delete_edge(vertex_t src, vertex_t dst, label_t label);
         vertex_t create_vertex();
         Txn_Operation_Response update_vertex(vertex_t src, std::string_view vertex_data);
+        //checked version
+        Txn_Operation_Response checked_put_edge(vertex_t src, vertex_t dst, label_t label, std::string_view edge_data);
+        Txn_Operation_Response checked_delete_edge(vertex_t src, vertex_t dst, label_t label);
         //Txn_Operation_Response delete_vertex(vertex_t src);
         //Txn_Operation_Response delete(vertex_t src, vertex_t dst, label_t label);
         //transaction graph read operations
         std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label);
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label);
+        //std::pair<Txn_Operation_Response,std::string_view> checked_get_edge(vertex_t src, vertex_t dst, label_t label);
+        //std::pair<Txn_Operation_Response,EdgeDeltaIterator> checked_get_edges(vertex_t src, label_t label);
         std::string_view get_vertex(vertex_t src);
         //transaction status operation
         void abort();
@@ -382,6 +388,7 @@ namespace bwgraph{
     private:
         //handle the scenario that block becomes overflow
         void consolidation(BwLabelEntry* current_label_entry, EdgeDeltaBlockHeader* current_block, uint64_t block_id);
+        void checked_consolidation(BwLabelEntry* current_label_entry, EdgeDeltaBlockHeader* current_block, uint64_t block_id);
         //validation delta chain writes before commit
         bool validation();
         bool simple_validation();

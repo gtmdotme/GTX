@@ -34,7 +34,12 @@ namespace bwgraph{
                     if(txn_tables->get_status(original_ts,status)){
                         if(status!=IN_PROGRESS){
                             if(status!=ABORT){
+#if CHECKED_PUT_EDGE
+                                current_edge_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_version_offset,status);
+#else
                                 current_edge_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
+#endif
+
                                 if(current_delta->lazy_update(original_ts,status)){
 #if LAZY_LOCKING
                                     if(current_delta->is_last_delta){
@@ -85,7 +90,11 @@ namespace bwgraph{
                     if(txn_tables->get_status(original_ts,status)){
                         if(status!=IN_PROGRESS){
                             if(status!=ABORT){
+#if CHECKED_PUT_EDGE
+                                current_edge_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_version_offset,status);
+#else
                                 current_edge_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
+#endif
                                 if(current_delta->lazy_update(original_ts,status)){
 #if LAZY_LOCKING
                                     if(current_delta->is_last_delta){

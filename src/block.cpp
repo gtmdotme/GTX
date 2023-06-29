@@ -25,7 +25,11 @@ Delta_Chain_Lock_Response EdgeDeltaBlockHeader::lock_inheritance(vertex_t vid,
             return Delta_Chain_Lock_Response::CONFLICT;
         }else{
             if(status!=ABORT){
+#if CHECKED_PUT_EDGE
+                update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_version_offset,status);
+#else
                 update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
+#endif
                 if(current_delta->lazy_update(original_ts,status)){
 #if EDGE_DELTA_TEST
                     //on the other hand, no other transactions can write to this chain unless they lazy update the current head.
@@ -77,7 +81,11 @@ EdgeDeltaBlockHeader::lock_inheritance_on_delta_chain(bwgraph::delta_chain_id_t 
             return Delta_Chain_Lock_Response::CONFLICT;
         }else{
             if(status!=ABORT){
+#if CHECKED_PUT_EDGE
+                update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_version_offset,status);
+#else
                 update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
+#endif
                 if(current_delta->lazy_update(original_ts,status)){
 #if EDGE_DELTA_TEST
                     //if the current transaction lazy updates the delta chain head, it must be from a committed delta because aborted transaction will eager abort their deltas,

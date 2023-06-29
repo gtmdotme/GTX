@@ -63,7 +63,9 @@ namespace bwgraph
         SUCCESS,
         READER_WAIT,
         WRITER_WAIT,
-        FAIL
+        FAIL,
+        SUCCESS_EXISTING_DELTA,
+        SUCCESS_NEW_DELTA
     };
     enum class ReclaimDeltaChainResult: uint8_t {
         SUCCESS,

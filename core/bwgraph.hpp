@@ -23,9 +23,12 @@ namespace bwgraph{
 #if USING_ARRAY_TABLE
         BwGraph(std::string block_path = "",size_t _max_block_size = 1ul << 32,
             std::string wal_path = ""): block_manager(block_path,_max_block_size), vertex_index(block_manager),txn_tables(this),garbage_queues(worker_thread_num, GarbageBlockQueue(&block_manager))
+#if TRACK_EXECUTION_TIME
             , local_thread_vertex_write_time(0),local_thread_edge_write_time(0),local_thread_commit_time(0),local_thread_abort_time(0),local_rwtxn_creation_time(0)
             ,local_get_thread_id_time(0),local_generate_txn_id_time(0),local_install_txn_entry_time(0),local_garbage_collection_time(0),local_eager_clean_real_work_time(0)
-            ,local_edge_clean_real_work_time(0),local_vertex_clean_real_work_time(0)/*,commit_manager(txn_tables)*/{
+            ,local_edge_clean_real_work_time(0),local_vertex_clean_real_work_time(0)/*,commit_manager(txn_tables)*/
+#endif
+            {
             for(uint32_t i=0; i<worker_thread_num;i++){
                 txn_tables.get_table(i).set_garbage_queue(&garbage_queues[i]);
 #if TRACK_EXECUTION_TIME
@@ -99,19 +102,21 @@ namespace bwgraph{
             for(auto vertex_clean_t : local_vertex_clean_real_work_time){
                 total_vertex_clean_time+=vertex_clean_t;
             }
-            std::cout<<"total worker thread count is "<<participating_thread_count<<std::endl;
-            std::cout<<"average vertex write time per thread is "<<total_v_write_time/participating_thread_count<<std::endl;
-            std::cout<<"average edge write time per thread is "<<total_e_write_time/participating_thread_count<<std::endl;
-            std::cout<<"average txn commit time per thread is "<<total_thread_commit_time/participating_thread_count<<std::endl;
-            std::cout<<"average txn abort time per thread is "<<total_thread_abort_time/participating_thread_count<<std::endl;
-            std::cout<<"average txn creation time per thread is "<<total_rw_txn_creation_time/participating_thread_count<<std::endl;
-            std::cout<<"average get thread id time per thread is "<<total_get_thread_id_time/participating_thread_count<<std::endl;
-            std::cout<<"generate txn id time per thread is "<<total_generate_txn_id_time/participating_thread_count<<std::endl;
-            std::cout<<"average txn entry install time per thread is "<<total_install_txn_entry_time/participating_thread_count<<std::endl;
-            std::cout<<"average garbage collection time per thread is "<<total_garbage_collection_time/participating_thread_count<<std::endl;
-            std::cout<<"average eager clean real work time per thread is "<<total_eager_clean_real_work_time/participating_thread_count<<std::endl;
-            std::cout<<"average edge clean real work time per thread is "<<total_edge_clean_time/participating_thread_count<<std::endl;
-            std::cout<<"average vertex clean real work time per thread is "<<total_vertex_clean_time/participating_thread_count<<std::endl;
+            if(participating_thread_count){
+                std::cout<<"total worker thread count is "<<participating_thread_count<<std::endl;
+                std::cout<<"average vertex write time per thread is "<<total_v_write_time/participating_thread_count<<std::endl;
+                std::cout<<"average edge write time per thread is "<<total_e_write_time/participating_thread_count<<std::endl;
+                std::cout<<"average txn commit time per thread is "<<total_thread_commit_time/participating_thread_count<<std::endl;
+                std::cout<<"average txn abort time per thread is "<<total_thread_abort_time/participating_thread_count<<std::endl;
+                std::cout<<"average txn creation time per thread is "<<total_rw_txn_creation_time/participating_thread_count<<std::endl;
+                std::cout<<"average get thread id time per thread is "<<total_get_thread_id_time/participating_thread_count<<std::endl;
+                std::cout<<"generate txn id time per thread is "<<total_generate_txn_id_time/participating_thread_count<<std::endl;
+                std::cout<<"average txn entry install time per thread is "<<total_install_txn_entry_time/participating_thread_count<<std::endl;
+                std::cout<<"average garbage collection time per thread is "<<total_garbage_collection_time/participating_thread_count<<std::endl;
+                std::cout<<"average eager clean real work time per thread is "<<total_eager_clean_real_work_time/participating_thread_count<<std::endl;
+                std::cout<<"average edge clean real work time per thread is "<<total_edge_clean_time/participating_thread_count<<std::endl;
+                std::cout<<"average vertex clean real work time per thread is "<<total_vertex_clean_time/participating_thread_count<<std::endl;
+            }
 #endif
         }
         ROTransaction begin_read_only_transaction();

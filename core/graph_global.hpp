@@ -32,4 +32,5 @@ constexpr uint64_t placeholder_txn_id = 0x80FFFFFFFFFFFFFF;//all commit ts is gr
 constexpr uint64_t tombstone_vid = 0xFFFFFFFFFFFFFFFF;
 #define COMMIT_TEST false
 #define TRACK_EXECUTION_TIME true
+#define CHECKED_PUT_EDGE false
 //#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

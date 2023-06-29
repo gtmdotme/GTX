@@ -81,7 +81,11 @@ namespace bwgraph {
                                 continue;
                             }else{
                                 if(status!=ABORT){
+#if CHECKED_PUT_EDGE
+                                    current_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_version_offset,status);
+#else
                                     current_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
+#endif
                                     if(current_delta->lazy_update(original_ts,status)){
 #if LAZY_LOCKING
                                         if(current_delta->is_last_delta.load()){
@@ -100,12 +104,12 @@ namespace bwgraph {
                             }
                         }
                     }
-                    if(current_delta->creation_ts.load()==txn_id&&current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                    if(current_delta->creation_ts.load()==txn_id&&current_delta->invalidate_ts.load()!=txn_id&&current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
                     }
                     //cannot be delete delta
-                    if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&(current_delta->creation_ts.load()<=txn_read_ts)&&(current_delta->invalidate_ts.load()==0||current_delta->invalidate_ts.load()>txn_read_ts)){
+                    if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&(current_delta->creation_ts.load()<=txn_read_ts)&&(current_delta->invalidate_ts.load()==0||current_delta->invalidate_ts.load()>txn_read_ts)&&current_delta->invalidate_ts.load()!=txn_id){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
                     }

@@ -83,6 +83,8 @@ namespace bg {
         //bool del_vertex(vertex_t vertex_id, bool recycle = false);
         void put_edge(vertex_t src, label_t label, vertex_t dst, std::string_view edge_data);
         void delete_edge(vertex_t src, label_t label, vertex_t dst);//right now just ensure final result does not contain this edge
+        bool checked_put_edge(vertex_t src, label_t label, vertex_t dst, std::string_view edge_data);
+        bool checked_delete_edge(vertex_t src, label_t label, vertex_t dst);
     private:
         const std::unique_ptr<bwgraph::RWTransaction> txn;
     };

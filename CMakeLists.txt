@@ -33,7 +33,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
             tests/main.cpp
             tests/bw_index.cpp
             tests/txn_tables.cpp
-            tests/bwgraph_allocation.cpp)
+            tests/bwgraph_allocation.cpp tests/checked_operation.cpp)
     target_link_libraries(tests bwgraph_lib doctest::doctest TBB::tbb parallel_hashmap_lib)
     enable_testing()
     include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
