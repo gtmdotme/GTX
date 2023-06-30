@@ -77,6 +77,15 @@ EdgeDeltaIterator ROTransaction::get_edges(bg::vertex_t src, bg::label_t label) 
     }
 }
 
+SimpleEdgeDeltaIterator ROTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label) {
+    while(true){
+        auto result = txn->simple_get_edges(src,label);
+        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+            return std::make_unique<impl::SimpleEdgeDeltaIterator>(result.second);
+        }
+    }
+}
+
 void ROTransaction::commit() {txn->commit();}
 
 //read-write transactions
@@ -213,6 +222,17 @@ EdgeDeltaIterator RWTransaction::get_edges(bg::vertex_t src, bg::label_t label) 
     }
 }
 
+SimpleEdgeDeltaIterator RWTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label) {
+    while(true){
+        auto result = txn->simple_get_edges(src,label);
+        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+            return std::make_unique<impl::SimpleEdgeDeltaIterator>(result.second);
+        }else if(result.first == bwgraph::Txn_Operation_Response::FAIL){
+            throw RollbackExcept("found write write conflict on previous write when scanning edges");
+        }
+    }
+}
+
 bool RWTransaction::commit() {
     return txn->commit();
 }
@@ -239,6 +259,28 @@ vertex_t EdgeDeltaIterator::dst_id() const {
 }
 
 std::string_view EdgeDeltaIterator::edge_delta_data() const {
+    return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
+}
+
+//simple edge iterator
+SimpleEdgeDeltaIterator::SimpleEdgeDeltaIterator(std::unique_ptr<bwgraph::SimpleEdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
+
+SimpleEdgeDeltaIterator::~SimpleEdgeDeltaIterator() = default;
+
+void SimpleEdgeDeltaIterator::close() {iterator->close();}
+
+void SimpleEdgeDeltaIterator::next() {
+    current_delta = iterator->next_delta();
+}
+bool SimpleEdgeDeltaIterator::valid() {
+    next();
+    return current_delta!= nullptr;
+}
+vertex_t SimpleEdgeDeltaIterator::dst_id() const {
+    return current_delta->toID;
+}
+
+std::string_view SimpleEdgeDeltaIterator::edge_delta_data() const {
     return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
 }
 

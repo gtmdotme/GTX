@@ -27,7 +27,7 @@ namespace bwgraph{
             , local_thread_vertex_write_time(0),local_thread_edge_write_time(0),local_thread_commit_time(0),local_thread_abort_time(0),local_rwtxn_creation_time(0)
             ,local_get_thread_id_time(0),local_generate_txn_id_time(0),local_install_txn_entry_time(0),local_garbage_collection_time(0),local_eager_clean_real_work_time(0)
             ,local_edge_clean_real_work_time(0),local_vertex_clean_real_work_time(0)/*,commit_manager(txn_tables)*/
-#endif
+#endif //TRACK_EXECUTION_TIME
             {
             for(uint32_t i=0; i<worker_thread_num;i++){
                 txn_tables.get_table(i).set_garbage_queue(&garbage_queues[i]);
@@ -36,14 +36,14 @@ namespace bwgraph{
                 global_vertex_write_time_array[i]=0;
                 global_edge_read_time_array[i]=0;
                 global_edge_write_time_array[i]=0;*/
-#endif
+#endif //TRACK_EXECUTION_TIME
             }
     }
-#else
+#else //USING_ARRAY_TABLE
         BwGraph(std::string block_path = "",size_t _max_block_size = 1ul << 32,
             std::string wal_path = ""): block_manager(block_path,_max_block_size), vertex_index(block_manager){
     }
-#endif
+#endif //USING_ARRAY_TABLE
         ~BwGraph(){
             auto max_vid = vertex_index.get_current_allocated_vid();
             for(vertex_t vid = 1; vid<=max_vid; vid++){

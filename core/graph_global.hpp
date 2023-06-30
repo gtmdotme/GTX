@@ -31,6 +31,6 @@ constexpr uint64_t garbage_collection_threshold = 4096;
 constexpr uint64_t placeholder_txn_id = 0x80FFFFFFFFFFFFFF;//all commit ts is greater than 0, and initial
 constexpr uint64_t tombstone_vid = 0xFFFFFFFFFFFFFFFF;
 #define COMMIT_TEST false
-#define TRACK_EXECUTION_TIME true
-#define CHECKED_PUT_EDGE false
+#define TRACK_EXECUTION_TIME false
+#define CHECKED_PUT_EDGE true
 //#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

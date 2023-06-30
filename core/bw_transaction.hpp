@@ -303,6 +303,7 @@ namespace bwgraph{
         ROTransaction& operator =(const ROTransaction &)=delete;
         ~ROTransaction();
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label);
+        std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator> simple_get_edges(vertex_t src, label_t label);
         std::string_view get_vertex(vertex_t src);
         inline void commit(){
             batch_lazy_updates();
@@ -378,6 +379,7 @@ namespace bwgraph{
         //transaction graph read operations
         std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label);
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label);
+        std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator> simple_get_edges(vertex_t src, label_t label);
         //std::pair<Txn_Operation_Response,std::string_view> checked_get_edge(vertex_t src, vertex_t dst, label_t label);
         //std::pair<Txn_Operation_Response,EdgeDeltaIterator> checked_get_edges(vertex_t src, label_t label);
         std::string_view get_vertex(vertex_t src);
