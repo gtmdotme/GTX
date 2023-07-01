@@ -412,5 +412,25 @@ namespace bwgraph {
         lazy_update_map* txn_lazy_update_records;
         BlockAccessTimestampTable* block_access_ts_table=nullptr;//necessary at destructor, need to release the protection
     };
+    //the iterator for the static graph
+    class StaticEdgeDeltaIterator{
+    public:
+        StaticEdgeDeltaIterator(){}
+        StaticEdgeDeltaIterator(EdgeDeltaBlockHeader* input_block, uint32_t input_offset):current_delta_block(input_block){
+            current_delta = current_delta_block->get_edge_delta(input_offset);
+        }
+        BaseEdgeDelta *next_delta() {
+            while(current_delta_offset>0){
+                current_delta_offset-=ENTRY_DELTA_SIZE;
+                return current_delta++;
+            }
+            return nullptr;
+        }
+    private:
+        EdgeDeltaBlockHeader *current_delta_block;
+        //bool txn_has_deltas;//whether this txn has deltas in the current delta block
+        uint32_t current_delta_offset;
+        BaseEdgeDelta* current_delta = nullptr;
+    };
 }
 //#endif //BWGRAPH_V2_EDGE_ITERATOR_HPP

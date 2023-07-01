@@ -351,6 +351,62 @@ namespace bwgraph{
         uint8_t thread_id;
         std::unordered_map<uint64_t, BwLabelEntry*> accessed_edge_label_entry_cache;
     };
+    /*
+     * read-only transaction that can be executed concurrently by multiple worker threads
+     */
+    class SharedROTransaction{
+    public:
+        SharedROTransaction(BwGraph& source_graph,timestamp_t input_ts,TxnTables& input_txn_tables, BlockManager& input_block_manager, GarbageBlockQueue& input_garbage_queue,  BlockAccessTimestampTable& input_block_ts_table):graph(source_graph),read_timestamp(input_ts), txn_tables(input_txn_tables),
+        block_manager(input_block_manager), per_thread_garbage_queue(input_garbage_queue), block_access_ts_table(input_block_ts_table){}
+        SharedROTransaction(SharedROTransaction&& other):graph(other.graph),read_timestamp(other.read_timestamp),txn_tables(other.txn_tables),
+        block_manager(other.block_manager), per_thread_garbage_queue(other.per_thread_garbage_queue), block_access_ts_table(other.block_access_ts_table){}
+        ~SharedROTransaction();
+        SharedROTransaction(const SharedROTransaction& other)=delete;
+        SharedROTransaction& operator =(const SharedROTransaction &)=delete;
+        //assume the operation is on a static loaded graph
+        std::string_view static_get_edge(vertex_t src, vertex_t dst, label_t label);
+        StaticEdgeDeltaIterator static_get_edges(vertex_t src, label_t label);
+        std::string_view static_get_vertex(vertex_t src);
+        //assume a dynamic graph
+        std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label);
+        std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label);
+        std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator> simple_get_edges(vertex_t src, label_t label);
+        std::string_view get_vertex(vertex_t src);
+        inline void commit(){
+            batch_lazy_updates();
+        }
+
+    private:
+        inline BwLabelEntry* reader_access_label(vertex_t vid, label_t label){
+            auto& vertex_index_entry = graph.get_vertex_index_entry(vid);
+            if(!vertex_index_entry.valid.load()){
+                return nullptr;
+            }
+            auto edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
+            BwLabelEntry* return_label = nullptr;
+            edge_label_block->reader_lookup_label(label, return_label);
+            return return_label;
+        }
+        inline void batch_lazy_updates(){
+            std::cout<<"batch size is "<<lazy_update_records.size()<<std::endl;
+            for(auto it = lazy_update_records.begin();it!=lazy_update_records.end();it++){
+                if(it->second>0){
+                    txn_tables.reduce_op_count(it->first,it->second);
+                }
+            }
+            lazy_update_records.clear();
+        }
+        std::string_view scan_previous_block_find_edge(EdgeDeltaBlockHeader* previous_block, vertex_t vid);
+        BwGraph& graph;
+        const timestamp_t read_timestamp;
+        TxnTables& txn_tables;
+        lazy_update_map lazy_update_records;
+        BlockManager& block_manager;
+        //GarbageBlockQueue& per_thread_garbage_queue;
+        BlockAccessTimestampTable& block_access_ts_table;
+        //std::unordered_map<uint64_t, BwLabelEntry*> accessed_edge_label_entry_cache;
+        //tbb::enumerable_thread_specific<std::unordered_map<uint64_t, BwLabelEntry*>> thread_local_accessed_edge_label_entry_cache;
+    };
     class RWTransaction{
     public:
         //implement constructor

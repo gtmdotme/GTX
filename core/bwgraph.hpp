@@ -132,6 +132,7 @@ namespace bwgraph{
         inline CommitManager& get_commit_manager(){return commit_manager;}
         inline TxnTables & get_txn_tables(){return txn_tables;}
         inline VertexIndex& get_vertex_index(){return vertex_index;}
+        inline GarbageBlockQueue& get_per_thread_garbage_queue(uint8_t thread_id){return garbage_queues.at(thread_id);}
         inline uint8_t get_worker_thread_id(){return thread_manager.get_worker_thread_id();}
         void execute_manual_delta_block_checking(vertex_t vid);
 #if TRACK_EXECUTION_TIME
