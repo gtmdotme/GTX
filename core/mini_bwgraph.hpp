@@ -175,12 +175,57 @@ public:
         }
         cleanup_txn.commit();
     }
+    void thread_shared_clean_up_read( SharedROTransaction& cleanup_txn){
+        timestamp_t read_ts = cleanup_txn.get_read_ts();
+        for(vertex_t i=1; i<=vertex_id_range;i++){
+            auto vertex_delta = cleanup_txn.get_vertex(i);
+            for(size_t j=0; j<vertex_delta.size();j++){
+                if(vertex_delta.at(j)!=static_cast<char>(i%32)){
+                    throw TransactionReadException();
+                }
+            }
+            for(label_t l=1; l<=3; l++){
+                auto scan_response = cleanup_txn.get_edges(i,l);
+                if(scan_response.first!=bwgraph::Txn_Operation_Response::SUCCESS){
+                    throw TransactionReadException();
+                }
+                auto& edge_delta_iterator = scan_response.second;
+                BaseEdgeDelta* current_delta;
+                while((current_delta=edge_delta_iterator.next_delta())!= nullptr){
+                    if(!is_visible_check(placeholder_txn_id,read_ts,current_delta)){
+                        throw TransactionReadException();
+                    }
+                    /* char* data = edge_delta_iterator.get_data(current_delta->data_offset);
+                     for(size_t z=0; z<current_delta->data_length; z++){
+                         if(static_cast<char>(current_delta->toID%32)!=data[z]){
+                             throw TransactionReadException();
+                         }
+                     }*/
+                }
+                edge_delta_iterator.close();
+            }
+        }
+        cleanup_txn.commit();
+    }
+    void cleanup_shared_read_only_txn(){
+        GarbageBlockQueue local_garbage_queue(&bwGraph.get_block_manager());
+        timestamp_t read_ts = bwGraph.get_commit_manager().get_current_read_ts()+10;
+        SharedROTransaction cleanup_txn(bwGraph,read_ts,bwGraph.get_txn_tables(),bwGraph.get_block_manager(),bwGraph.get_block_access_ts_table());
+        //ROTransaction cleanup_txn(bwGraph,read_ts,bwGraph.get_txn_tables(),bwGraph.get_block_manager(),local_garbage_queue,bwGraph.get_block_access_ts_table(),0);
+        std::vector<std::thread> workers;
+        for(int i=0; i<9; i++){
+            workers.emplace_back(&MiniBwGraph::thread_shared_clean_up_read, this, std::ref(cleanup_txn));
+        }
+        for(int i=0; i<9; i++){
+            workers.at(i).join();
+        }
+    }
     void execute_checked_edge_only_test(){
         std::vector<std::thread>workers;
-        for(uint8_t i=0; i<worker_thread_num;i++){
+        for(uint8_t i=0; i<worker_thread_num-10;i++){
             workers.push_back(std::thread(&MiniBwGraph::thread_execute_edge_txn_operation, this, i));
         }
-        for(uint8_t i=0; i<worker_thread_num;i++){
+        for(uint8_t i=0; i<worker_thread_num-10;i++){
             workers.at(i).join();
         }
         std::cout<<"txn execution finished"<<std::endl;
@@ -218,11 +263,11 @@ public:
     }
     void execute_checked_edge_vertex_test(){
         std::vector<std::thread>workers;
-        for(uint8_t i=0; i<worker_thread_num-1;i++){
+        for(uint8_t i=0; i<worker_thread_num-10;i++){
             // workers.push_back(std::thread(&MiniBwGraph::thread_execute_vertex_edge_txn_operation, this, i));
             workers.push_back(std::thread(&MiniBwGraph:: thread_execute_checked_edge_txn_operation, this));
         }
-        for(uint8_t i=0; i<worker_thread_num-1;i++){
+        for(uint8_t i=0; i<worker_thread_num-10;i++){
             workers.at(i).join();
         }
         std::cout<<"txn execution finished"<<std::endl;
@@ -230,7 +275,8 @@ public:
         commit_manager_worker.join();
         //return;
         //execute a readonly txn
-        cleanup_read_only_txn();
+        //cleanup_read_only_txn();
+        cleanup_shared_read_only_txn();
         for(uint8_t i=0; i<worker_thread_num;i++){
             auto& txn_table = bwGraph.get_txn_tables().get_table(i);
             if(!txn_table.is_empty()){
@@ -264,11 +310,11 @@ public:
     }
     void execute_edge_vertex_test(){
         std::vector<std::thread>workers;
-        for(uint8_t i=0; i<worker_thread_num-1;i++){
+        for(uint8_t i=0; i<worker_thread_num-10;i++){
            // workers.push_back(std::thread(&MiniBwGraph::thread_execute_vertex_edge_txn_operation, this, i));
             workers.push_back(std::thread(&MiniBwGraph:: thread_execute_edge_txn_operation_non_random, this));
         }
-        for(uint8_t i=0; i<worker_thread_num-1;i++){
+        for(uint8_t i=0; i<worker_thread_num-10;i++){
             workers.at(i).join();
         }
         std::cout<<"txn execution finished"<<std::endl;

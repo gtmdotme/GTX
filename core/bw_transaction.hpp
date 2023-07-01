@@ -332,7 +332,7 @@ namespace bwgraph{
             return emplace_result.first->second;
         }
         inline void batch_lazy_updates(){
-            std::cout<<"batch size is "<<lazy_update_records.size()<<std::endl;
+          //  std::cout<<"batch size is "<<lazy_update_records.size()<<std::endl;
             for(auto it = lazy_update_records.begin();it!=lazy_update_records.end();it++){
                 if(it->second>0){
                     txn_tables.reduce_op_count(it->first,it->second);
@@ -356,10 +356,10 @@ namespace bwgraph{
      */
     class SharedROTransaction{
     public:
-        SharedROTransaction(BwGraph& source_graph,timestamp_t input_ts,TxnTables& input_txn_tables, BlockManager& input_block_manager, GarbageBlockQueue& input_garbage_queue,  BlockAccessTimestampTable& input_block_ts_table):graph(source_graph),read_timestamp(input_ts), txn_tables(input_txn_tables),
-        block_manager(input_block_manager), per_thread_garbage_queue(input_garbage_queue), block_access_ts_table(input_block_ts_table){}
+        SharedROTransaction(BwGraph& source_graph,timestamp_t input_ts,TxnTables& input_txn_tables, BlockManager& input_block_manager,  BlockAccessTimestampTable& input_block_ts_table):graph(source_graph),read_timestamp(input_ts), txn_tables(input_txn_tables),
+        block_manager(input_block_manager), block_access_ts_table(input_block_ts_table){}
         SharedROTransaction(SharedROTransaction&& other):graph(other.graph),read_timestamp(other.read_timestamp),txn_tables(other.txn_tables),
-        block_manager(other.block_manager), per_thread_garbage_queue(other.per_thread_garbage_queue), block_access_ts_table(other.block_access_ts_table){}
+        block_manager(other.block_manager), thread_specific_lazy_update_records(other.thread_specific_lazy_update_records), block_access_ts_table(other.block_access_ts_table){}
         ~SharedROTransaction();
         SharedROTransaction(const SharedROTransaction& other)=delete;
         SharedROTransaction& operator =(const SharedROTransaction &)=delete;
@@ -375,7 +375,10 @@ namespace bwgraph{
         inline void commit(){
             batch_lazy_updates();
         }
-
+        inline void static_commit(){
+            //do nothing
+        }
+        inline timestamp_t get_read_ts(){return read_timestamp;}
     private:
         inline BwLabelEntry* reader_access_label(vertex_t vid, label_t label){
             auto& vertex_index_entry = graph.get_vertex_index_entry(vid);
@@ -388,7 +391,8 @@ namespace bwgraph{
             return return_label;
         }
         inline void batch_lazy_updates(){
-            std::cout<<"batch size is "<<lazy_update_records.size()<<std::endl;
+           // std::cout<<"batch size is "<<lazy_update_records.size()<<std::endl;
+           auto& lazy_update_records = thread_specific_lazy_update_records.local();
             for(auto it = lazy_update_records.begin();it!=lazy_update_records.end();it++){
                 if(it->second>0){
                     txn_tables.reduce_op_count(it->first,it->second);
@@ -400,10 +404,11 @@ namespace bwgraph{
         BwGraph& graph;
         const timestamp_t read_timestamp;
         TxnTables& txn_tables;
-        lazy_update_map lazy_update_records;
+        tbb::enumerable_thread_specific<lazy_update_map>  thread_specific_lazy_update_records;
         BlockManager& block_manager;
         //GarbageBlockQueue& per_thread_garbage_queue;
         BlockAccessTimestampTable& block_access_ts_table;
+        //todo:: add a local operation count variaable: if op count reaches a threshold, do garbage collection
         //std::unordered_map<uint64_t, BwLabelEntry*> accessed_edge_label_entry_cache;
         //tbb::enumerable_thread_specific<std::unordered_map<uint64_t, BwLabelEntry*>> thread_local_accessed_edge_label_entry_cache;
     };

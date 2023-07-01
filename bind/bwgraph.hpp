@@ -16,9 +16,11 @@ namespace  bwgraph{
     class BwGraph;
     class RWTransaction;
     class ROTransaction;
+    class SharedROTransaction;
     class EdgeDeltaIterator;
     class BaseEdgeDelta;
     class SimpleEdgeDeltaIterator;
+    class StaticEdgeDeltaIterator;
 }
 namespace bg {
     using label_t = uint16_t;
@@ -30,8 +32,10 @@ namespace bg {
 
     class RWTransaction;
     class ROTransaction;
+    class SharedROTransaction;
     class EdgeDeltaIterator;
     class SimpleEdgeDeltaIterator;
+    class StaticEdgeDeltaIterator;
     class Graph {
     public:
         Graph(std::string block_path = "",size_t _max_block_size = 1ul << 40,
@@ -39,6 +43,7 @@ namespace bg {
         ~Graph();
 
         ROTransaction begin_read_only_transaction();
+        SharedROTransaction begin_shared_read_only_transaction();
         RWTransaction begin_read_write_transaction();
         vertex_t get_max_allocated_vid();
         void commit_server_start();
@@ -68,6 +73,22 @@ namespace bg {
     public:
         RollbackExcept(const std::string &what_arg) : std::runtime_error(what_arg) {}
         RollbackExcept(const char *what_arg) : std::runtime_error(what_arg) {}
+    };
+    class SharedROTransaction{
+    public:
+        SharedROTransaction(std::unique_ptr<bwgraph::SharedROTransaction> _txn);
+        ~SharedROTransaction();
+        void commit();
+        //read operations:
+        std::string_view get_vertex(vertex_t src);
+        std::string_view get_edge(vertex_t src, vertex_t dst, label_t label);
+        EdgeDeltaIterator get_edges(vertex_t src, label_t label);
+        SimpleEdgeDeltaIterator simple_get_edges(vertex_t src, label_t label);
+        std::string_view static_get_vertex(vertex_t src);
+        std::string_view static_get_edge(vertex_t src, vertex_t dst, label_t label);
+        StaticEdgeDeltaIterator static_get_edges(vertex_t src, label_t label);
+    private:
+        const std::unique_ptr<bwgraph::SharedROTransaction> txn;
     };
     class RWTransaction{
     public:
@@ -118,6 +139,20 @@ namespace bg {
         std::string_view  edge_delta_data() const;
     private:
         const std::unique_ptr<bwgraph::SimpleEdgeDeltaIterator> iterator;
+        bwgraph::BaseEdgeDelta* current_delta;
+    };
+    class StaticEdgeDeltaIterator{
+    public:
+        StaticEdgeDeltaIterator(std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> _iter);
+        ~StaticEdgeDeltaIterator();
+
+        bool valid();
+        //void close();
+        void next();
+        vertex_t dst_id() const;
+        std::string_view  edge_delta_data() const;
+    private:
+        const std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> iterator;
         bwgraph::BaseEdgeDelta* current_delta;
     };
 } // bg

@@ -27,6 +27,10 @@ ROTransaction Graph::begin_read_only_transaction() {
     return std::make_unique<impl::ROTransaction>(graph->begin_read_only_transaction());
 }
 
+SharedROTransaction Graph::begin_shared_read_only_transaction() {
+    return std::make_unique<impl::SharedROTransaction>(graph->begin_shared_ro_transaction());
+}
+
 void Graph::commit_server_start() {
     graph->get_commit_manager().server_loop();
 }
@@ -87,6 +91,55 @@ SimpleEdgeDeltaIterator ROTransaction::simple_get_edges(bg::vertex_t src, bg::la
 }
 
 void ROTransaction::commit() {txn->commit();}
+
+SharedROTransaction::SharedROTransaction(std::unique_ptr<bwgraph::SharedROTransaction> _txn): txn(std::move(_txn)) {}
+
+SharedROTransaction::~SharedROTransaction() = default;
+
+void SharedROTransaction::commit() {txn->commit();}
+
+std::string_view SharedROTransaction::static_get_vertex(bg::vertex_t src) {
+    return txn->static_get_vertex(src);
+}
+
+std::string_view SharedROTransaction::static_get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
+    return txn->static_get_edge(src,dst,label);
+}
+
+StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(bg::vertex_t src, bg::label_t label) {
+    return std::make_unique<impl::StaticEdgeDeltaIterator>(txn->static_get_edges(src,label));
+}
+
+std::string_view SharedROTransaction::get_vertex(bg::vertex_t src) {
+    return txn->get_vertex(src);
+}
+
+std::string_view SharedROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
+    while(true){
+        auto result = txn->get_edge(src,dst,label);
+        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+            return result.second;
+        }
+    }
+}
+
+EdgeDeltaIterator SharedROTransaction::get_edges(bg::vertex_t src, bg::label_t label) {
+    while(true){
+        auto result = txn->get_edges(src,label);
+        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+            return std::make_unique<impl::EdgeDeltaIterator>(result.second);
+        }
+    }
+}
+
+SimpleEdgeDeltaIterator SharedROTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label) {
+    while(true){
+        auto result = txn->simple_get_edges(src,label);
+        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+            return std::make_unique<impl::SimpleEdgeDeltaIterator>(result.second);
+        }
+    }
+}
 
 //read-write transactions
 RWTransaction::~RWTransaction() = default;
@@ -284,3 +337,23 @@ std::string_view SimpleEdgeDeltaIterator::edge_delta_data() const {
     return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
 }
 
+StaticEdgeDeltaIterator::StaticEdgeDeltaIterator(std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
+
+StaticEdgeDeltaIterator::~StaticEdgeDeltaIterator() = default;
+
+void StaticEdgeDeltaIterator::next() {
+    current_delta = iterator->next_delta();
+}
+
+bool StaticEdgeDeltaIterator::valid() {
+    next();
+    return current_delta!= nullptr;
+}
+
+vertex_t StaticEdgeDeltaIterator::dst_id() const {
+    return current_delta->toID;
+}
+
+std::string_view StaticEdgeDeltaIterator::edge_delta_data() const {
+    return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
+}

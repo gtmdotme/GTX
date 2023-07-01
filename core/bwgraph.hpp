@@ -16,7 +16,7 @@
 namespace bwgraph{
     class ROTransaction;
     class RWTransaction;
-
+    class SharedROTransaction;
 
     class BwGraph {
     public:
@@ -121,6 +121,7 @@ namespace bwgraph{
         }
         ROTransaction begin_read_only_transaction();
         RWTransaction begin_read_write_transaction();
+        SharedROTransaction begin_shared_ro_transaction();
         inline vertex_t get_max_allocated_vid(){
             return vertex_index.get_current_allocated_vid();
         }

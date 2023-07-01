@@ -426,6 +426,9 @@ namespace bwgraph {
             }
             return nullptr;
         }
+        inline char* get_data(uint32_t offset){
+            return current_delta_block->get_edge_data(offset);
+        }
     private:
         EdgeDeltaBlockHeader *current_delta_block;
         //bool txn_has_deltas;//whether this txn has deltas in the current delta block
