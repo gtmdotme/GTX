@@ -19,7 +19,8 @@ constexpr uint32_t worker_thread_num = 129;
 //for array txn table only
 #define NO_TXN_ENTRY 0
 //#define Per_Thread_Table_Size 32
-constexpr uint32_t per_thread_table_size = 4096;
+constexpr uint32_t per_thread_table_size = 4096*4;
+constexpr uint32_t clean_threshold = per_thread_table_size/4;
 constexpr uint64_t garbage_collection_threshold = 4096;
 //block allocation
 #define DEFAULT_EDGE_DELTA_BLOCK_ORDER 9
@@ -30,7 +31,10 @@ constexpr uint64_t garbage_collection_threshold = 4096;
 #define USING_PESSIMISTIC_MODE true
 constexpr uint64_t placeholder_txn_id = 0x80FFFFFFFFFFFFFF;//all commit ts is greater than 0, and initial
 constexpr uint64_t tombstone_vid = 0xFFFFFFFFFFFFFFFF;
+constexpr uint64_t shared_txn_op_threshold = 64;
 #define COMMIT_TEST false
-#define TRACK_EXECUTION_TIME false
+#define TRACK_EXECUTION_TIME true
 #define CHECKED_PUT_EDGE true
+#define USING_RANGE_CLEAN false
+#define USING_EAGER_COMMIT true
 //#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

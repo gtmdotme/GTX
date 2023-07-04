@@ -180,6 +180,10 @@ namespace bwgraph {
             return creation_time;
         }
 
+        inline timestamp_t get_consolidation_time(){
+            return consolidation_time;
+        }
+
         inline void set_offset(uint64_t input_offset) {
             combined_offsets.store(input_offset);
         }
@@ -218,10 +222,11 @@ namespace bwgraph {
 
         //metadata modifier
         inline void
-        fill_metadata(vertex_t input_owner_id, timestamp_t input_creation_time, uintptr_t input_prev_pointer,
+        fill_metadata(vertex_t input_owner_id, timestamp_t input_creation_time, timestamp_t input_consolidation_time, uintptr_t input_prev_pointer,
                       order_t input_order, TxnTables *txn_table_ptr, std::vector<AtomicDeltaOffset> *input_index_ptr) {
             owner_id = input_owner_id;
             creation_time = input_creation_time;
+            consolidation_time = input_consolidation_time;
             prev_pointer = input_prev_pointer;
             order = input_order;
             //define a function that determines how many delta chains it has:
@@ -1010,9 +1015,10 @@ namespace bwgraph {
         //std::vector<Atomic_Delta_Offset>delta_chains_index;
         std::vector<AtomicDeltaOffset> *delta_chains_index;//point to the secondary index vector stored outside the block
         TxnTables *txn_tables;
+        timestamp_t consolidation_time;
         int32_t delta_chain_num;
         order_t order;
-        char padding[11];//todo check whether this is actually needed
+        char padding[3];//todo check whether this is actually needed
         char data[0];
     };
 

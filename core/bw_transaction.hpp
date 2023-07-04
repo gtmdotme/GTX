@@ -357,7 +357,7 @@ namespace bwgraph{
     class SharedROTransaction{
     public:
         SharedROTransaction(BwGraph& source_graph,timestamp_t input_ts,TxnTables& input_txn_tables, BlockManager& input_block_manager,  BlockAccessTimestampTable& input_block_ts_table):graph(source_graph),read_timestamp(input_ts), txn_tables(input_txn_tables),
-        block_manager(input_block_manager), block_access_ts_table(input_block_ts_table){}
+        block_manager(input_block_manager), block_access_ts_table(input_block_ts_table),per_thread_op_count(0){}
         SharedROTransaction(SharedROTransaction&& other):graph(other.graph),read_timestamp(other.read_timestamp),txn_tables(other.txn_tables),
         block_manager(other.block_manager), thread_specific_lazy_update_records(other.thread_specific_lazy_update_records), block_access_ts_table(other.block_access_ts_table){}
         ~SharedROTransaction();
@@ -371,12 +371,30 @@ namespace bwgraph{
         std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label);
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label);
         std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator> simple_get_edges(vertex_t src, label_t label);
+        tbb::enumerable_thread_specific<size_t> per_thread_op_count;
         std::string_view get_vertex(vertex_t src);
         inline void commit(){
             batch_lazy_updates();
+            auto& local_garbage_queue = graph.get_per_thread_garbage_queue();
+            if(local_garbage_queue.get_queue().size()>=garbage_collection_threshold){
+                auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                local_garbage_queue.free_block(safe_ts);
+            }
         }
         inline void static_commit(){
             //do nothing
+        }
+        inline void on_operation_finish(){
+            per_thread_op_count.local()++;
+            if(per_thread_op_count.local()==shared_txn_op_threshold){
+                batch_lazy_updates();
+                auto& local_garbage_queue = graph.get_per_thread_garbage_queue();
+                if(local_garbage_queue.get_queue().size()>=garbage_collection_threshold){
+                    auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                    local_garbage_queue.free_block(safe_ts);
+                }
+                per_thread_op_count.local()=0;
+            }
         }
         inline timestamp_t get_read_ts(){return read_timestamp;}
     private:
@@ -447,8 +465,11 @@ namespace bwgraph{
         //transaction status operation
         void abort();
         bool commit();
+        bool eager_commit();
         inline BwGraph& get_graph(){return graph;}
     private:
+        void eager_clean_edge_block(uint64_t block_id, LockOffsetCache& validated_offsets);
+        void eager_clean_vertex_chain(vertex_t vid);
         //handle the scenario that block becomes overflow
         void consolidation(BwLabelEntry* current_label_entry, EdgeDeltaBlockHeader* current_block, uint64_t block_id);
         void checked_consolidation(BwLabelEntry* current_label_entry, EdgeDeltaBlockHeader* current_block, uint64_t block_id);

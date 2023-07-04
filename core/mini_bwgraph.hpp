@@ -475,7 +475,11 @@ public:
         std::queue<vertex_t> recycled_vid_queue;
         //txn generation
         for(int32_t i=0; i<total_txn_count;i++){
+#if USING_RANGE_CLEAN
+            uint64_t txn_id = thread_txn_table.periodic_clean_generate_txn_id();
+#else
             uint64_t txn_id = thread_txn_table.generate_txn_id();
+#endif //USING_RANGE_CLEAN
             entry_ptr txn_entry = thread_txn_table.put_entry(txn_id);
             timestamp_t read_ts = bwGraph.get_commit_manager().get_current_read_ts();
             bwGraph.get_block_access_ts_table().store_current_ts(thread_id,read_ts);
@@ -589,7 +593,11 @@ public:
         std::queue<vertex_t> recycled_vid_queue;
         //txn generation
         for(int32_t i=0; i<total_txn_count;i++){
+#if USING_RANGE_CLEAN
+            uint64_t txn_id = thread_txn_table.periodic_clean_generate_txn_id();
+#else
             uint64_t txn_id = thread_txn_table.generate_txn_id();
+#endif //USING_RANGE_CLEAN
             entry_ptr txn_entry = thread_txn_table.put_entry(txn_id);
             timestamp_t read_ts = bwGraph.get_commit_manager().get_current_read_ts();
             bwGraph.get_block_access_ts_table().store_current_ts(thread_id,read_ts);
@@ -995,7 +1003,11 @@ public:
                 }
                 continue;
             }
+#if USING_RANGE_CLEAN
+            uint64_t txn_id = thread_txn_table.periodic_clean_generate_txn_id();
+#else
             uint64_t txn_id = thread_txn_table.generate_txn_id();
+#endif //USING_RANGE_CLEAN
             entry_ptr txn_entry = thread_txn_table.put_entry(txn_id);
             timestamp_t read_ts = bwGraph.get_commit_manager().get_current_read_ts();
             bwGraph.get_block_access_ts_table().store_current_ts(thread_id,read_ts);

@@ -287,7 +287,11 @@ SimpleEdgeDeltaIterator RWTransaction::simple_get_edges(bg::vertex_t src, bg::la
 }
 
 bool RWTransaction::commit() {
+#if USING_EAGER_COMMIT
+    return txn->eager_commit();
+#else
     return txn->commit();
+#endif
 }
 
 void RWTransaction::abort() {

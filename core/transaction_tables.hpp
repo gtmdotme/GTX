@@ -338,6 +338,8 @@ namespace bwgraph {
             txn_tables = all_tables;
         }
         void eager_clean(uint64_t index);
+        void eager_clean(uint64_t index, std::unordered_set<uint64_t>& cleaned_blocks);
+        void range_eager_clean(uint64_t index);
         inline void set_thread_id(uint8_t id){thread_id=id;}
 
         inline uint64_t generate_txn_id(){
@@ -350,6 +352,32 @@ namespace bwgraph {
             if(local_table[index].op_count.load()){
                 eager_clean(index);
             }
+            uint64_t new_txn_id = bwgraph::generate_txnID(thread_id,offset);
+            offset++;
+            return new_txn_id;
+        }
+
+        inline uint64_t calculate_range_clean_index(uint64_t index){
+            auto division = index/clean_threshold;//division can be 0, 1, 2, 3
+            if(division){
+                return (division-1)*clean_threshold;
+            }else{
+                return 3*clean_threshold;
+            }
+        }
+        inline uint64_t periodic_clean_generate_txn_id(){
+            uint64_t index = offset%per_thread_table_size;
+            if(!(index%clean_threshold)){
+                range_eager_clean(calculate_range_clean_index(index));
+            }
+#if TXN_TABLE_TEST
+            if(offset>per_thread_table_size&&local_table[index].status==IN_PROGRESS){
+                throw new std::runtime_error("error, the txn did not get a final state");
+            }
+#endif
+          /*  if(local_table[index].op_count.load()){
+                eager_clean(index);
+            }*/
             uint64_t new_txn_id = bwgraph::generate_txnID(thread_id,offset);
             offset++;
             return new_txn_id;

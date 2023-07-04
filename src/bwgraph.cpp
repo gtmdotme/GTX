@@ -36,7 +36,11 @@ RWTransaction BwGraph::begin_read_write_transaction() {
     auto read_ts = commit_manager.get_current_read_ts();
     uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
     auto stop_thread_id = std::chrono::high_resolution_clock::now();
+#if USING_RANGE_CLEAN
+    auto txn_id = txn_tables.get_table(worker_thread_id).periodic_clean_generate_txn_id();
+#else
     auto txn_id = txn_tables.get_table(worker_thread_id).generate_txn_id();
+#endif
     auto stop_txn_id = std::chrono::high_resolution_clock::now();
     auto txn_entry =  txn_tables.get_table(worker_thread_id).put_entry(txn_id);
     auto stop_txn_entry= std::chrono::high_resolution_clock::now();
@@ -63,7 +67,11 @@ RWTransaction BwGraph::begin_read_write_transaction() {
 #else
     auto read_ts = commit_manager.get_current_read_ts();
     uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
+#if USING_RANGE_CLEAN
+    auto txn_id = txn_tables.get_table(worker_thread_id).periodic_clean_generate_txn_id();
+#else
     auto txn_id = txn_tables.get_table(worker_thread_id).generate_txn_id();
+#endif
     auto txn_entry =  txn_tables.get_table(worker_thread_id).put_entry(txn_id);
     block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
     if(executed_txn_count.local()==garbage_collection_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_threshold){
