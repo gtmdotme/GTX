@@ -31,6 +31,13 @@ SharedROTransaction Graph::begin_shared_read_only_transaction() {
     return std::make_unique<impl::SharedROTransaction>(graph->begin_shared_ro_transaction());
 }
 
+bwgraph::EdgeDeltaBlockHeader *Graph::get_edge_block(bg::vertex_t vid, bg::label_t l) {
+    auto& index_entry = graph->get_vertex_index_entry(vid);
+    auto target_label_block = graph->get_block_manager().convert<bwgraph::EdgeLabelBlock>(index_entry.edge_label_block_ptr);
+    bwgraph::BwLabelEntry* target_label_entry;
+    auto result = target_label_block->reader_lookup_label(l,target_label_entry);
+    return graph->get_block_manager().convert<bwgraph::EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
+}
 void Graph::commit_server_start() {
     graph->get_commit_manager().server_loop();
 }
@@ -70,6 +77,7 @@ std::string_view ROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg:
         }
     }
 }
+
 
 EdgeDeltaIterator ROTransaction::get_edges(bg::vertex_t src, bg::label_t label) {
    // std::cout<<"ro"<<std::endl;

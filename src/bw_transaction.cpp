@@ -490,7 +490,7 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
             }else{//I caused overflow
                 //current_block->release_protection_delta_chain(target_delta_chain_id);
                 checked_consolidation(target_label_entry,current_block, block_id);
-                return delete_edge(src,dst,label);
+                return checked_delete_edge(src,dst,label);
             }
         }else{//the current transaction already locks the delta chain
             //todo: check if this part can be merged together with the previous part
@@ -512,7 +512,7 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
                 return Txn_Operation_Response::WRITER_WAIT;
             }else{
                 checked_consolidation(target_label_entry, current_block, block_id);
-                return delete_edge(src,dst,label);
+                return checked_delete_edge(src,dst,label);
             }
         }
     }else{
@@ -910,9 +910,13 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                     }
                     largest_invalidation_ts = (largest_invalidation_ts>=current_delta->invalidate_ts.load())? largest_invalidation_ts:current_delta->invalidate_ts.load();
                 }
+            }else{
+                //still need to count delete delta as latest delta
+                vertex_t toID = current_delta->toID;
+                auto latest_version_emplace_result = edge_latest_versions_records.emplace(toID);
             }
         }else{
-            //do nothing
+            //do nothing, can fully skip aborted deltas
         }
         original_delta_offset-=ENTRY_DELTA_SIZE;
         current_delta++;
@@ -1639,6 +1643,7 @@ void RWTransaction::eager_clean_edge_block(uint64_t block_id, bwgraph::LockOffse
             timestamp_t original_ts = current_delta->creation_ts.load();
             while(current_offset>0&&(original_ts==local_txn_id||original_ts==commit_ts)){
                 if(original_ts==local_txn_id){
+                    current_block->update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_version_offset, commit_ts);
                     if(current_delta->lazy_update(original_ts,commit_ts)){
                         self_entry->op_count.fetch_sub(1);
                     }

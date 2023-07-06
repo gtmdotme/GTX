@@ -33,7 +33,7 @@ constexpr uint64_t placeholder_txn_id = 0x80FFFFFFFFFFFFFF;//all commit ts is gr
 constexpr uint64_t tombstone_vid = 0xFFFFFFFFFFFFFFFF;
 constexpr uint64_t shared_txn_op_threshold = 64;
 #define COMMIT_TEST false
-#define TRACK_EXECUTION_TIME true
+#define TRACK_EXECUTION_TIME false
 #define CHECKED_PUT_EDGE true
 #define USING_RANGE_CLEAN false
 #define USING_EAGER_COMMIT true

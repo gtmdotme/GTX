@@ -21,6 +21,7 @@ namespace  bwgraph{
     class BaseEdgeDelta;
     class SimpleEdgeDeltaIterator;
     class StaticEdgeDeltaIterator;
+    class EdgeDeltaBlockHeader;
 }
 namespace bg {
     using label_t = uint16_t;
@@ -51,6 +52,8 @@ namespace bg {
         uint8_t get_worker_thread_id();
         void execute_manual_checking(vertex_t vid);
         bool is_txn_table_empty();
+        //for debug
+        bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
         std::thread commit_manager_worker;
