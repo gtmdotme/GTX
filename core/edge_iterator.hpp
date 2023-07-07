@@ -403,7 +403,7 @@ namespace bwgraph {
         timestamp_t txn_read_ts;
         uint64_t txn_id;
         //bool txn_has_deltas;//whether this txn has deltas in the current delta block
-        uint32_t current_delta_offset;
+        uint32_t current_delta_offset=0;
         bool read_current_block = false;
         BaseEdgeDelta* current_delta = nullptr;
         //BaseEdgeDelta* current_visible_delta = nullptr;

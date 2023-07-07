@@ -913,7 +913,7 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
             }else{
                 //still need to count delete delta as latest delta
                 vertex_t toID = current_delta->toID;
-                auto latest_version_emplace_result = edge_latest_versions_records.emplace(toID);
+                edge_latest_versions_records.emplace(toID);
             }
         }else{
             //do nothing, can fully skip aborted deltas
@@ -928,8 +928,9 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
     //use the block creation time vs. latest committed write to estimate lifespan
     uint64_t lifespan = largest_creation_ts - current_block->get_consolidation_time(); /*current_label_entry->consolidation_time;*/ //approximate lifespan of the block
     //todo:; apply different heuristics
-    size_t new_block_size = calculate_nw_block_size_from_lifespan(data_size,lifespan,20);
-    auto new_order = size_to_order(new_block_size);
+    /*size_t new_block_size = calculate_nw_block_size_from_lifespan(data_size,lifespan,20);
+    auto new_order = size_to_order(new_block_size);*/
+    auto new_order = calculate_new_ift_order(data_size+sizeof(EdgeDeltaBlockHeader));
     auto new_block_ptr = block_manager.alloc(new_order);
     auto new_block = block_manager.convert<EdgeDeltaBlockHeader>(new_block_ptr);
     //for debug

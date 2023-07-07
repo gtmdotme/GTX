@@ -19,7 +19,7 @@ constexpr uint32_t worker_thread_num = 129;
 //for array txn table only
 #define NO_TXN_ENTRY 0
 //#define Per_Thread_Table_Size 32
-constexpr uint32_t per_thread_table_size = 4096*4;
+constexpr uint32_t per_thread_table_size = 32;
 constexpr uint32_t clean_threshold = per_thread_table_size/4;
 constexpr uint64_t garbage_collection_threshold = 4096;
 //block allocation

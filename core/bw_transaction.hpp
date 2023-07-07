@@ -570,12 +570,28 @@ namespace bwgraph{
          */
         inline uint64_t calculate_nw_block_size_from_lifespan(uint64_t delta_storage_size,uint64_t lifespan, uint64_t min_lifespan_threshold){
             lifespan = (lifespan > min_lifespan_threshold)?lifespan:min_lifespan_threshold;
-            uint64_t ratio = std::max(500/lifespan, static_cast<uint64_t>(2));
+           // uint64_t ratio = std::max(static_cast<double>(500/lifespan), 2);//old version size calculation
+            uint64_t ratio = std::max((500/lifespan), static_cast<uint64_t>(2));
             //todo: optimize for pwoer law graph
             /*if(delta_storage_size>8192)
                 delta_storage_size*=2;*/
             //delta_storage_size *= std::max(static_cast<uint64_t>(1),delta_storage_size/2048);
             return delta_storage_size*ratio + sizeof(EdgeDeltaBlockHeader);
+        }
+        /*
+         * if the current size is close to the next order, we allocate an additional order
+         * otherwise we return size_to_order directly
+         */
+        inline order_t calculate_new_ift_order(uint64_t block_storage_size){
+            order_t new_order = size_to_order(block_storage_size);
+            uint64_t new_size = 1ul<<new_order;
+            //if the next order is less than 25% larger than the current size, double the new size
+            if(new_size-block_storage_size<block_storage_size/4){
+                return new_order+1;
+            }else{
+                //otherwise return the next size
+                return new_order;
+            }
         }
         //don't forget to subtract op_count
         inline ReclaimDeltaChainResult reclaim_delta_chain_offsets(LockOffsetCache& txn_offset_cache, EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry){

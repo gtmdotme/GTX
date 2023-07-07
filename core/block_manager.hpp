@@ -27,7 +27,7 @@ namespace bwgraph
     public:
         constexpr static uintptr_t NULLPOINTER = 0; // UINTPTR_MAX;
 
-        BlockManager(std::string path, size_t _capacity = 1ul << 40)
+        BlockManager(std::string path, size_t _capacity = 1ul << 30)
                 : capacity(_capacity),
                   mutex(),
                   free_blocks(std::vector<std::vector<uintptr_t>>(LARGE_BLOCK_THRESHOLD, std::vector<uintptr_t>())),
@@ -84,6 +84,9 @@ namespace bwgraph
 
         uintptr_t alloc(order_t order)
         {
+            if(order>MAX_ORDER){
+                throw std::runtime_error("error, too large block");
+            }
             uintptr_t pointer = NULLPOINTER;
             if (order < LARGE_BLOCK_THRESHOLD)
             {
