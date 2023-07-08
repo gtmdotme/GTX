@@ -32,6 +32,8 @@ constexpr uint64_t garbage_collection_threshold = 4096;
 constexpr uint64_t placeholder_txn_id = 0x80FFFFFFFFFFFFFF;//all commit ts is greater than 0, and initial
 constexpr uint64_t tombstone_vid = 0xFFFFFFFFFFFFFFFF;
 constexpr uint64_t shared_txn_op_threshold = 64;
+constexpr uint64_t eager_blocks_clean_threshold = 128; //after how many new version creation, we need to do eager clean
+constexpr uint64_t cold_spot_threshold = 256;
 #define COMMIT_TEST false
 #define TRACK_EXECUTION_TIME false
 #define CHECKED_PUT_EDGE true

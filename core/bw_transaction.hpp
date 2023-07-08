@@ -15,8 +15,8 @@
 #include "edge_delta_block_state_protection.hpp"
 #include <set>
 namespace bwgraph{
-#define CONSOLIDATION_TEST false
-#define TXN_TEST false
+#define CONSOLIDATION_TEST true
+#define TXN_TEST true
     struct LockOffsetCache{
         LockOffsetCache(uint64_t input_version, int32_t input_size):block_version_num(input_version),delta_chain_num(input_size){}
         ~LockOffsetCache() = default;
@@ -89,9 +89,14 @@ namespace bwgraph{
         //for simple protocol
         bool reclaim_delta_chain_lock(EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry, uint64_t txn_id, uint64_t txn_read_ts, uint64_t current_block_offset, lazy_update_map* lazy_update_records){
             delta_chain_num = current_block->get_delta_chain_num();//todo: check if we can update delta chain num directly in place
+            block_version_num = current_label_entry->block_version_number.load();
+            //if the transaction did not update anything really
+            if(already_modified_edges.empty()){
+                return true;
+            }
+            //std::cout<<"reclaim delta chain lock"<<std::endl;
             std::set<delta_chain_id_t> to_reclaim_locks;//use set because we want a deterministic order of reclaiming locks
             already_updated_delta_chain_head_offsets.clear();
-            block_version_num = current_label_entry->block_version_number.load();
             for(auto it = already_modified_edges.begin();it!=already_modified_edges.end();it++){
                 delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(*it,delta_chain_num);
                 to_reclaim_locks.emplace(delta_chain_id);
@@ -582,7 +587,7 @@ namespace bwgraph{
          * if the current size is close to the next order, we allocate an additional order
          * otherwise we return size_to_order directly
          */
-        inline order_t calculate_new_ift_order(uint64_t block_storage_size){
+        inline order_t calculate_new_fit_order(uint64_t block_storage_size){
             order_t new_order = size_to_order(block_storage_size);
             uint64_t new_size = 1ul<<new_order;
             //if the next order is less than 25% larger than the current size, double the new size

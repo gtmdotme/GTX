@@ -140,6 +140,8 @@ namespace bwgraph{
         }
         inline uint8_t get_worker_thread_id(){return thread_manager.get_worker_thread_id();}
         void execute_manual_delta_block_checking(vertex_t vid);
+        void force_consolidation_clean();
+        inline void increment_thread_local_update_count(){thread_local_update_count.local()++;}
 #if TRACK_EXECUTION_TIME
         tbb::enumerable_thread_specific<size_t> local_thread_vertex_read_time;
         //std::array<std::atomic_uint64_t , worker_thread_num> global_vertex_read_time_array;
@@ -161,6 +163,8 @@ namespace bwgraph{
         tbb::enumerable_thread_specific<size_t> local_vertex_clean_real_work_time;
 #endif
     private:
+        //todo::add eager clean related functions
+        void eager_consolidation_clean();
         BlockManager block_manager;
         VertexIndex vertex_index;
         TxnTables txn_tables;

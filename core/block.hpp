@@ -29,7 +29,7 @@ namespace bwgraph {
 #define MAX_LOCK_INHERITANCE_ROUND 3
 #define ERROR_ENTRY_OFFSET 0xFFFFFFFF
 
-#define EDGE_DELTA_TEST false
+#define EDGE_DELTA_TEST true
 #define Count_Lazy_Protocol true
 #define PESSIMISTIC_DELTA_BLOCK true
 

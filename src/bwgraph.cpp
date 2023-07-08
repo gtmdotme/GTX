@@ -4,6 +4,7 @@
 
 #include "core/bwgraph.hpp"
 #include "core/bw_transaction.hpp"
+#include "core/cleanup_txn.hpp"
 using namespace bwgraph;
 
 /*BwGraph::~BwGraph(){
@@ -31,6 +32,10 @@ ROTransaction BwGraph::begin_read_only_transaction() {
 }
 
 RWTransaction BwGraph::begin_read_write_transaction() {
+    //eager clean work:
+    if(thread_local_update_count.local()>eager_blocks_clean_threshold){
+       // eager_consolidation_clean();
+    }
 #if TRACK_EXECUTION_TIME
     auto start = std::chrono::high_resolution_clock::now();
     auto read_ts = commit_manager.get_current_read_ts();
@@ -64,7 +69,7 @@ RWTransaction BwGraph::begin_read_write_transaction() {
     auto garbage_collection_time = std::chrono::duration_cast<std::chrono::microseconds>(stop - stop_txn_entry);
     local_garbage_collection_time.local()+=garbage_collection_time.count();
     return RWTransaction(*this,txn_id,read_ts,txn_entry,txn_tables,commit_manager,block_manager,garbage_queues[worker_thread_id],block_access_ts_table,recycled_vids[worker_thread_id]);
-#else
+#else //TRACK_EXECUTION_TIME
     auto read_ts = commit_manager.get_current_read_ts();
     uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
 #if USING_RANGE_CLEAN
@@ -210,4 +215,35 @@ void BwGraph::execute_manual_delta_block_checking(bwgraph::vertex_t vid) {
             throw new std::runtime_error("error, secondary index does not contain all committed deltas");
         }
     }
+}
+
+void BwGraph::eager_consolidation_clean() {
+    auto read_ts = commit_manager.get_current_read_ts();
+    uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
+    block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
+    //start a cleanup transaction
+    auto cleanup_txn = Cleanup_Transaction(*this,read_ts,txn_tables,worker_thread_id);
+    for(auto it = to_check_blocks.local().begin(); it!= to_check_blocks.local().end();){
+        auto result = cleanup_txn.work_on_edge_block(*it);
+        if(result){
+            it = to_check_blocks.local().erase(it);
+        }else{
+            it++;
+        }
+    }
+    thread_local_update_count.local()=0;
+}
+
+void BwGraph::force_consolidation_clean() {
+    auto read_ts = commit_manager.get_current_read_ts();
+    uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
+    block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
+    //start a cleanup transaction
+    auto cleanup_txn = Cleanup_Transaction(*this,read_ts,txn_tables,worker_thread_id);
+    for(auto it = to_check_blocks.local().begin(); it!= to_check_blocks.local().end();it++){
+        cleanup_txn.force_to_work_on_edge_block(*it);
+    }
+    to_check_blocks.local().clear();
+    thread_local_update_count.local()=0;
+    cleanup_txn.commit();
 }

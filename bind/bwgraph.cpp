@@ -61,6 +61,10 @@ bool Graph::is_txn_table_empty() {
     }
     return true;
 }
+
+void Graph::force_consolidation_clean() {
+    graph->force_consolidation_clean();
+}
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}
 
