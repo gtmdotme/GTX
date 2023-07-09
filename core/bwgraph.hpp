@@ -17,7 +17,12 @@ namespace bwgraph{
     class ROTransaction;
     class RWTransaction;
     class SharedROTransaction;
-
+    //track the updated block ID and version number
+    struct updated_block_record{
+        updated_block_record(uint64_t input_id, uint64_t input_version):block_id(input_id),version_number(input_version){}
+        uint64_t block_id;
+        uint64_t version_number;
+    };
     class BwGraph {
     public:
 #if USING_ARRAY_TABLE

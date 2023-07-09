@@ -34,7 +34,7 @@ ROTransaction BwGraph::begin_read_only_transaction() {
 RWTransaction BwGraph::begin_read_write_transaction() {
     //eager clean work:
     if(thread_local_update_count.local()>eager_blocks_clean_threshold){
-       // eager_consolidation_clean();
+        eager_consolidation_clean();
     }
 #if TRACK_EXECUTION_TIME
     auto start = std::chrono::high_resolution_clock::now();
@@ -231,6 +231,7 @@ void BwGraph::eager_consolidation_clean() {
             it++;
         }
     }
+    cleanup_txn.commit();
     thread_local_update_count.local()=0;
 }
 

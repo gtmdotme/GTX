@@ -1395,7 +1395,7 @@ void RWTransaction::eager_abort() {
                 touched_block_it = per_block_cached_delta_chain_offsets.erase(touched_block_it);
                 continue;
             }
-            std::cout<<"eager abort edge deltas"<<std::endl;
+            //std::cout<<"eager abort edge deltas"<<std::endl;
             auto current_label_entry = get_label_entry(touched_block_it->first);
             auto block_access_result = BlockStateVersionProtectionScheme::committer_aborter_access_block(thread_id,touched_block_it->first,current_label_entry,block_access_ts_table);
             //if has protection now
