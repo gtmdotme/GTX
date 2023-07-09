@@ -10,6 +10,8 @@
 #include "types.hpp"
 namespace bwgraph{
     struct alignas(64) BlockAccessTSEntry{
+        BlockAccessTSEntry():accessed_block_id(0),current_ts(0){}
+        BlockAccessTSEntry(const BlockAccessTSEntry& other):accessed_block_id(other.accessed_block_id.load()), current_ts(other.current_ts.load()){}
         std::atomic_uint64_t accessed_block_id=0;
         std::atomic_uint64_t current_ts=0;
         char padding[48];
@@ -19,6 +21,13 @@ namespace bwgraph{
     public:
         inline void store_block_access(uint8_t thread_id, uint64_t block_id){table[thread_id].accessed_block_id.store(block_id);}
         inline void release_block_access(uint8_t thread_id){table[thread_id].accessed_block_id.store(BAD_BLOCK_ID);}
+        inline void set_total_worker_thread_num(uint64_t num){
+            table.clear();
+            table.reserve(num);
+            for(uint64_t i=0; i<num;i++){
+                table.emplace_back();
+            }
+        }
         bool is_safe(uint8_t thread_id, uint64_t block_id){
             for(uint8_t i=0; i<worker_thread_num; i++){
                 if(i==thread_id){
@@ -40,14 +49,18 @@ namespace bwgraph{
          */
         uint64_t calculate_safe_ts(){
             uint64_t min_ts = std::numeric_limits<uint64_t>::max();
-            for(uint32_t i=0; i<worker_thread_num;i++){
+            for(uint64_t i=0; i<table.size();i++){
                 uint64_t current_ts = table[i].current_ts.load();
                 min_ts = (current_ts<min_ts)?current_ts:min_ts;
             }
             return min_ts;
         }
+        inline void thread_exit(uint8_t thread_id){
+            table[thread_id].current_ts.store(std::numeric_limits<uint64_t>::max());
+        }
     private:
-        std::array<BlockAccessTSEntry,worker_thread_num> table;
+        //std::array<BlockAccessTSEntry,worker_thread_num> table;
+        std::vector<BlockAccessTSEntry> table;
     };
 }
 //#endif //BWGRAPH_V2_BLOCK_ACCESS_TS_TABLE_HPP

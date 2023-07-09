@@ -418,6 +418,10 @@ void Cleanup_Transaction::consolidation(bwgraph::BwLabelEntry *current_label_ent
     }
     //now consolidation is over
     per_thread_garbage_queue.register_entry(current_label_entry->block_ptr,current_block->get_order(),largest_invalidation_ts);
+    if(per_thread_garbage_queue.need_collection()){
+        auto safe_ts = block_access_ts_table.calculate_safe_ts();
+        per_thread_garbage_queue.free_block(safe_ts);
+    }
     *current_label_entry->delta_chain_index = std::move(new_delta_chains_index);//todo::check its correctness
     current_label_entry->block_ptr = new_block_ptr;
 /*    if(new_block->already_overflow()){
@@ -811,6 +815,10 @@ void Cleanup_Transaction::force_to_consolidation(bwgraph::BwLabelEntry *current_
     }
     //now consolidation is over
     per_thread_garbage_queue.register_entry(current_label_entry->block_ptr,current_block->get_order(),largest_invalidation_ts);
+    if(per_thread_garbage_queue.need_collection()){
+        auto safe_ts = block_access_ts_table.calculate_safe_ts();
+        per_thread_garbage_queue.free_block(safe_ts);
+    }
     *current_label_entry->delta_chain_index = std::move(new_delta_chains_index);//todo::check its correctness
     current_label_entry->block_ptr = new_block_ptr;
 /*    if(new_block->already_overflow()){

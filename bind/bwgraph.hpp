@@ -53,6 +53,8 @@ namespace bg {
         void execute_manual_checking(vertex_t vid);
         bool is_txn_table_empty();
         void force_consolidation_clean();
+        void thread_exit();
+        void set_worker_thread_num(uint64_t new_size);
         //for debug
         bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
     private:

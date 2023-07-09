@@ -836,6 +836,10 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     }
     //now consolidation is over
     per_thread_garbage_queue.register_entry(current_label_entry->block_ptr,current_block->get_order(),largest_invalidation_ts);
+    if(per_thread_garbage_queue.need_collection()){
+        auto safe_ts = block_access_ts_table.calculate_safe_ts();
+        per_thread_garbage_queue.free_block(safe_ts);
+    }
     *current_label_entry->delta_chain_index = std::move(new_delta_chains_index);//todo::check its correctness
     current_label_entry->block_ptr = new_block_ptr;
 /*    if(new_block->already_overflow()){
@@ -1180,6 +1184,10 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
     }
     //now consolidation is over
     per_thread_garbage_queue.register_entry(current_label_entry->block_ptr,current_block->get_order(),largest_invalidation_ts);
+    if(per_thread_garbage_queue.need_collection()){
+        auto safe_ts = block_access_ts_table.calculate_safe_ts();
+        per_thread_garbage_queue.free_block(safe_ts);
+    }
     *current_label_entry->delta_chain_index = std::move(new_delta_chains_index);//todo::check its correctness
     current_label_entry->block_ptr = new_block_ptr;
 /*    if(new_block->already_overflow()){
@@ -1436,6 +1444,10 @@ void RWTransaction::eager_abort() {
                 vertex_index_entry.vertex_delta_chain_head_ptr.store(current_vertex_delta->get_previous_ptr());
                 current_vertex_delta->eager_abort();
                 per_thread_garbage_queue.register_entry(current_vertex_delta_ptr, current_vertex_delta->get_order() , commit_manager.get_current_read_ts());
+                if(per_thread_garbage_queue.need_collection()){
+                    auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                    per_thread_garbage_queue.free_block(safe_ts);
+                }
                 op_count--;
             }
             updated_vertices.clear();
@@ -1848,6 +1860,10 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
                             if(current_vertex_delta->get_previous_ptr()){
                                 auto previous_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta->get_previous_ptr());
                                 per_thread_garbage_queue.register_entry(current_vertex_delta->get_previous_ptr(),previous_vertex_delta->get_order(),status);
+                                if(per_thread_garbage_queue.need_collection()){
+                                    auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                                    per_thread_garbage_queue.free_block(safe_ts);
+                                }
                             }
                         }
 #if TXN_TEST
@@ -1939,6 +1955,10 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
             //updated_vertices.emplace(src); no need, updated_vertices should already contain it
             //op_count++; we are replacing our delta so no increase in op count, also garbage collect replaced entry
             per_thread_garbage_queue.register_entry(current_vertex_delta_ptr,current_vertex_delta->get_order(),commit_manager.get_current_read_ts());
+            if(per_thread_garbage_queue.need_collection()){
+                auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                per_thread_garbage_queue.free_block(safe_ts);
+            }
             return Txn_Operation_Response::SUCCESS;
         }
     }
@@ -1971,6 +1991,10 @@ std::string_view RWTransaction::get_vertex(bwgraph::vertex_t src) {
                         if(current_vertex_delta->get_previous_ptr()){
                             auto previous_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta->get_previous_ptr());
                             per_thread_garbage_queue.register_entry(current_vertex_delta->get_previous_ptr(),previous_vertex_delta->get_order(),status);
+                            if(per_thread_garbage_queue.need_collection()){
+                                auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                                per_thread_garbage_queue.free_block(safe_ts);
+                            }
                         }
                     }
                 }
@@ -2113,6 +2137,10 @@ std::string_view ROTransaction::get_vertex(bwgraph::vertex_t src) {
                         if(current_vertex_delta->get_previous_ptr()){
                             auto previous_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta->get_previous_ptr());
                             per_thread_garbage_queue.register_entry(current_vertex_delta->get_previous_ptr(),previous_vertex_delta->get_order(),status);
+                            if(per_thread_garbage_queue.need_collection()){
+                                auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                                per_thread_garbage_queue.free_block(safe_ts);
+                            }
                         }
                     }
                 }
@@ -2222,6 +2250,10 @@ std::string_view SharedROTransaction::get_vertex(bwgraph::vertex_t src) {
                             auto previous_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta->get_previous_ptr());
                             uint8_t thread_id = graph.get_worker_thread_id();
                             graph.get_per_thread_garbage_queue(thread_id).register_entry(current_vertex_delta->get_previous_ptr(),previous_vertex_delta->get_order(),status);
+                            if(graph.get_per_thread_garbage_queue(thread_id).need_collection()){
+                                auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                                graph.get_per_thread_garbage_queue(thread_id).free_block(safe_ts);
+                            }
                         }
                     }
                 }

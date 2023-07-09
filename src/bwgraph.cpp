@@ -20,7 +20,7 @@ ROTransaction BwGraph::begin_read_only_transaction() {
     auto read_ts = commit_manager.get_current_read_ts();
     uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
     block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
-    if(executed_txn_count.local()==garbage_collection_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_threshold){
+    if(/*garbage_queues[worker_thread_id].need_collection()||*/executed_txn_count.local()==garbage_collection_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_threshold){
         auto safe_ts = block_access_ts_table.calculate_safe_ts();
         //garbage_queues[worker_thread_id].free_block(safe_ts);
         executed_txn_count.local()=1;
@@ -50,7 +50,7 @@ RWTransaction BwGraph::begin_read_write_transaction() {
     auto txn_entry =  txn_tables.get_table(worker_thread_id).put_entry(txn_id);
     auto stop_txn_entry= std::chrono::high_resolution_clock::now();
     block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
-    if(executed_txn_count.local()==garbage_collection_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_threshold){
+    if(/*garbage_queues[worker_thread_id].need_collection()||*/executed_txn_count.local()==garbage_collection_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_threshold){
         auto safe_ts = block_access_ts_table.calculate_safe_ts();
         garbage_queues[worker_thread_id].free_block(safe_ts);
         executed_txn_count.local()=1;
@@ -79,7 +79,7 @@ RWTransaction BwGraph::begin_read_write_transaction() {
 #endif
     auto txn_entry =  txn_tables.get_table(worker_thread_id).put_entry(txn_id);
     block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
-    if(executed_txn_count.local()==garbage_collection_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_threshold){
+    if(/*garbage_queues[worker_thread_id].need_collection()||*/executed_txn_count.local()==garbage_collection_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_threshold){
         auto safe_ts = block_access_ts_table.calculate_safe_ts();
         garbage_queues[worker_thread_id].free_block(safe_ts);
         executed_txn_count.local()=1;
@@ -107,7 +107,7 @@ SharedROTransaction BwGraph::begin_shared_ro_transaction() {
     auto read_ts = commit_manager.get_current_read_ts();
     uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
     block_access_ts_table.store_current_ts(worker_thread_id,read_ts);//the creator thread is in charge of storing the transaction ts in the table
-    if(executed_txn_count.local()==garbage_collection_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_threshold){
+    if(/*garbage_queues[worker_thread_id].need_collection()||*/executed_txn_count.local()==garbage_collection_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_threshold){
         auto safe_ts = block_access_ts_table.calculate_safe_ts();
         //garbage_queues[worker_thread_id].free_block(safe_ts);
         executed_txn_count.local()=1;

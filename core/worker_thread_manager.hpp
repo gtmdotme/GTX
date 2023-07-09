@@ -20,6 +20,9 @@ namespace bwgraph{
             std::mutex>;
     class WorkerThreadManager{
     public:
+        inline uint64_t get_real_worker_thread_size(){
+            return thread_id_map.size();
+        }
         inline uint8_t get_worker_thread_id(){
             uint8_t thread_id;
             if(!thread_id_map.if_contains(std::this_thread::get_id(),[&thread_id](typename ThreadIDMap::value_type& pair){ thread_id = pair.second;})) {

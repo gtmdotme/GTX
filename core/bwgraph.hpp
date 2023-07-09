@@ -31,6 +31,7 @@ namespace bwgraph{
 #endif //TRACK_EXECUTION_TIME
             ,to_check_blocks(std::unordered_map<uint64_t,uint64_t>()),thread_local_update_count(0)
             {
+                block_access_ts_table.set_total_worker_thread_num(worker_thread_num);
             for(uint32_t i=0; i<worker_thread_num;i++){
                 txn_tables.get_table(i).set_garbage_queue(&garbage_queues[i]);
 #if TRACK_EXECUTION_TIME
@@ -47,6 +48,9 @@ namespace bwgraph{
     }
 #endif //USING_ARRAY_TABLE
         ~BwGraph(){
+#if PRINTING_FINAL_GARBAGE_STATUS
+            print_garbage_status();
+#endif
             auto max_vid = vertex_index.get_current_allocated_vid();
             for(vertex_t vid = 1; vid<=max_vid; vid++){
                 auto& vertex_index_entry = vertex_index.get_vertex_index_entry(vid);
@@ -143,6 +147,22 @@ namespace bwgraph{
         void execute_manual_delta_block_checking(vertex_t vid);
         void force_consolidation_clean();
         inline void increment_thread_local_update_count(){thread_local_update_count.local()++;}
+        inline void print_garbage_status(){
+            for(uint64_t i=0; i<thread_manager.get_real_worker_thread_size();i++){
+                garbage_queues[i].print_status();
+            }
+        }
+        inline void thread_exit(){
+            block_access_ts_table.thread_exit(get_worker_thread_id());
+            auto safe_ts = block_access_ts_table.calculate_safe_ts();
+            garbage_queues.at(get_worker_thread_id()).free_block(safe_ts);
+        }
+        inline void reset_worker_thread_num(uint64_t new_num){
+            if(new_num>worker_thread_num){
+                throw std::runtime_error("error, the number of worker thread is larger than the max threshold");
+            }
+            block_access_ts_table.set_total_worker_thread_num(new_num);
+        }
 #if TRACK_EXECUTION_TIME
         tbb::enumerable_thread_specific<size_t> local_thread_vertex_read_time;
         //std::array<std::atomic_uint64_t , worker_thread_num> global_vertex_read_time_array;

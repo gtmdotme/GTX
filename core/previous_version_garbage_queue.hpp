@@ -23,7 +23,7 @@ namespace bwgraph{
         }
         PreviousVersionBlockEntry(uintptr_t input_ptr,order_t input_order, uint64_t input_ts):block_ptr(input_ptr), order(input_order),updated_ts(input_ts){}
         bool operator < (const PreviousVersionBlockEntry& other)const{
-            return updated_ts<other.updated_ts;
+            return updated_ts>other.updated_ts;
         }
         bool operator ==(const PreviousVersionBlockEntry& other)const{
             return updated_ts == other.updated_ts;
@@ -42,6 +42,7 @@ namespace bwgraph{
                     uint8_t * ptr = block_manager->convert<uint8_t>(current_top_entry.block_ptr);
                     memset(ptr,'\0',1ul<<current_top_entry.order);//zero out memory I used
                     block_manager->free(current_top_entry.block_ptr,current_top_entry.order);
+                    total_garbage_size-= 1ul<<current_top_entry.order;
                     previous_versions_queue.pop();
                 }else{
                     return;
@@ -49,11 +50,19 @@ namespace bwgraph{
             }
         }
         inline void register_entry(uintptr_t block_ptr, order_t order, uint64_t updated_ts){
+            total_garbage_size+= 1ul<<order;
             previous_versions_queue.emplace(block_ptr,order,updated_ts);
         }
+        inline bool need_collection(){
+            return total_garbage_size>=garbage_collection_size_threshold;
+        }
         inline std::priority_queue<PreviousVersionBlockEntry>& get_queue(){return previous_versions_queue;}
+        inline void print_status(){
+            std::cout<<"remaining garbage size is "<<total_garbage_size<<" bytes"<<" remaining entry number is "<< previous_versions_queue.size()<<std::endl;
+        }
     private:
         std::priority_queue<PreviousVersionBlockEntry> previous_versions_queue;
+        uint64_t total_garbage_size =0;
         BlockManager* block_manager;
     };
 }
