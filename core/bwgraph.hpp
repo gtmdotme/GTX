@@ -17,12 +17,8 @@ namespace bwgraph{
     class ROTransaction;
     class RWTransaction;
     class SharedROTransaction;
-    //track the updated block ID and version number
-    struct updated_block_record{
-        updated_block_record(uint64_t input_id, uint64_t input_version):block_id(input_id),version_number(input_version){}
-        uint64_t block_id;
-        uint64_t version_number;
-    };
+
+
     class BwGraph {
     public:
 #if USING_ARRAY_TABLE
@@ -33,7 +29,7 @@ namespace bwgraph{
             ,local_get_thread_id_time(0),local_generate_txn_id_time(0),local_install_txn_entry_time(0),local_garbage_collection_time(0),local_eager_clean_real_work_time(0)
             ,local_edge_clean_real_work_time(0),local_vertex_clean_real_work_time(0)/*,commit_manager(txn_tables)*/
 #endif //TRACK_EXECUTION_TIME
-            ,to_check_blocks(std::unordered_set<uint64_t>()),thread_local_update_count(0)
+            ,to_check_blocks(std::unordered_map<uint64_t,uint64_t>()),thread_local_update_count(0)
             {
             for(uint32_t i=0; i<worker_thread_num;i++){
                 txn_tables.get_table(i).set_garbage_queue(&garbage_queues[i]);
@@ -181,7 +177,8 @@ namespace bwgraph{
         std::array<std::queue<vertex_t>,worker_thread_num> recycled_vids;
         tbb::enumerable_thread_specific<size_t> executed_txn_count;
         //delete deltas and update deltas are both considered new versions: they are the ones that's worth checking on
-        tbb::enumerable_thread_specific<std::unordered_set<uint64_t>> to_check_blocks;
+        //tbb::enumerable_thread_specific<std::unordered_set<uint64_t>> to_check_blocks;
+        tbb::enumerable_thread_specific<std::unordered_map<uint64_t, uint64_t>> to_check_blocks;
         tbb::enumerable_thread_specific<size_t> thread_local_update_count;
         friend class ROTransaction;
         friend class RWTransaction;

@@ -224,7 +224,7 @@ void BwGraph::eager_consolidation_clean() {
     //start a cleanup transaction
     auto cleanup_txn = Cleanup_Transaction(*this,read_ts,txn_tables,worker_thread_id);
     for(auto it = to_check_blocks.local().begin(); it!= to_check_blocks.local().end();){
-        auto result = cleanup_txn.work_on_edge_block(*it);
+        auto result = cleanup_txn.work_on_edge_block(it->first,it->second);
         if(result){
             it = to_check_blocks.local().erase(it);
         }else{
@@ -242,7 +242,7 @@ void BwGraph::force_consolidation_clean() {
     //start a cleanup transaction
     auto cleanup_txn = Cleanup_Transaction(*this,read_ts,txn_tables,worker_thread_id);
     for(auto it = to_check_blocks.local().begin(); it!= to_check_blocks.local().end();it++){
-        cleanup_txn.force_to_work_on_edge_block(*it);
+        cleanup_txn.force_to_work_on_edge_block(it->first);
     }
     to_check_blocks.local().clear();
     thread_local_update_count.local()=0;

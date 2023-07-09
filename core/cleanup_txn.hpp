@@ -16,7 +16,7 @@ namespace bwgraph{
     public:
         Cleanup_Transaction(BwGraph& input_graph, timestamp_t input_ts, TxnTables& input_txn_table, uint8_t input_thread_id):graph(input_graph),read_timestamp(input_ts),txn_tables(input_txn_table),
         block_manager(graph.get_block_manager()),per_thread_garbage_queue(graph.get_per_thread_garbage_queue()),block_access_ts_table(graph.get_block_access_ts_table()),thread_id(input_thread_id){}
-        bool work_on_edge_block(uint64_t block_id);
+        bool work_on_edge_block(uint64_t block_id, uint64_t block_version);
         void force_to_work_on_edge_block(uint64_t block_id);
         inline void commit(){
             batch_lazy_updates();

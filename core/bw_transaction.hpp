@@ -623,6 +623,12 @@ namespace bwgraph{
         void print_edge_delta_block_metadata(EdgeDeltaBlockHeader* current_block){
             std::cout<<"owner id is "<<current_block->get_owner_id()<<" creation ts is "<<current_block->get_creation_time()<<" order is "<<static_cast<int32_t>(current_block->get_order())<<" previous ptr is "<<current_block->get_previous_ptr()<<" delta chain num is "<<current_block->get_delta_chain_num()<<std::endl;
         }
+        inline void cache_updated_block_id_and_version(uint64_t block_id, uint64_t version_number){
+            auto emplace_result = graph.to_check_blocks.local().try_emplace(block_id,version_number);
+            if(!emplace_result.second){
+                emplace_result.first->second = version_number;
+            }
+        }
         //txn local fields
         BwGraph& graph;
         const uint64_t local_txn_id;

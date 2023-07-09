@@ -243,7 +243,8 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
                     return Txn_Operation_Response::SUCCESS_NEW_DELTA;
                 }else{
                     graph.increment_thread_local_update_count();
-                    graph.to_check_blocks.local().emplace(block_id);
+                    cache_updated_block_id_and_version(block_id,target_label_entry->block_version_number.load());
+                    //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }
             }else if (allocate_delta_result==EdgeDeltaInstallResult::ALREADY_OVERFLOW){
@@ -277,7 +278,8 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
                     return Txn_Operation_Response::SUCCESS_NEW_DELTA;
                 }else{
                     graph.increment_thread_local_update_count();
-                    graph.to_check_blocks.local().emplace(block_id);
+                    cache_updated_block_id_and_version(block_id,target_label_entry->block_version_number.load());
+                    //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }
             }else if(allocate_delta_result==EdgeDeltaInstallResult::ALREADY_OVERFLOW){
@@ -484,7 +486,8 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                     op_count++;
                     graph.increment_thread_local_update_count();
-                    graph.to_check_blocks.local().emplace(block_id);
+                    cache_updated_block_id_and_version(block_id,target_label_entry->block_version_number.load());
+                    //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }else{
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
@@ -513,7 +516,8 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                     op_count++;
                     graph.increment_thread_local_update_count();
-                    graph.to_check_blocks.local().emplace(block_id);
+                    cache_updated_block_id_and_version(block_id, target_label_entry->block_version_number.load());
+                    //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }else{
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
@@ -1410,6 +1414,8 @@ void RWTransaction::eager_abort() {
                     touched_block_it->second.release_protections(current_block);//if same version, we need to release locks
                 }
                 op_count -=touched_block_it->second.eager_abort(current_block,current_label_entry,local_txn_id,current_combined_offset);
+                cache_updated_block_id_and_version(touched_block_it->first,current_label_entry->block_version_number.load());
+                //graph.to_check_blocks.local().try_emplace(touched_block_it->first,current_label_entry->block_version_number.load());
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 touched_block_it = per_block_cached_delta_chain_offsets.erase(touched_block_it);
             }else{

@@ -7,7 +7,7 @@ using namespace bwgraph;
 /*
  * scans the corresponding edge delta block. It checks whether the block is quite full already
  */
-bool Cleanup_Transaction::work_on_edge_block(uint64_t block_id) {
+bool Cleanup_Transaction::work_on_edge_block(uint64_t block_id, uint64_t block_version) {
     auto [src, label] = decompose_block_id(block_id);
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load()){
@@ -20,6 +20,10 @@ bool Cleanup_Transaction::work_on_edge_block(uint64_t block_id) {
         return true;//impossible
     }
     if(BlockStateVersionProtectionScheme::writer_access_block(thread_id,block_id,target_label_entry,block_access_ts_table)){
+        if(target_label_entry->block_version_number.load()!=block_version){
+            BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+            return true; //already cleaned by someone else
+        }
         auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
         uint64_t current_combined_offset = current_block->get_current_offset();
         if(current_block->is_overflow_offset(current_combined_offset)){
