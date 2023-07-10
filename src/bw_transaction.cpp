@@ -1556,7 +1556,13 @@ bool RWTransaction::simple_validation() {
         auto current_label_entry = get_label_entry(touched_block_it->first);
         auto validation_access_result = BlockStateVersionProtectionScheme::committer_aborter_access_block(thread_id,touched_block_it->first,current_label_entry,block_access_ts_table);
         if(validation_access_result == EdgeDeltaBlockState::NORMAL || validation_access_result== EdgeDeltaBlockState::CONSOLIDATION){
+#if TXN_TEST
+            uint32_t outdate_code =0;
+#endif
             if(touched_block_it->second.is_outdated(current_label_entry->block_version_number)){
+#if TXN_TEST
+                outdate_code =13881749;
+#endif
                 auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(current_label_entry->block_ptr);
                 uint64_t current_combined_offset = current_block->get_current_offset();
                 if(current_block->is_overflow_offset(current_combined_offset)){
@@ -1579,6 +1585,9 @@ bool RWTransaction::simple_validation() {
 #if TXN_TEST
                 uint32_t locked_offset = current_label_entry->delta_chain_index->at(cached_offset_it->first).get_offset();
                 if(!(locked_offset&LOCK_MASK)){
+                    std::cout<<"outdate code is "<<outdate_code<<std::endl;
+                    std::cout<<"locked offset is "<<locked_offset<<std::endl;
+                    std::cout<<"cached offset is "<<cached_offset_it->second<<std::endl;
                     throw std::runtime_error("error, locked offset is not locked");
                 }
                 uint32_t raw_offset = current_label_entry->delta_chain_index->at(cached_offset_it->first).get_raw_offset();

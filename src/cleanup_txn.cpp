@@ -8,6 +8,7 @@ using namespace bwgraph;
  * scans the corresponding edge delta block. It checks whether the block is quite full already
  */
 bool Cleanup_Transaction::work_on_edge_block(uint64_t block_id, uint64_t block_version) {
+    std::cout<<"cleanup txn executed"<<std::endl;
     auto [src, label] = decompose_block_id(block_id);
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load()){
@@ -432,6 +433,7 @@ void Cleanup_Transaction::consolidation(bwgraph::BwLabelEntry *current_label_ent
 }
 
 void Cleanup_Transaction::force_to_work_on_edge_block(uint64_t block_id) {
+    std::cout<<"cleanup txn executed"<<std::endl;
     auto [src, label] = decompose_block_id(block_id);
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load()){

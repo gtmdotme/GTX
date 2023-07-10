@@ -15,8 +15,8 @@
 #include "edge_delta_block_state_protection.hpp"
 #include <set>
 namespace bwgraph{
-#define CONSOLIDATION_TEST true
-#define TXN_TEST true
+#define CONSOLIDATION_TEST false
+#define TXN_TEST false
     struct LockOffsetCache{
         LockOffsetCache(uint64_t input_version, int32_t input_size):block_version_num(input_version),delta_chain_num(input_size){}
         ~LockOffsetCache() = default;
@@ -90,13 +90,13 @@ namespace bwgraph{
         bool reclaim_delta_chain_lock(EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry, uint64_t txn_id, uint64_t txn_read_ts, uint64_t current_block_offset, lazy_update_map* lazy_update_records){
             delta_chain_num = current_block->get_delta_chain_num();//todo: check if we can update delta chain num directly in place
             block_version_num = current_label_entry->block_version_number.load();
+            already_updated_delta_chain_head_offsets.clear();
             //if the transaction did not update anything really
             if(already_modified_edges.empty()){
                 return true;
             }
             //std::cout<<"reclaim delta chain lock"<<std::endl;
             std::set<delta_chain_id_t> to_reclaim_locks;//use set because we want a deterministic order of reclaiming locks
-            already_updated_delta_chain_head_offsets.clear();
             for(auto it = already_modified_edges.begin();it!=already_modified_edges.end();it++){
                 delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(*it,delta_chain_num);
                 to_reclaim_locks.emplace(delta_chain_id);
