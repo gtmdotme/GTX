@@ -1,0 +1,131 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-5d78097b04571ff7081a.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.24"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						3,
+						4
+					]
+				},
+				{
+					"build" : "doctest",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-doctest-Debug-f2e967e9101ae39ebb5d.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "doctest",
+					"targetIndexes" : 
+					[
+						2
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "BwGraph_v2",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						3,
+						4
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						1
+					],
+					"name" : "doctest",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "bwgraph::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-bwgraph-Debug-c8132aab8d98ca24a8cd.json",
+					"name" : "bwgraph",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "bwgraph_lib::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-bwgraph_lib-Debug-dcb18fd01176d72af64d.json",
+					"name" : "bwgraph_lib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "doctest_with_main::@a160a721d7986f0420d1",
+					"jsonFile" : "target-doctest_with_main-Debug-3142bfbe0a130c438cc6.json",
+					"name" : "doctest_with_main",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "parallel_hashmap_lib::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-parallel_hashmap_lib-Debug-a7117e53039c63ac5fe8.json",
+					"name" : "parallel_hashmap_lib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "tests::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-tests-Debug-98f78800df18c5ca6cbb.json",
+					"name" : "tests",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/scratch1/zhou822/BwGraph_v2/cmake-build-debug",
+		"source" : "/scratch1/zhou822/BwGraph_v2"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 4
+	}
+}

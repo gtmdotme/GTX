@@ -242,8 +242,10 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
                 if(!previous_version_offset){
                     return Txn_Operation_Response::SUCCESS_NEW_DELTA;
                 }else{
+#if USING_EAGER_CONSOLIDATION
                     graph.increment_thread_local_update_count();
                     cache_updated_block_id_and_version(block_id,target_label_entry->block_version_number.load());
+#endif
                     //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }
@@ -277,8 +279,10 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
                 if(!previous_version_offset){
                     return Txn_Operation_Response::SUCCESS_NEW_DELTA;
                 }else{
+#if USING_EAGER_CONSOLIDATION
                     graph.increment_thread_local_update_count();
                     cache_updated_block_id_and_version(block_id,target_label_entry->block_version_number.load());
+#endif
                     //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }
@@ -485,8 +489,10 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
                     cached_delta_chain_access.first->second.cache_vid_offset_new(dst,current_delta_offset);
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                     op_count++;
+#if USING_EAGER_CONSOLIDATION
                     graph.increment_thread_local_update_count();
                     cache_updated_block_id_and_version(block_id,target_label_entry->block_version_number.load());
+#endif
                     //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }else{
@@ -515,8 +521,10 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
                     cached_delta_chain_access.first->second.cache_vid_offset_exist(dst,current_delta_offset);
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                     op_count++;
+#if USING_EAGER_CONSOLIDATION
                     graph.increment_thread_local_update_count();
                     cache_updated_block_id_and_version(block_id, target_label_entry->block_version_number.load());
+#endif
                     //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }else{
@@ -1184,6 +1192,10 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
     }
     //now consolidation is over
     per_thread_garbage_queue.register_entry(current_label_entry->block_ptr,current_block->get_order(),largest_invalidation_ts);
+    //for debug
+  /*  if(largest_invalidation_ts>1000000){
+        std::cout<<largest_invalidation_ts<<std::endl;
+    }*/
     if(per_thread_garbage_queue.need_collection()){
         auto safe_ts = block_access_ts_table.calculate_safe_ts();
         per_thread_garbage_queue.free_block(safe_ts);

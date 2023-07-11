@@ -148,14 +148,20 @@ namespace bwgraph{
         void force_consolidation_clean();
         inline void increment_thread_local_update_count(){thread_local_update_count.local()++;}
         inline void print_garbage_status(){
+            std::cout<<"total has "<<thread_manager.get_real_worker_thread_size()<<" worker threads"<<std::endl;
+            block_access_ts_table.print_ts_status();
             for(uint64_t i=0; i<thread_manager.get_real_worker_thread_size();i++){
+                std::cout<<"worker thread "<<i<<": ";
                 garbage_queues[i].print_status();
             }
         }
         inline void thread_exit(){
             block_access_ts_table.thread_exit(get_worker_thread_id());
-            auto safe_ts = block_access_ts_table.calculate_safe_ts();
-            garbage_queues.at(get_worker_thread_id()).free_block(safe_ts);
+            auto local_thread_id = get_worker_thread_id();
+            while(!garbage_queues[local_thread_id].get_queue().empty()){
+                auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                garbage_queues.at(local_thread_id).free_block(safe_ts);
+            }
         }
         inline void reset_worker_thread_num(uint64_t new_num){
             if(new_num>worker_thread_num){

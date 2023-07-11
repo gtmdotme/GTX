@@ -58,6 +58,11 @@ namespace bwgraph{
         inline void thread_exit(uint8_t thread_id){
             table[thread_id].current_ts.store(std::numeric_limits<uint64_t>::max());
         }
+        void print_ts_status(){
+            for(size_t i=0; i<table.size();i++){
+                std::cout<<"worker thread "<<i<<" has last ts as "<<table[i].current_ts<<std::endl;
+            }
+        }
     private:
         //std::array<BlockAccessTSEntry,worker_thread_num> table;
         std::vector<BlockAccessTSEntry> table;

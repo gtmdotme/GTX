@@ -61,6 +61,10 @@ bool Graph::is_txn_table_empty() {
     }
     return true;
 }
+
+void Graph::print_garbage_queue_status() {
+    graph->print_garbage_status();
+}
 void Graph::thread_exit() {
     graph->thread_exit();
 }

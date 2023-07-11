@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="doctest"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\..\;CMake Files\..\..\;CMake Files\..\..\..\;CMake Files\..\..\..\usr\;CMake Files\..\..\..\usr\lib\;CMake Files\..\..\..\usr\lib\x86_64-linux-gnu\;CMake Files\..\..\..\usr\lib\x86_64-linux-gnu\cmake\;CMake Files\..\..\..\usr\lib\x86_64-linux-gnu\cmake\TBB\;CMake Files\doctest\;CMake Files\doctest\scripts\;CMake Files\doctest\scripts\cmake\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="doctest_with_main">
+				<Option output="/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/libdoctest_with_main.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DDOCTEST_CONFIG_IMPLEMENT_WITH_MAIN"/>
+					<Add directory="/scratch1/zhou822/BwGraph_v2"/>
+					<Add directory="/scratch1/zhou822/BwGraph_v2/doctest"/>
+					<Add directory="/usr/include/c++/9"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/9"/>
+					<Add directory="/usr/include/c++/9/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/9/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 doctest_with_main"/>
+					<CompileFile command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="doctest_with_main/fast">
+				<Option output="/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/libdoctest_with_main.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DDOCTEST_CONFIG_IMPLEMENT_WITH_MAIN"/>
+					<Add directory="/scratch1/zhou822/BwGraph_v2"/>
+					<Add directory="/scratch1/zhou822/BwGraph_v2/doctest"/>
+					<Add directory="/usr/include/c++/9"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/9"/>
+					<Add directory="/usr/include/c++/9/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/9/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 doctest_with_main/fast"/>
+					<CompileFile command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j192 -f &quot;/scratch1/zhou822/BwGraph_v2/cmake-build-release/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/scratch1/zhou822/BwGraph_v2/doctest/doctest/parts/doctest.cpp">
+			<Option target="doctest_with_main"/>
+		</Unit>
+		<Unit filename="/scratch1/zhou822/BwGraph_v2/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/scratch1/zhou822/BwGraph_v2/../../../usr/lib/x86_64-linux-gnu/cmake/TBB/TBBConfig.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\lib\x86_64-linux-gnu\cmake\TBB\"/>
+		</Unit>
+		<Unit filename="/scratch1/zhou822/BwGraph_v2/../../../usr/lib/x86_64-linux-gnu/cmake/TBB/TBBConfigVersion.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\lib\x86_64-linux-gnu\cmake\TBB\"/>
+		</Unit>
+		<Unit filename="/scratch1/zhou822/BwGraph_v2/doctest/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\doctest\"/>
+		</Unit>
+		<Unit filename="/scratch1/zhou822/BwGraph_v2/doctest/scripts/cmake/Config.cmake.in">
+			<Option virtualFolder="CMake Files\doctest\scripts\cmake\"/>
+		</Unit>
+		<Unit filename="/scratch1/zhou822/BwGraph_v2/doctest/scripts/cmake/doctest.cmake">
+			<Option virtualFolder="CMake Files\doctest\scripts\cmake\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

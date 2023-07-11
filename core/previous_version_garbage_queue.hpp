@@ -38,6 +38,7 @@ namespace bwgraph{
         inline void free_block(uint64_t safe_ts){
             while(!previous_versions_queue.empty()){
                 if(previous_versions_queue.top().updated_ts<=safe_ts){
+                    //std::cout<<safe_ts<<std::endl;
                     auto current_top_entry = previous_versions_queue.top();
                     uint8_t * ptr = block_manager->convert<uint8_t>(current_top_entry.block_ptr);
                     memset(ptr,'\0',1ul<<current_top_entry.order);//zero out memory I used

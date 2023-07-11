@@ -381,10 +381,10 @@ namespace bwgraph{
         inline void commit(){
             batch_lazy_updates();
             auto& local_garbage_queue = graph.get_per_thread_garbage_queue();
-            if(local_garbage_queue.get_queue().size()>=garbage_collection_threshold){
+            //if(local_garbage_queue.get_queue().size()>=garbage_collection_threshold){
                 auto safe_ts = block_access_ts_table.calculate_safe_ts();
                 local_garbage_queue.free_block(safe_ts);
-            }
+            //}
         }
         inline void static_commit(){
             //do nothing
@@ -394,7 +394,7 @@ namespace bwgraph{
             if(per_thread_op_count.local()==shared_txn_op_threshold){
                 batch_lazy_updates();
                 auto& local_garbage_queue = graph.get_per_thread_garbage_queue();
-                if(local_garbage_queue.get_queue().size()>=garbage_collection_threshold){
+                if(local_garbage_queue.get_queue().size()>=garbage_collection_entry_num_threshold){
                     auto safe_ts = block_access_ts_table.calculate_safe_ts();
                     local_garbage_queue.free_block(safe_ts);
                 }

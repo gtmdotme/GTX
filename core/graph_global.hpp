@@ -21,7 +21,8 @@ constexpr uint32_t worker_thread_num = 129;
 //#define Per_Thread_Table_Size 32
 constexpr uint32_t per_thread_table_size = 32;
 constexpr uint32_t clean_threshold = per_thread_table_size/4;
-constexpr uint64_t garbage_collection_threshold = 4096;
+constexpr uint64_t garbage_collection_transaction_threshold = 4096;
+constexpr uint64_t garbage_collection_entry_num_threshold = 10;
 //block allocation
 #define DEFAULT_EDGE_DELTA_BLOCK_ORDER 9
 #define BUCKET_SIZE 33554432//536870912/16 //for test use smaller bucket size
@@ -41,4 +42,5 @@ constexpr uint64_t garbage_collection_size_threshold = 1ul<<20;
 #define USING_RANGE_CLEAN false
 #define USING_EAGER_COMMIT true
 #define PRINTING_FINAL_GARBAGE_STATUS false
+#define USING_EAGER_CONSOLIDATION false
 //#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP
