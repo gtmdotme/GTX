@@ -23,6 +23,7 @@ constexpr uint32_t per_thread_table_size = 32;
 constexpr uint32_t clean_threshold = per_thread_table_size/4;
 constexpr uint64_t garbage_collection_transaction_threshold = 4096;
 constexpr uint64_t garbage_collection_entry_num_threshold = 10;
+constexpr uint64_t garbage_collection_size_threshold = 1ul<<20;
 //block allocation
 #define DEFAULT_EDGE_DELTA_BLOCK_ORDER 9
 #define BUCKET_SIZE 33554432//536870912/16 //for test use smaller bucket size
@@ -35,7 +36,6 @@ constexpr uint64_t tombstone_vid = 0xFFFFFFFFFFFFFFFF;
 constexpr uint64_t shared_txn_op_threshold = 64;
 constexpr uint64_t eager_blocks_clean_threshold = 4096; //after how many new version creation, we need to do eager clean
 constexpr uint64_t cold_spot_threshold = 256;
-constexpr uint64_t garbage_collection_size_threshold = 1ul<<20;
 #define COMMIT_TEST false
 #define TRACK_EXECUTION_TIME false
 #define CHECKED_PUT_EDGE true
