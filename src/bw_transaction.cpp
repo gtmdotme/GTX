@@ -1727,6 +1727,7 @@ void RWTransaction::eager_clean_edge_block(uint64_t block_id, bwgraph::LockOffse
                 }
                 current_offset = current_delta->previous_offset;
                 current_delta = current_block->get_edge_delta(current_offset);
+                original_ts = current_delta->creation_ts.load();
             }
        }
        BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);

@@ -29,7 +29,7 @@ namespace bwgraph {
 #define MAX_LOCK_INHERITANCE_ROUND 3
 #define ERROR_ENTRY_OFFSET 0xFFFFFFFF
 
-#define EDGE_DELTA_TEST false
+#define EDGE_DELTA_TEST true
 #define Count_Lazy_Protocol true
 #define PESSIMISTIC_DELTA_BLOCK true
 
@@ -412,6 +412,10 @@ namespace bwgraph {
             if(offset){
                 auto target_delta = get_edge_delta(offset);
 #if EDGE_DELTA_TEST
+                uint64_t current_invalidate_ts = target_delta->invalidate_ts;
+                if(!is_txn_id(current_invalidate_ts)&&current_invalidate_ts!=invalidate_ts){
+                    throw std::runtime_error("error, update invalidation ts of a already previous version");
+                }
                 if(target_delta->toID!=target_vid){
                     throw std::runtime_error("error, the previous version is not actually a previous versiom");
                 }

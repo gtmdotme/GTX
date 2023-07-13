@@ -41,6 +41,6 @@ constexpr uint64_t cold_spot_threshold = 256;
 #define CHECKED_PUT_EDGE true
 #define USING_RANGE_CLEAN false
 #define USING_EAGER_COMMIT true
-#define PRINTING_FINAL_GARBAGE_STATUS false
+#define PRINTING_FINAL_GARBAGE_STATUS true
 #define USING_EAGER_CONSOLIDATION false
 //#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

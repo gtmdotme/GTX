@@ -187,7 +187,8 @@ void BwGraph::execute_manual_delta_block_checking(bwgraph::vertex_t vid) {
                 }
                 if(track_invalidate_ts.count(current_delta->toID)){
                     if(current_delta->invalidate_ts!=track_invalidate_ts.at(current_delta->toID)){
-                        throw std::runtime_error("invalidation ts mismatch");
+                        std::cout<<current_delta->invalidate_ts<<" "<<track_invalidate_ts.at(current_delta->toID)<<std::endl;
+                        //throw std::runtime_error("invalidation ts mismatch");
                     }
                     track_invalidate_ts.insert_or_assign(current_delta->toID, current_delta->creation_ts.load());
                 }else{

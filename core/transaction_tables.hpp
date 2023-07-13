@@ -16,7 +16,7 @@
 #include "utils.hpp"
 
 namespace bwgraph {
-#define TXN_TABLE_TEST false
+#define TXN_TABLE_TEST true
     class BwGraph;
     class GarbageBlockQueue;
     struct touched_block_entry{
