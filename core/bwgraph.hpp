@@ -27,7 +27,7 @@ namespace bwgraph{
 #if TRACK_EXECUTION_TIME
             , local_thread_vertex_write_time(0),local_thread_edge_write_time(0),local_thread_commit_time(0),local_thread_abort_time(0),local_rwtxn_creation_time(0)
             ,local_get_thread_id_time(0),local_generate_txn_id_time(0),local_install_txn_entry_time(0),local_garbage_collection_time(0),local_eager_clean_real_work_time(0)
-            ,local_edge_clean_real_work_time(0),local_vertex_clean_real_work_time(0)/*,commit_manager(txn_tables)*/
+            ,local_edge_clean_real_work_time(0),local_vertex_clean_real_work_time(0),txn_execution_time(0)/*,commit_manager(txn_tables)*/
 #endif //TRACK_EXECUTION_TIME
             ,to_check_blocks(std::unordered_map<uint64_t,uint64_t>()),thread_local_update_count(0)
             {
@@ -71,6 +71,7 @@ namespace bwgraph{
             uint64_t total_eager_clean_real_work_time = 0;
             uint64_t total_edge_clean_time =0;
             uint64_t total_vertex_clean_time =0;
+            uint64_t total_txn_execution_time =0;
             for(auto v_w_t : local_thread_vertex_write_time){
                 total_v_write_time+= v_w_t;
             }
@@ -108,6 +109,9 @@ namespace bwgraph{
             for(auto vertex_clean_t : local_vertex_clean_real_work_time){
                 total_vertex_clean_time+=vertex_clean_t;
             }
+            for(auto txn_execution_t : txn_execution_time){
+                total_txn_execution_time+= txn_execution_t;
+            }
             if(participating_thread_count){
                 std::cout<<"total worker thread count is "<<participating_thread_count<<std::endl;
                 std::cout<<"average vertex write time per thread is "<<total_v_write_time/participating_thread_count<<std::endl;
@@ -122,6 +126,7 @@ namespace bwgraph{
                 std::cout<<"average eager clean real work time per thread is "<<total_eager_clean_real_work_time/participating_thread_count<<std::endl;
                 std::cout<<"average edge clean real work time per thread is "<<total_edge_clean_time/participating_thread_count<<std::endl;
                 std::cout<<"average vertex clean real work time per thread is "<<total_vertex_clean_time/participating_thread_count<<std::endl;
+                std::cout<<"average txn execution time is "<<total_txn_execution_time/participating_thread_count<<std::endl;
             }
 #endif
         }
@@ -163,12 +168,19 @@ namespace bwgraph{
                 garbage_queues.at(local_thread_id).free_block(safe_ts);
             }
         }
-        inline void reset_worker_thread_num(uint64_t new_num){
+        inline void set_worker_thread_num(uint64_t new_num){
             if(new_num>worker_thread_num){
                 throw std::runtime_error("error, the number of worker thread is larger than the max threshold");
             }
             block_access_ts_table.set_total_worker_thread_num(new_num);
+            thread_manager.reset_worker_thread_id();
         }
+       /* inline void reset_worker_thread_num(uint64_t new_num){
+            if(new_num>worker_thread_num){
+                throw std::runtime_error("error, the number of worker thread is larger than the max threshold");
+            }
+            block_access_ts_table.set_total_worker_thread_num(new_num);
+        }*/
 #if TRACK_EXECUTION_TIME
         tbb::enumerable_thread_specific<size_t> local_thread_vertex_read_time;
         //std::array<std::atomic_uint64_t , worker_thread_num> global_vertex_read_time_array;
@@ -188,6 +200,7 @@ namespace bwgraph{
         tbb::enumerable_thread_specific<size_t> local_eager_clean_real_work_time;
         tbb::enumerable_thread_specific<size_t> local_edge_clean_real_work_time;
         tbb::enumerable_thread_specific<size_t> local_vertex_clean_real_work_time;
+        tbb::enumerable_thread_specific<size_t> txn_execution_time;
 #endif
     private:
         //todo::add eager clean related functions

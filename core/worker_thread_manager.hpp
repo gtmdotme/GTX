@@ -31,6 +31,10 @@ namespace bwgraph{
             }
             return thread_id;
         }
+        inline void reset_worker_thread_id(){
+            global_thread_id_allocation=0;
+            thread_id_map.clear();
+        }
     private:
         ThreadIDMap thread_id_map;
         std::atomic_uint8_t global_thread_id_allocation = 0;

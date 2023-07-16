@@ -441,10 +441,16 @@ namespace bwgraph{
         RWTransaction(BwGraph& source_graph,uint64_t input_txn_id, timestamp_t input_ts, entry_ptr input_txn_ptr, TxnTables& input_txn_tables, CommitManager& input_commit_manager,  BlockManager& input_block_manager,GarbageBlockQueue& input_garbage_queue, BlockAccessTimestampTable& input_bts_table,std::queue<vertex_t>& input_thread_local_recycled_vertices):graph(source_graph),  local_txn_id(input_txn_id),read_timestamp(input_ts),
         self_entry(input_txn_ptr),txn_tables(input_txn_tables),commit_manager(input_commit_manager), block_manager(input_block_manager),per_thread_garbage_queue(input_garbage_queue), block_access_ts_table(input_bts_table),thread_local_recycled_vertices(input_thread_local_recycled_vertices){
             thread_id = get_threadID(local_txn_id);
+#if TRACK_EXECUTION_TIME
+            txn_start_time = std::chrono::high_resolution_clock::now();
+#endif
         }
         RWTransaction( RWTransaction&& other):graph(other.graph),  local_txn_id(other.local_txn_id),read_timestamp(other.read_timestamp),
                                               self_entry(other.self_entry),txn_tables(other.txn_tables),commit_manager(other.commit_manager), block_manager(other.block_manager),per_thread_garbage_queue(other.per_thread_garbage_queue), block_access_ts_table(other.block_access_ts_table),thread_local_recycled_vertices(other.thread_local_recycled_vertices){
             thread_id = other.thread_id;
+#if TRACK_EXECUTION_TIME
+            txn_start_time = std::chrono::high_resolution_clock::now();
+#endif
         }
         RWTransaction(const RWTransaction &)=delete;
         RWTransaction& operator = (const RWTransaction &)=delete;
@@ -649,6 +655,9 @@ namespace bwgraph{
         std::unordered_set<vertex_t> updated_vertices;//cache the vertex deltas that the transaction has touched
         std::queue<vertex_t>& thread_local_recycled_vertices;
         std::unordered_set<vertex_t> created_vertices;
+#if TRACK_EXECUTION_TIME
+        std::chrono::time_point<std::chrono::high_resolution_clock> txn_start_time;
+#endif
     };
 }
 //#endif //BWGRAPH_V2_BW_TRANSACTION_HPP

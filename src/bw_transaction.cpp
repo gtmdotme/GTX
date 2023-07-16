@@ -1762,6 +1762,8 @@ bool RWTransaction::eager_commit() {
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         graph.local_thread_abort_time.local()+= duration.count();
+        auto txn_lifetime = std::chrono::duration_cast<std::chrono::microseconds>(stop - txn_start_time);
+        graph.txn_execution_time.local()+= txn_lifetime.count();
 #endif
         //std::cout<<"simple validation failed"<<std::endl;
         return false;
@@ -1784,6 +1786,8 @@ bool RWTransaction::eager_commit() {
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     graph.local_thread_commit_time.local()+= duration.count();
+    auto txn_lifetime = std::chrono::duration_cast<std::chrono::microseconds>(stop - txn_start_time);
+    graph.txn_execution_time.local()+= txn_lifetime.count();
 #endif
     return true;
 }
@@ -1800,6 +1804,8 @@ void RWTransaction::abort() {
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     graph.local_thread_abort_time.local()+= duration.count();
+    auto txn_lifetime = std::chrono::duration_cast<std::chrono::microseconds>(stop - txn_start_time);
+    graph.txn_execution_time.local()+=txn_lifetime.count();
 #endif
 }
 
@@ -1992,7 +1998,8 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
 std::string_view RWTransaction::get_vertex(bwgraph::vertex_t src) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load()){
-        throw IllegalVertexAccessException();
+        return std::string_view ();
+        //throw IllegalVertexAccessException();
     }
     uintptr_t current_vertex_delta_ptr = vertex_index_entry.vertex_delta_chain_head_ptr.load();
     if(!current_vertex_delta_ptr){
@@ -2142,7 +2149,8 @@ ROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
 std::string_view ROTransaction::get_vertex(bwgraph::vertex_t src) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load()){
-        throw IllegalVertexAccessException();
+        return std::string_view ();
+        //throw IllegalVertexAccessException();
     }
     uintptr_t current_vertex_delta_ptr = vertex_index_entry.vertex_delta_chain_head_ptr.load();
     if(!current_vertex_delta_ptr){
@@ -2240,7 +2248,8 @@ StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(bwgraph::vertex_t 
 std::string_view SharedROTransaction::static_get_vertex(bwgraph::vertex_t src) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load()){
-        throw IllegalVertexAccessException();
+        return std::string_view ();
+        //throw IllegalVertexAccessException();
     }
     uintptr_t current_vertex_delta_ptr = vertex_index_entry.vertex_delta_chain_head_ptr.load();
     if(!current_vertex_delta_ptr){
@@ -2254,7 +2263,8 @@ std::string_view SharedROTransaction::static_get_vertex(bwgraph::vertex_t src) {
 std::string_view SharedROTransaction::get_vertex(bwgraph::vertex_t src) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load()){
-        throw IllegalVertexAccessException();
+        return std::string_view ();
+        //throw IllegalVertexAccessException();
     }
     uintptr_t current_vertex_delta_ptr = vertex_index_entry.vertex_delta_chain_head_ptr.load();
     if(!current_vertex_delta_ptr){

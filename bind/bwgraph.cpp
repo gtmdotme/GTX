@@ -73,7 +73,7 @@ void Graph::force_consolidation_clean() {
 }
 
 void Graph::set_worker_thread_num(uint64_t new_size) {
-    graph->reset_worker_thread_num(new_size);
+    graph->set_worker_thread_num(new_size);
 }
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}
