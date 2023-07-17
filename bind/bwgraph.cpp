@@ -27,8 +27,8 @@ ROTransaction Graph::begin_read_only_transaction() {
     return std::make_unique<impl::ROTransaction>(graph->begin_read_only_transaction());
 }
 
-SharedROTransaction Graph::begin_shared_read_only_transaction() {
-    return std::make_unique<impl::SharedROTransaction>(graph->begin_shared_ro_transaction());
+bg::SharedROTransaction Graph::begin_shared_read_only_transaction() {
+    return {std::make_unique<impl::SharedROTransaction>(graph->begin_shared_ro_transaction()),this};
 }
 
 bwgraph::EdgeDeltaBlockHeader *Graph::get_edge_block(bg::vertex_t vid, bg::label_t l) {
@@ -75,6 +75,26 @@ void Graph::force_consolidation_clean() {
 void Graph::set_worker_thread_num(uint64_t new_size) {
     graph->set_worker_thread_num(new_size);
 }
+void Graph::set_writer_thread_num(uint64_t writer_num){
+    graph->set_writer_thread_num(writer_num);
+}
+void Graph::on_finish_loading(){
+    graph->on_finish_loading();
+}
+/*
+ * to be cached by the reader
+ */
+uint8_t Graph::get_openmp_worker_thread_id() {
+    return graph->get_openmp_worker_thread_id();
+}
+
+void Graph::on_openmp_txn_start(uint64_t read_ts) {
+    graph->on_openmp_transaction_start(read_ts);
+}
+
+void Graph::on_openmp_section_finishing() {
+    graph->on_openmp_parallel_session_finish();
+}
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}
 
@@ -114,11 +134,15 @@ SimpleEdgeDeltaIterator ROTransaction::simple_get_edges(bg::vertex_t src, bg::la
 
 void ROTransaction::commit() {txn->commit();}
 
-SharedROTransaction::SharedROTransaction(std::unique_ptr<bwgraph::SharedROTransaction> _txn): txn(std::move(_txn)) {}
+SharedROTransaction::SharedROTransaction(std::unique_ptr<bwgraph::SharedROTransaction> _txn, Graph* source): txn(std::move(_txn)), graph(source) {}
 
 SharedROTransaction::~SharedROTransaction() = default;
 
 void SharedROTransaction::commit() {txn->commit();}
+
+uint64_t SharedROTransaction::get_read_timestamp() {
+    return txn->get_read_ts();
+}
 
 std::string_view SharedROTransaction::static_get_vertex(bg::vertex_t src) {
     return txn->static_get_vertex(src);
@@ -145,6 +169,24 @@ std::string_view SharedROTransaction::get_edge(bg::vertex_t src, bg::vertex_t ds
     }
 }
 
+std::string_view
+SharedROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label, uint8_t thread_id) {
+    while (true) {
+        auto result = txn->get_edge(src, dst, label, thread_id);
+        if (result.first == bwgraph::Txn_Operation_Response::SUCCESS) {
+            return result.second;
+        }
+    }
+}
+
+EdgeDeltaIterator SharedROTransaction::get_edges(bg::vertex_t src, bg::label_t label, uint8_t thread_id) {
+    while(true){
+        auto result = txn->get_edges(src,label, thread_id);
+        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+            return std::make_unique<impl::EdgeDeltaIterator>(result.second);
+        }
+    }
+}
 EdgeDeltaIterator SharedROTransaction::get_edges(bg::vertex_t src, bg::label_t label) {
     while(true){
         auto result = txn->get_edges(src,label);
@@ -153,7 +195,6 @@ EdgeDeltaIterator SharedROTransaction::get_edges(bg::vertex_t src, bg::label_t l
         }
     }
 }
-
 SimpleEdgeDeltaIterator SharedROTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label) {
     while(true){
         auto result = txn->simple_get_edges(src,label);
@@ -162,7 +203,18 @@ SimpleEdgeDeltaIterator SharedROTransaction::simple_get_edges(bg::vertex_t src, 
         }
     }
 }
+SimpleEdgeDeltaIterator SharedROTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label, uint8_t thread_id) {
+    while(true){
+        auto result = txn->simple_get_edges(src,label,thread_id);
+        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+            return std::make_unique<impl::SimpleEdgeDeltaIterator>(result.second);
+        }
+    }
+}
 
+Graph *SharedROTransaction::get_graph() {
+    return graph;
+}
 //read-write transactions
 RWTransaction::~RWTransaction() = default;
 

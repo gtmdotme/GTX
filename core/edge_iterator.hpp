@@ -314,6 +314,8 @@ namespace bwgraph {
         BaseEdgeDelta *next_delta() {
             //keep scanning the current block with lazy update, when the current block is exhausted, set "read_current_block" to false and move on
             if(read_current_block){
+            //use __builtin_expect
+            //if(__builtin_expect(read_current_block,true)){
                 //scan the current block, return pointers as appropriate, then maybe switch to the previous block
                 while(current_delta_offset>0){
                     if(!current_delta->valid.load()){

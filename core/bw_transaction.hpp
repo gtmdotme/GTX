@@ -376,6 +376,9 @@ namespace bwgraph{
         std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label);
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label);
         std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator> simple_get_edges(vertex_t src, label_t label);
+        std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label,uint8_t thread_id);
+        std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label,uint8_t thread_id);
+        std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator> simple_get_edges(vertex_t src, label_t label,uint8_t thread_id);
         tbb::enumerable_thread_specific<size_t> per_thread_op_count;
         std::string_view get_vertex(vertex_t src);
         inline void commit(){
@@ -394,7 +397,7 @@ namespace bwgraph{
             if(per_thread_op_count.local()==shared_txn_op_threshold){
                 batch_lazy_updates();
                 auto& local_garbage_queue = graph.get_per_thread_garbage_queue();
-                if(local_garbage_queue.get_queue().size()>=garbage_collection_entry_num_threshold){
+                if(local_garbage_queue.get_queue().size()){
                     auto safe_ts = block_access_ts_table.calculate_safe_ts();
                     local_garbage_queue.free_block(safe_ts);
                 }
@@ -402,6 +405,7 @@ namespace bwgraph{
             }
         }
         inline timestamp_t get_read_ts(){return read_timestamp;}
+        inline BwGraph* get_graph(){return &graph;}
     private:
         inline BwLabelEntry* reader_access_label(vertex_t vid, label_t label){
             auto& vertex_index_entry = graph.get_vertex_index_entry(vid);

@@ -149,6 +149,7 @@ namespace bwgraph{
             return garbage_queues.at(get_worker_thread_id());
         }
         inline uint8_t get_worker_thread_id(){return thread_manager.get_worker_thread_id();}
+        inline uint8_t get_openmp_worker_thread_id(){return thread_manager.get_openmp_worker_thread_id();}
         void execute_manual_delta_block_checking(vertex_t vid);
         void force_consolidation_clean();
         inline void increment_thread_local_update_count(){thread_local_update_count.local()++;}
@@ -168,13 +169,56 @@ namespace bwgraph{
                 garbage_queues.at(local_thread_id).free_block(safe_ts);
             }
         }
+        /*
+         * in insert only or graphalytics, they are the total writer or total reader num
+         * in mixed workload, they equal reader + writer
+         */
         inline void set_worker_thread_num(uint64_t new_num){
             if(new_num>worker_thread_num){
                 throw std::runtime_error("error, the number of worker thread is larger than the max threshold");
             }
             block_access_ts_table.set_total_worker_thread_num(new_num);
             thread_manager.reset_worker_thread_id();
+            total_writer_num=0;
         }
+        /*
+         * invoked at system load up time for mixed workload, specify which threads are used for loads and update
+         */
+        inline void set_writer_thread_num(uint64_t writer_num){
+            uint64_t total_worker_num = block_access_ts_table.get_total_thread_num();
+            for(uint64_t i=0; i<total_worker_num; i++){
+                if(i<writer_num){
+                    block_access_ts_table.store_current_ts(static_cast<uint8_t>(i),0);
+                }else{
+                    block_access_ts_table.store_current_ts(static_cast<uint8_t>(i),std::numeric_limits<uint64_t>::max());
+                }
+            }
+            total_writer_num = writer_num;
+        }
+
+        /*
+         * specialized for gfe mixed workload, set all remaining workers to a large enough safe ts as a guard
+         */
+        inline void on_finish_loading(){
+            uint64_t total_worker_num = block_access_ts_table.get_total_thread_num();
+            auto safe_ts = block_access_ts_table.calculate_safe_ts();
+            for(uint64_t i=total_writer_num; i<total_worker_num; i++){
+                block_access_ts_table.store_current_ts(static_cast<uint8_t>(i),safe_ts);
+            }
+        }
+        /*
+         * used whenever an openmp shared txn starts
+         */
+        inline void on_openmp_transaction_start(timestamp_t read_ts){
+            uint64_t total_worker_num = block_access_ts_table.get_total_thread_num();
+            for(uint64_t i=total_writer_num; i<total_worker_num; i++){
+                block_access_ts_table.store_current_ts(static_cast<uint8_t>(i),read_ts);
+            }
+        }
+        inline void on_openmp_parallel_session_finish(){
+            thread_manager.reset_openmp_thread_id();
+        }
+
        /* inline void reset_worker_thread_num(uint64_t new_num){
             if(new_num>worker_thread_num){
                 throw std::runtime_error("error, the number of worker thread is larger than the max threshold");
@@ -219,6 +263,8 @@ namespace bwgraph{
         //tbb::enumerable_thread_specific<std::unordered_set<uint64_t>> to_check_blocks;
         tbb::enumerable_thread_specific<std::unordered_map<uint64_t, uint64_t>> to_check_blocks;
         tbb::enumerable_thread_specific<size_t> thread_local_update_count;
+        uint64_t total_writer_num =0;
+        //uint64_t total_reader_num = 0;
         friend class ROTransaction;
         friend class RWTransaction;
     };

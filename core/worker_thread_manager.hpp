@@ -34,10 +34,29 @@ namespace bwgraph{
         inline void reset_worker_thread_id(){
             global_thread_id_allocation=0;
             thread_id_map.clear();
+            reset_openmp_thread_id();
         }
+        inline void reset_openmp_thread_id(){
+            openmp_thread_id_allocation=0;
+            //openmp_thread_id_map.clear();
+        }
+        inline uint8_t get_openmp_worker_thread_id(){
+          /*  uint8_t thread_id;
+            if(!openmp_thread_id_map.if_contains(std::this_thread::get_id(),[&thread_id](typename ThreadIDMap::value_type& pair){ thread_id = pair.second;})) {
+                thread_id = openmp_thread_id_allocation.fetch_add(1)+global_thread_id_allocation.load();
+                openmp_thread_id_map.try_emplace(std::this_thread::get_id(),thread_id);
+            }
+            return thread_id;*/
+          return openmp_thread_id_allocation.fetch_add(1)+global_thread_id_allocation.load();
+        }
+
     private:
+        //for normal read write and read only transactions
         ThreadIDMap thread_id_map;
-        std::atomic_uint8_t global_thread_id_allocation = 0;
+        std::atomic_uint8_t global_thread_id_allocation = 0;//this number should be fixed after the initial setup of worker threads
+        //for openmp threads
+        //ThreadIDMap openmp_thread_id_map;
+        std::atomic_uint8_t openmp_thread_id_allocation = 0;
     };
 }//bwgraph
 

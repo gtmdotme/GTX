@@ -56,12 +56,18 @@ namespace bg {
         void thread_exit();
         void print_garbage_queue_status();
         void set_worker_thread_num(uint64_t new_size);
+        void set_writer_thread_num(uint64_t writer_thread_num);
+        void on_finish_loading();
+        uint8_t get_openmp_worker_thread_id();
+        void on_openmp_txn_start(uint64_t read_ts);
+        void on_openmp_section_finishing();
         //for debug
         bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
         std::thread commit_manager_worker;
     };
+
     class ROTransaction{
     public:
         ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn);
@@ -75,27 +81,35 @@ namespace bg {
     private:
         const std::unique_ptr<bwgraph::ROTransaction> txn;
     };
+
     class RollbackExcept : public std::runtime_error
     {
     public:
         RollbackExcept(const std::string &what_arg) : std::runtime_error(what_arg) {}
         RollbackExcept(const char *what_arg) : std::runtime_error(what_arg) {}
     };
+
     class SharedROTransaction{
     public:
-        SharedROTransaction(std::unique_ptr<bwgraph::SharedROTransaction> _txn);
+        SharedROTransaction(std::unique_ptr<bwgraph::SharedROTransaction> _txn, Graph* source_graph);
         ~SharedROTransaction();
         void commit();
         //read operations:
         std::string_view get_vertex(vertex_t src);
         std::string_view get_edge(vertex_t src, vertex_t dst, label_t label);
         EdgeDeltaIterator get_edges(vertex_t src, label_t label);
+        std::string_view get_edge(vertex_t src, vertex_t dst, label_t label,uint8_t thread_id);
+        EdgeDeltaIterator get_edges(vertex_t src, label_t label,uint8_t thread_id);
         SimpleEdgeDeltaIterator simple_get_edges(vertex_t src, label_t label);
+        SimpleEdgeDeltaIterator simple_get_edges(vertex_t src, label_t label,uint8_t thread_id);
         std::string_view static_get_vertex(vertex_t src);
         std::string_view static_get_edge(vertex_t src, vertex_t dst, label_t label);
         StaticEdgeDeltaIterator static_get_edges(vertex_t src, label_t label);
+        uint64_t get_read_timestamp();
+        Graph* get_graph();
     private:
         const std::unique_ptr<bwgraph::SharedROTransaction> txn;
+        Graph* graph;
     };
     class RWTransaction{
     public:

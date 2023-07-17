@@ -44,6 +44,8 @@ namespace bwgraph{
         }
         //thread does not reset this value at txn finish, just overwrite when new txn is created
         inline void store_current_ts(uint8_t thread_id, timestamp_t read_ts){table[thread_id].current_ts.store(read_ts);}
+
+        inline uint64_t get_total_thread_num(){return table.size();}
         /*
          * if a read_ts is x, it can read deltas created at x or >x, and it cannot read deltas invalidated at x, so all deltas invalidated at ts <= 10 is considered safe to deallocate
          */
