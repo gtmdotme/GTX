@@ -36,11 +36,12 @@ constexpr uint64_t tombstone_vid = 0xFFFFFFFFFFFFFFFF;
 constexpr uint64_t shared_txn_op_threshold = 64;
 constexpr uint64_t eager_blocks_clean_threshold = 4096; //after how many new version creation, we need to do eager clean
 constexpr uint64_t cold_spot_threshold = 256;
+constexpr uint8_t index_lookup_order_threshold = 12;
 #define COMMIT_TEST false
 #define TRACK_EXECUTION_TIME false
 #define CHECKED_PUT_EDGE true
 #define USING_RANGE_CLEAN false
 #define USING_EAGER_COMMIT true
-#define PRINTING_FINAL_GARBAGE_STATUS true
+#define PRINTING_FINAL_GARBAGE_STATUS false
 #define USING_EAGER_CONSOLIDATION false
 //#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

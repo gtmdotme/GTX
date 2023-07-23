@@ -29,7 +29,7 @@ namespace bwgraph {
 #define MAX_LOCK_INHERITANCE_ROUND 3
 #define ERROR_ENTRY_OFFSET 0xFFFFFFFF
 
-#define EDGE_DELTA_TEST true
+#define EDGE_DELTA_TEST false
 #define Count_Lazy_Protocol true
 #define PESSIMISTIC_DELTA_BLOCK true
 
@@ -600,9 +600,11 @@ namespace bwgraph {
                                                                        uint64_t txn_read_ts) {
             auto &target_chain_index_entry = delta_chains_index->at(delta_chain_id);
             uint32_t latest_delta_chain_head_offset = target_chain_index_entry.get_offset();
+            //locked directly return conflict
             if (latest_delta_chain_head_offset & LOCK_MASK) {
                 return Delta_Chain_Lock_Response::CONFLICT;
             }
+            //unlocked and has offset
             if (latest_delta_chain_head_offset) {
                 auto current_head_delta = get_edge_delta(latest_delta_chain_head_offset);
                 auto current_head_ts = current_head_delta->creation_ts.load();
@@ -639,6 +641,7 @@ namespace bwgraph {
                             return Delta_Chain_Lock_Response::CONFLICT;
                         } else {
 #if EDGE_DELTA_TEST
+                            //because of eager abort, if we observe abort from txn table, either a consolidation thread or its owner transaction must lazy abort it
                             if(current_head_delta->creation_ts!=ABORT){
                                 throw EagerAbortException();
                             }
@@ -780,64 +783,140 @@ namespace bwgraph {
             std::cout << "current offset is " << combined_offsets.load() << std::endl;
             std::cout << "previous address is " << prev_pointer << std::endl;
         }
-
+        //Libin: todo: for small blocks just scan?
         /*
          * It finds where the previous version is:
-         * only invoked after grabbing the lock, so there is no way we meet an aborted delta
+         * only invoked after grabbing the lock, so there is no way we meet an aborted or in progress delta if using delta chains
          */
         uint32_t fetch_previous_version_offset(vertex_t vid, uint32_t start_offset, uint64_t txn_id, lazy_update_map &lazy_update_records) {
-            while (start_offset) {
+            if(order<index_lookup_order_threshold){
                 auto current_delta = get_edge_delta(start_offset);
-                uint64_t original_ts = current_delta->creation_ts.load();
-                //still do lazy update
-                if (original_ts!=txn_id && is_txn_id(original_ts)) {
-                    uint64_t status = 0;
-                    if (txn_tables->get_status(original_ts, status)) {
-                        //status can still be abort because of eager abort from validation txns
-                        //move it before lazy update to enforce serialization
+                while (start_offset) {
+                    //skip invalid deltas
+                    if(current_delta->valid.load()){
+                        uint64_t original_ts = current_delta->creation_ts.load();
+                        //still do lazy update
+                        if (original_ts!=txn_id && is_txn_id(original_ts)) {
+                            uint64_t status = 0;
+                            if (txn_tables->get_status(original_ts, status)) {
+                                if(status!=IN_PROGRESS&&status!=ABORT){
 #if CHECKED_PUT_EDGE
-                        update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_version_offset, status);
+                                    update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_version_offset, status);
 #else
-                        update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_offset, status);
+                                    update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_offset, status);
 #endif
-                        if (current_delta->lazy_update(original_ts, status)) {
+                                    if (current_delta->lazy_update(original_ts, status)) {
 #if LAZY_LOCKING
-                            if(current_delta->is_last_delta){
+                                        if(current_delta->is_last_delta){
                                 release_protection(current_delta->toID);
                             }
 #endif
-                            auto result = lazy_update_records.try_emplace(original_ts, 1);
-                            if (!result.second) {
-                                result.first->second++;
+                                        auto result = lazy_update_records.try_emplace(original_ts, 1);
+                                        if (!result.second) {
+                                            result.first->second++;
+                                        }
+                                    }
+                                }else{
+                                    start_offset -= ENTRY_DELTA_SIZE;
+                                    current_delta++;
+                                    continue;
+                                }
+                                //skip in progress deltas
+                               /* else if(status==IN_PROGRESS){
+                                    start_offset -= ENTRY_DELTA_SIZE;
+                                    current_delta++;
+                                    continue;
+                                }else{
+                                    //why?
+                                    throw LazyUpdateException();
+                                }*/
+                            }
+                            //skip aborted deltas
+                        }else if(original_ts==ABORT){
+                            start_offset -= ENTRY_DELTA_SIZE;
+                            current_delta++;
+                            continue;
+                        }
+                        //now current ts is either myself or a valid ts
+#if EDGE_DELTA_TEST
+                        if(is_txn_id(current_delta->creation_ts)){
+                            if(current_delta->creation_ts!=txn_id){
+                                throw LazyUpdateException();
                             }
                         }
+                        if(current_delta->creation_ts==ABORT){
+                            throw LazyUpdateException();
+                        }
+#endif
+                        if(current_delta->toID== vid){
+                            current_delta->invalidate_ts.store(txn_id);
+                            if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                                return start_offset;
+                            }else{
+                                return 0;//for delete delta, just return 0 as if no previous version exist
+                            }
+                        }
+                    }
+                    start_offset -= ENTRY_DELTA_SIZE;
+                    current_delta++;
+                }
+                return 0;
+            }else{
+                while (start_offset) {
+                    auto current_delta = get_edge_delta(start_offset);
+                    uint64_t original_ts = current_delta->creation_ts.load();
+                    //still do lazy update
+                    if (original_ts!=txn_id && is_txn_id(original_ts)) {
+                        uint64_t status = 0;
+                        if (txn_tables->get_status(original_ts, status)) {
+#if EDGE_DELTA_TEST
+                            //Libin: no way we meet in progress or abort deltas. We grab a lock on the current delta chain, all deltas in the chain must be committed.
+                            if(status == IN_PROGRESS||status == ABORT){
+                                throw LazyUpdateException();
+                            }
+#endif
+                            //move it before lazy update to enforce serialization
+#if CHECKED_PUT_EDGE
+                            update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_version_offset, status);
+#else
+                            update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_offset, status);
+#endif
+                            if (current_delta->lazy_update(original_ts, status)) {
+#if LAZY_LOCKING
+                                if(current_delta->is_last_delta){
+                                release_protection(current_delta->toID);
+                            }
+#endif
+                                auto result = lazy_update_records.try_emplace(original_ts, 1);
+                                if (!result.second) {
+                                    result.first->second++;
+                                }
+                            }
 
 #if EDGE_DELTA_TEST
-                        if(status == IN_PROGRESS||status == ABORT){
-                            throw LazyUpdateException();
-                        }
-                        if(current_delta->creation_ts!=status){
-                            throw LazyUpdateException();
-                        }
+                            if(current_delta->creation_ts!=status){
+                                throw LazyUpdateException();
+                            }
 #endif
+                        }
                     }
-                }
 #if EDGE_DELTA_TEST
-                else if(original_ts == ABORT){
-                    throw EagerAbortException();//should not meet aborted delta in the chain
-                }
-#endif
-                if(current_delta->toID== vid){
-                    current_delta->invalidate_ts.store(txn_id);
-                    if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
-                        return start_offset;
-                    }else{
-                        return 0;//for delete delta, just return 0 as if no previous version exist
+                    else if(original_ts == ABORT){
+                        throw EagerAbortException();//should not meet aborted delta in the chain
                     }
+#endif
+                    if(current_delta->toID== vid){
+                        current_delta->invalidate_ts.store(txn_id);
+                        if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                            return start_offset;
+                        }else{
+                            return 0;//for delete delta, just return 0 as if no previous version exist
+                        }
+                    }
+                    start_offset = current_delta->previous_offset;
                 }
-                start_offset = current_delta->previous_offset;
+                return 0;
             }
-            return 0;
         }
 
         inline bool is_overflow_offset(uint64_t current_offset) {

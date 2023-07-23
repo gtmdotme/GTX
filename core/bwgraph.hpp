@@ -169,6 +169,11 @@ namespace bwgraph{
                 garbage_queues.at(local_thread_id).free_block(safe_ts);
             }
         }
+        inline void garbage_clean(){
+            auto local_thread_id = get_worker_thread_id();
+            auto safe_ts = block_access_ts_table.calculate_safe_ts();
+            garbage_queues.at(local_thread_id).free_block(safe_ts);
+        }
         /*
          * in insert only or graphalytics, they are the total writer or total reader num
          * in mixed workload, they equal reader + writer

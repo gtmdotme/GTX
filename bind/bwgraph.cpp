@@ -68,6 +68,10 @@ void Graph::print_garbage_queue_status() {
 void Graph::thread_exit() {
     graph->thread_exit();
 }
+
+void Graph::garbage_clean() {
+    graph->garbage_clean();
+}
 void Graph::force_consolidation_clean() {
     graph->force_consolidation_clean();
 }

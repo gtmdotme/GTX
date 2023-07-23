@@ -29,7 +29,7 @@ namespace bwgraph{
             }
         }
         bool is_safe(uint8_t thread_id, uint64_t block_id){
-            for(uint8_t i=0; i<worker_thread_num; i++){
+            for(uint8_t i=0; i<static_cast<uint8_t>(table.size()); i++){
                 if(i==thread_id){
                     if(table[i].accessed_block_id!=block_id){
                         throw BlockSafeAccessException();

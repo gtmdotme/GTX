@@ -15,8 +15,8 @@
 #include "edge_delta_block_state_protection.hpp"
 #include <set>
 namespace bwgraph{
-#define CONSOLIDATION_TEST true
-#define TXN_TEST true
+#define CONSOLIDATION_TEST false
+#define TXN_TEST false
     struct LockOffsetCache{
         LockOffsetCache(uint64_t input_version, int32_t input_size):block_version_num(input_version),delta_chain_num(input_size){}
         ~LockOffsetCache() = default;
@@ -496,7 +496,8 @@ namespace bwgraph{
         //for pessimistic mode: release all locks in the current block
         //abort all my deltas using scans
         //todo:: only concern is with delete vertex, what if the vertex entry is deleted? then we should return error
-        inline BwLabelEntry* writer_access_label(vertex_t vid, label_t label){
+        //old version of caching entries
+       /* inline BwLabelEntry* writer_access_label(vertex_t vid, label_t label){
             auto block_id = generate_block_id(vid,label);
             auto emplace_result = accessed_edge_label_entry_cache.try_emplace(block_id, nullptr);
             if(emplace_result.second){
@@ -511,8 +512,18 @@ namespace bwgraph{
                 emplace_result.first->second = edge_label_block->writer_lookup_label(label,&txn_tables,read_timestamp);
             }
             return emplace_result.first->second;
-        }
-        inline BwLabelEntry* reader_access_label(vertex_t vid, label_t label){
+        }*/
+       inline BwLabelEntry* writer_access_label(vertex_t vid, label_t label){
+           auto& vertex_index_entry = graph.get_vertex_index_entry(vid);
+           //cannot insert to invalid vertex entry
+           if(!vertex_index_entry.valid.load()){
+               return nullptr;
+           }
+           auto edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
+           //either access an existing entry or creating a new entry
+           return edge_label_block->writer_lookup_label(label,&txn_tables,read_timestamp);
+       }
+        /*inline BwLabelEntry* reader_access_label(vertex_t vid, label_t label){
             auto block_id = generate_block_id(vid,label);
             auto emplace_result = accessed_edge_label_entry_cache.try_emplace(block_id, nullptr);
             if(emplace_result.second){
@@ -529,10 +540,24 @@ namespace bwgraph{
                 }
             }
             return emplace_result.first->second;
+        }*/
+        inline BwLabelEntry* reader_access_label(vertex_t vid, label_t label){
+            auto block_id = generate_block_id(vid,label);
+                auto& vertex_index_entry = graph.get_vertex_index_entry(vid);
+                if(!vertex_index_entry.valid.load()){
+                    return nullptr;
+                }
+                auto edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
+                BwLabelEntry* result= nullptr;
+                auto found = edge_label_block->reader_lookup_label(label, result);
+
+
         }
         //this function is only invoked when we know the entry must exist (access from txn own label cache)
         inline BwLabelEntry* get_label_entry(uint64_t block_id){
-            return accessed_edge_label_entry_cache.at(block_id);
+            //return accessed_edge_label_entry_cache.at(block_id);
+            auto vid_label = decompose_block_id(block_id);
+            return writer_access_label(vid_label.first,vid_label.second);
         }
         //allocate space in the current block for delta
         EdgeDeltaInstallResult allocate_delta(EdgeDeltaBlockHeader* current_block, int32_t data_size){
@@ -655,7 +680,7 @@ namespace bwgraph{
         uint8_t thread_id;
         uint32_t current_delta_offset;
         uint32_t current_data_offset;
-        std::unordered_map<uint64_t, BwLabelEntry*> accessed_edge_label_entry_cache;
+        //std::unordered_map<uint64_t, BwLabelEntry*> accessed_edge_label_entry_cache;
         std::unordered_set<vertex_t> updated_vertices;//cache the vertex deltas that the transaction has touched
         std::queue<vertex_t>& thread_local_recycled_vertices;
         std::unordered_set<vertex_t> created_vertices;

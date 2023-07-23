@@ -8,16 +8,18 @@
 #include "../Libraries/parallel_hashmap/phmap.h"
 #include <thread>
 #include <atomic>
+#include "tbb/concurrent_hash_map.h"
 namespace bwgraph{
     using thread_id =  std::thread::id;
-    using ThreadIDMap = phmap::parallel_flat_hash_map<
+   /* using ThreadIDMap = phmap::parallel_flat_hash_map<
             thread_id,
             uint8_t ,
             phmap::priv::hash_default_hash<thread_id>,
             phmap::priv::hash_default_eq<thread_id>,
             std::allocator<std::pair<const thread_id, uint8_t>>,
             12,
-            std::mutex>;
+            std::mutex>;*/
+   using ThreadIDMap = tbb::concurrent_hash_map<thread_id,uint8_t>;
     class WorkerThreadManager{
     public:
         inline uint64_t get_real_worker_thread_size(){
@@ -25,9 +27,17 @@ namespace bwgraph{
         }
         inline uint8_t get_worker_thread_id(){
             uint8_t thread_id;
-            if(!thread_id_map.if_contains(std::this_thread::get_id(),[&thread_id](typename ThreadIDMap::value_type& pair){ thread_id = pair.second;})) {
+            ThreadIDMap::const_accessor s_accessor;
+            /*if(!thread_id_map.if_contains(std::this_thread::get_id(),[&thread_id](typename ThreadIDMap::value_type& pair){ thread_id = pair.second;})) {
                 thread_id = global_thread_id_allocation.fetch_add(1);
                 thread_id_map.try_emplace(std::this_thread::get_id(),thread_id);
+            }*/
+            if(thread_id_map.find(s_accessor, std::this_thread::get_id())){
+                thread_id = s_accessor->second;
+            }else{
+                s_accessor.release();
+                thread_id = global_thread_id_allocation.fetch_add(1);
+                thread_id_map.emplace(std::this_thread::get_id(),thread_id);
             }
             return thread_id;
         }

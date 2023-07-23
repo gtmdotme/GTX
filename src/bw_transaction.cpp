@@ -1772,7 +1772,7 @@ bool RWTransaction::eager_commit() {
     self_entry->op_count.store(op_count);
     commit_manager.txn_commit(thread_id,self_entry,true);//now do it simple, just wait
     batch_lazy_updates();
-    while(!self_entry->status.load());//loop until committed
+    while(!self_entry->status.load());//loop until committed, fixme: it seems to be a bottleneck, spent 6% of CPU
     //eager clean
     for(auto it = per_block_cached_delta_chain_offsets.begin(); it!=per_block_cached_delta_chain_offsets.end();it++){
         eager_clean_edge_block(it->first,it->second);
