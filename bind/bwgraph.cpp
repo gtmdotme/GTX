@@ -79,9 +79,13 @@ void Graph::force_consolidation_clean() {
 void Graph::set_worker_thread_num(uint64_t new_size) {
     graph->set_worker_thread_num(new_size);
 }
+/*
+ * sets the writer number in the mixed workload
+ */
 void Graph::set_writer_thread_num(uint64_t writer_num){
     graph->set_writer_thread_num(writer_num);
 }
+
 void Graph::on_finish_loading(){
     graph->on_finish_loading();
 }
@@ -98,6 +102,16 @@ void Graph::on_openmp_txn_start(uint64_t read_ts) {
 
 void Graph::on_openmp_section_finishing() {
     graph->on_openmp_parallel_session_finish();
+}
+
+void Graph::manual_commit_server_shutdown() {
+    graph->get_commit_manager().shutdown_signal();
+    commit_manager_worker.join();
+}
+
+void Graph::manual_commit_server_restart() {
+    graph->get_commit_manager().restart();
+    commit_manager_worker =std::thread(&Graph::commit_server_start, this);
 }
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}

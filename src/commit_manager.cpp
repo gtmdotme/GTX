@@ -71,7 +71,7 @@ namespace bwgraph{
     }
     //Concurrent Array Commit Manager Server Loop
     void ConcurrentArrayCommitManager::server_loop() {
-        std::uniform_int_distribution<> offset_distribution(0,worker_thread_num-1);
+        std::uniform_int_distribution<> offset_distribution(0,current_writer_num-1);
         std::random_device rd; // obtain a random number from hardware
         std::mt19937 gen(rd());
         while(running.load()){
@@ -86,7 +86,7 @@ namespace bwgraph{
                     commit_array[current_offset].txn_ptr.store(nullptr);
                     commit_count++;
                 }
-                current_offset = (current_offset+1)%worker_thread_num;
+                current_offset = (current_offset+1)%current_writer_num;
             }while(current_offset!=offset);
             if(commit_count){
                 global_read_epoch.fetch_add(1);
@@ -96,7 +96,7 @@ namespace bwgraph{
         }
         //now the stop running signal is sent
         global_write_epoch++;
-        for(uint32_t i=0; i<worker_thread_num;i++){
+        for(uint32_t i=0; i<current_writer_num;i++){
             auto current_txn_entry = commit_array[i].txn_ptr.load();
             if(current_txn_entry){
                 current_txn_entry->status.store(global_write_epoch);

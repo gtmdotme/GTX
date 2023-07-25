@@ -187,7 +187,8 @@ namespace bwgraph{
             total_writer_num=0;
         }
         /*
-         * invoked at system load up time for mixed workload, specify which threads are used for loads and update
+         * invoked at system loadup time. Specify which threads are for updates or simply specify how many writers do we have.
+         * Libin added on July 25th: this function is executed while the commit server is idle
          */
         inline void set_writer_thread_num(uint64_t writer_num){
             uint64_t total_worker_num = block_access_ts_table.get_total_thread_num();
@@ -199,6 +200,7 @@ namespace bwgraph{
                 }
             }
             total_writer_num = writer_num;
+            commit_manager.resize_commit_array(writer_num);//also reset writer number
         }
 
         /*

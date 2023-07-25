@@ -37,6 +37,7 @@ constexpr uint64_t shared_txn_op_threshold = 64;
 constexpr uint64_t eager_blocks_clean_threshold = 4096; //after how many new version creation, we need to do eager clean
 constexpr uint64_t cold_spot_threshold = 256;
 constexpr uint8_t index_lookup_order_threshold = 12;
+//constexpr uint64_t max_writer_num = 40;
 #define COMMIT_TEST false
 #define TRACK_EXECUTION_TIME false
 #define CHECKED_PUT_EDGE true

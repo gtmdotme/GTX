@@ -86,16 +86,23 @@ namespace bwgraph{
                 padding[i]=0;
             }
         }
+        padded_txn_entry_ptr(const padded_txn_entry_ptr& other):txn_ptr(other.txn_ptr.load()){
+            for(int i=0; i<56;i++){
+                padding[i]=0;
+            }
+        }
         std::atomic<entry_ptr> txn_ptr;
         char padding[56];
     };
     class ConcurrentArrayCommitManager{
     public:
         ConcurrentArrayCommitManager(){
-            for(uint32_t i=0; i<worker_thread_num;i++){
+            commit_array.resize(current_writer_num);
+            for(uint32_t i=0; i<current_writer_num;i++){
                 commit_array[i].txn_ptr = nullptr;
             }
         }
+        //void resize(uint64_t new_txn_num=)
         inline bool txn_commit(uint8_t thread_id,entry_ptr txn_entry, bool willing_to_wait){
             entry_ptr null_ptr = nullptr;
             if(willing_to_wait){
@@ -109,11 +116,22 @@ namespace bwgraph{
                 return commit_array[thread_id].txn_ptr.compare_exchange_strong(null_ptr, txn_entry /*,std::memory_order_acquire*/);
             }
         }
+        inline void resize_commit_array(uint64_t new_writer_size){
+            current_writer_num = new_writer_size;
+            commit_array.resize(current_writer_num);
+            for(uint32_t i=0; i<current_writer_num;i++){
+                commit_array[i].txn_ptr = nullptr;
+            }
+        }
         void server_loop();
         inline uint64_t get_current_read_ts(){return global_read_epoch.load();}
         inline void shutdown_signal(){running.store(false);}
+        inline void restart(){running.store(true);}
     private:
-        std::array<padded_txn_entry_ptr, worker_thread_num> commit_array;
+        //std::array<padded_txn_entry_ptr, max_writer_num> commit_array;
+        std::vector<padded_txn_entry_ptr> commit_array;
+        uint64_t current_writer_num = worker_thread_num;
+        //std::vector<padded_txn_entry_ptr> commit_array;
         std::atomic_bool running = true;
         std::atomic_uint64_t global_read_epoch = 0;
         uint64_t global_write_epoch = 0;

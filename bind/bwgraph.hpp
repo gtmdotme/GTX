@@ -62,6 +62,8 @@ namespace bg {
         void on_openmp_txn_start(uint64_t read_ts);
         void on_openmp_section_finishing();
         void garbage_clean();
+        void manual_commit_server_shutdown();
+        void manual_commit_server_restart();
         //for debug
         bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
     private:
