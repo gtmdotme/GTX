@@ -1983,7 +1983,7 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
                 throw VertexDeltaException();
             }
 #else
-            vertex_index_entry.vertex_delta_chain_head_ptr.store(new_delta_ptr，std::memory_order_release);
+            vertex_index_entry.vertex_delta_chain_head_ptr.store(new_delta_ptr,std::memory_order_release);
 #endif
             //updated_vertices.emplace(src); no need, updated_vertices should already contain it
             //op_count++; we are replacing our delta so no increase in op count, also garbage collect replaced entry

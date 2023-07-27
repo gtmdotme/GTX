@@ -9,7 +9,7 @@
 #define WORKER_THREAD_NUM 32
 #endif*/
 
-constexpr uint32_t worker_thread_num = 129;
+constexpr uint32_t worker_thread_num = 40;
 //transaction states
 #define ABORT 0x7FFFFFFFFFFFFFFF
 #define IN_PROGRESS 0
