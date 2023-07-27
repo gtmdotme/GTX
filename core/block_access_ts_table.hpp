@@ -19,6 +19,7 @@ namespace bwgraph{
     static_assert(sizeof(BlockAccessTSEntry)==64);
     class BlockAccessTimestampTable{
     public:
+        //inline void store_block_access(uint8_t thread_id, uint64_t block_id){table[thread_id].accessed_block_id.store(block_id,std::memory_order_release);}
         inline void store_block_access(uint8_t thread_id, uint64_t block_id){table[thread_id].accessed_block_id.store(block_id);}
         inline void release_block_access(uint8_t thread_id){table[thread_id].accessed_block_id.store(BAD_BLOCK_ID);}
         inline void set_total_worker_thread_num(uint64_t num){
@@ -31,19 +32,19 @@ namespace bwgraph{
         bool is_safe(uint8_t thread_id, uint64_t block_id){
             for(uint8_t i=0; i<static_cast<uint8_t>(table.size()); i++){
                 if(i==thread_id){
-                    if(table[i].accessed_block_id!=block_id){
+                    if(table[i].accessed_block_id.load(/*std::memory_order_acquire*/)!=block_id){
                         throw BlockSafeAccessException();
                     }
                     continue;
                 }
-                if(table[i].accessed_block_id.load()==block_id){
+                if(table[i].accessed_block_id.load(/*std::memory_order_acquire*/)==block_id){
                     return false;
                 }
             }
             return true;
         }
         //thread does not reset this value at txn finish, just overwrite when new txn is created
-        inline void store_current_ts(uint8_t thread_id, timestamp_t read_ts){table[thread_id].current_ts.store(read_ts);}
+        inline void store_current_ts(uint8_t thread_id, timestamp_t read_ts){table[thread_id].current_ts.store(read_ts/*,std::memory_order_release*/);}
 
         inline uint64_t get_total_thread_num(){return table.size();}
         /*
@@ -52,13 +53,13 @@ namespace bwgraph{
         uint64_t calculate_safe_ts(){
             uint64_t min_ts = std::numeric_limits<uint64_t>::max();
             for(uint64_t i=0; i<table.size();i++){
-                uint64_t current_ts = table[i].current_ts.load();
+                uint64_t current_ts = table[i].current_ts.load(/*std::memory_order_acquire*/);
                 min_ts = (current_ts<min_ts)?current_ts:min_ts;
             }
             return min_ts;
         }
         inline void thread_exit(uint8_t thread_id){
-            table[thread_id].current_ts.store(std::numeric_limits<uint64_t>::max());
+            table[thread_id].current_ts.store(std::numeric_limits<uint64_t>::max()/*,std::memory_order_release*/);
         }
         void print_ts_status(){
             for(size_t i=0; i<table.size();i++){

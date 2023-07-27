@@ -36,18 +36,18 @@ namespace bwgraph{
                 thread_id = s_accessor->second;
             }else{
                 s_accessor.release();
-                thread_id = global_thread_id_allocation.fetch_add(1);
+                thread_id = global_thread_id_allocation.fetch_add(1,std::memory_order_acq_rel);
                 thread_id_map.emplace(std::this_thread::get_id(),thread_id);
             }
             return thread_id;
         }
         inline void reset_worker_thread_id(){
-            global_thread_id_allocation=0;
+            global_thread_id_allocation.store(0);
             thread_id_map.clear();
             reset_openmp_thread_id();
         }
         inline void reset_openmp_thread_id(){
-            openmp_thread_id_allocation=0;
+            openmp_thread_id_allocation.store(0);
             //openmp_thread_id_map.clear();
         }
         inline uint8_t get_openmp_worker_thread_id(){
@@ -57,7 +57,7 @@ namespace bwgraph{
                 openmp_thread_id_map.try_emplace(std::this_thread::get_id(),thread_id);
             }
             return thread_id;*/
-          return openmp_thread_id_allocation.fetch_add(1)+global_thread_id_allocation.load();
+          return openmp_thread_id_allocation.fetch_add(1,std::memory_order_acq_rel)+global_thread_id_allocation.load();
         }
 
     private:

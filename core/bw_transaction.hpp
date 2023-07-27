@@ -15,8 +15,8 @@
 #include "edge_delta_block_state_protection.hpp"
 #include <set>
 namespace bwgraph{
-#define CONSOLIDATION_TEST false
-#define TXN_TEST false
+#define CONSOLIDATION_TEST true
+#define TXN_TEST true
     struct LockOffsetCache{
         LockOffsetCache(uint64_t input_version, int32_t input_size):block_version_num(input_version),delta_chain_num(input_size){}
         ~LockOffsetCache() = default;
@@ -36,7 +36,7 @@ namespace bwgraph{
             delta_chain_num = current_block->get_delta_chain_num();//todo: check if we can update delta chain num directly in place
             std::set<delta_chain_id_t> to_reclaim_locks;//use set because we want a deterministic order of reclaiming locks
             already_updated_delta_chain_head_offsets.clear();
-            block_version_num = current_label_entry->block_version_number.load();
+            block_version_num = current_label_entry->block_version_number.load(std::memory_order_acquire);
             for(auto it = already_modified_edges.begin();it!=already_modified_edges.end();it++){
                 delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(*it,delta_chain_num);
                 to_reclaim_locks.emplace(delta_chain_id);
@@ -55,11 +55,11 @@ namespace bwgraph{
                     if(current_delta_chain_head_offset){
                         BaseEdgeDelta* current_delta_chain_head = current_block->get_edge_delta(current_delta_chain_head_offset);
 #if EDGE_DELTA_TEST
-                        if(!current_delta_chain_head->valid){
+                        if(!current_delta_chain_head->valid.load(std::memory_order_acquire)){
                             throw DeltaChainCorruptionException();
                         }
 #endif//endif EDGE_DELTA_TEST
-                        uint64_t current_delta_chain_head_ts = current_delta_chain_head->creation_ts.load();
+                        uint64_t current_delta_chain_head_ts = current_delta_chain_head->creation_ts.load(std::memory_order_acquire);
                         //because lock and offset are bind together
 #if EDGE_DELTA_TEST
                         if(is_txn_id(current_delta_chain_head_ts)||current_delta_chain_head_ts==ABORT){
@@ -89,7 +89,7 @@ namespace bwgraph{
         //for simple protocol
         bool reclaim_delta_chain_lock(EdgeDeltaBlockHeader* current_block, BwLabelEntry* current_label_entry, uint64_t txn_id, uint64_t txn_read_ts, uint64_t current_block_offset, lazy_update_map* lazy_update_records){
             delta_chain_num = current_block->get_delta_chain_num();//todo: check if we can update delta chain num directly in place
-            block_version_num = current_label_entry->block_version_number.load();
+            block_version_num = current_label_entry->block_version_number.load(std::memory_order_acquire);
             already_updated_delta_chain_head_offsets.clear();
             //if the transaction did not update anything really
             if(already_modified_edges.empty()){
@@ -139,12 +139,12 @@ namespace bwgraph{
                 if(current_delta_offset==0){
                     throw DeltaChainReclaimException();
                 }
-                if(!current_delta->valid){
+                if(!current_delta->valid.load(std::memory_order_acquire)){
                     current_delta++;
                     current_delta_offset-=ENTRY_DELTA_SIZE;
                     continue;
                 }
-                if(current_delta->creation_ts.load()==txn_id){
+                if(current_delta->creation_ts.load(std::memory_order_acquire)==txn_id){
                     delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(current_delta->toID,delta_chain_num);
                     auto emplace_result = settled_delta_chains.emplace(delta_chain_id);
                     if(emplace_result.second){
@@ -225,7 +225,7 @@ namespace bwgraph{
             int64_t total_abort_count=0;
             //use offset cache to eager abort
             //I have locks must release
-            if(current_label_entry->block_version_number.load()==block_version_num){
+            if(current_label_entry->block_version_number.load(std::memory_order_acquire)==block_version_num){
                 for(auto it = already_updated_delta_chain_head_offsets.begin();it!=already_updated_delta_chain_head_offsets.end();it++){
 #if EDGE_DELTA_TEST
                     if(!it->second){
@@ -237,11 +237,11 @@ namespace bwgraph{
                     auto current_delta = current_block->get_edge_delta(current_delta_offset);
                     while(current_delta_offset>0){
 #if EDGE_DELTA_TEST
-                        if(!current_delta->valid){
+                        if(!current_delta->valid.load(std::memory_order_acquire)){
                             throw DeltaChainCorruptionException();
                         }
 #endif
-                        if(current_delta->creation_ts.load()==txn_id){
+                        if(current_delta->creation_ts.load(std::memory_order_acquire)==txn_id){
 #if EDGE_DELTA_TEST
                             current_delta->eager_abort(txn_id);
 #else
@@ -250,7 +250,7 @@ namespace bwgraph{
                             total_abort_count++;
                         }else{//reach the committed delta
 #if EDGE_DELTA_TEST
-                            if(current_delta->creation_ts.load()==ABORT|| is_txn_id(current_delta->creation_ts.load())){
+                            if(current_delta->creation_ts.load(std::memory_order_acquire)==ABORT|| is_txn_id(current_delta->creation_ts.load(std::memory_order_acquire))){
                                 throw LazyUpdateAbortException();//our delta chain should only contain our deltas linked to committed delta chain or no delta
                             }
 #endif
@@ -264,13 +264,13 @@ namespace bwgraph{
                 uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_block_offset);
                 auto current_delta = current_block->get_edge_delta(current_delta_offset);
                 while(current_delta_offset>0){
-                    if(!current_delta->valid){
+                    if(!current_delta->valid.load(std::memory_order_acquire)){
                         current_delta++;
                         current_delta_offset-=ENTRY_DELTA_SIZE;
                         continue;
                     }
                     //todo:: also lazy update for others?
-                    if(current_delta->creation_ts.load()==txn_id){
+                    if(current_delta->creation_ts.load(std::memory_order_acquire)==txn_id){
 #if EDGE_DELTA_TEST
                         current_delta->eager_abort(txn_id);
 #else
@@ -318,12 +318,13 @@ namespace bwgraph{
         inline BwLabelEntry* get_label_entry(uint64_t block_id){
             return accessed_edge_label_entry_cache.at(block_id);
         }
+        //todo: need to optimize this function, no cache
         inline BwLabelEntry* reader_access_label(vertex_t vid, label_t label){
             auto block_id = generate_block_id(vid,label);
             auto emplace_result = accessed_edge_label_entry_cache.try_emplace(block_id, nullptr);
             if(emplace_result.second){
                 auto& vertex_index_entry = graph.get_vertex_index_entry(vid);
-                if(!vertex_index_entry.valid.load()){
+                if(!vertex_index_entry.valid.load(std::memory_order_acquire)){
                     accessed_edge_label_entry_cache.erase(emplace_result.first);
                     return nullptr;
                 }
@@ -364,7 +365,7 @@ namespace bwgraph{
         SharedROTransaction(BwGraph& source_graph,timestamp_t input_ts,TxnTables& input_txn_tables, BlockManager& input_block_manager,  BlockAccessTimestampTable& input_block_ts_table):graph(source_graph),read_timestamp(input_ts), txn_tables(input_txn_tables),
         block_manager(input_block_manager), block_access_ts_table(input_block_ts_table),per_thread_op_count(0){}
         SharedROTransaction(SharedROTransaction&& other):graph(other.graph),read_timestamp(other.read_timestamp),txn_tables(other.txn_tables),
-        block_manager(other.block_manager), thread_specific_lazy_update_records(other.thread_specific_lazy_update_records), block_access_ts_table(other.block_access_ts_table){}
+         thread_specific_lazy_update_records(other.thread_specific_lazy_update_records),block_manager(other.block_manager), block_access_ts_table(other.block_access_ts_table),per_thread_op_count(0){}
         ~SharedROTransaction();
         SharedROTransaction(const SharedROTransaction& other)=delete;
         SharedROTransaction& operator =(const SharedROTransaction &)=delete;
@@ -379,7 +380,6 @@ namespace bwgraph{
         std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label,uint8_t thread_id);
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label,uint8_t thread_id);
         std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator> simple_get_edges(vertex_t src, label_t label,uint8_t thread_id);
-        tbb::enumerable_thread_specific<size_t> per_thread_op_count;
         std::string_view get_vertex(vertex_t src);
         inline void commit(){
             batch_lazy_updates();
@@ -409,7 +409,7 @@ namespace bwgraph{
     private:
         inline BwLabelEntry* reader_access_label(vertex_t vid, label_t label){
             auto& vertex_index_entry = graph.get_vertex_index_entry(vid);
-            if(!vertex_index_entry.valid.load()){
+            if(!vertex_index_entry.valid.load(std::memory_order_acquire)){
                 return nullptr;
             }
             auto edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
@@ -435,6 +435,7 @@ namespace bwgraph{
         BlockManager& block_manager;
         //GarbageBlockQueue& per_thread_garbage_queue;
         BlockAccessTimestampTable& block_access_ts_table;
+        tbb::enumerable_thread_specific<size_t> per_thread_op_count;
         //todo:: add a local operation count variaable: if op count reaches a threshold, do garbage collection
         //std::unordered_map<uint64_t, BwLabelEntry*> accessed_edge_label_entry_cache;
         //tbb::enumerable_thread_specific<std::unordered_map<uint64_t, BwLabelEntry*>> thread_local_accessed_edge_label_entry_cache;
@@ -445,6 +446,8 @@ namespace bwgraph{
         RWTransaction(BwGraph& source_graph,uint64_t input_txn_id, timestamp_t input_ts, entry_ptr input_txn_ptr, TxnTables& input_txn_tables, CommitManager& input_commit_manager,  BlockManager& input_block_manager,GarbageBlockQueue& input_garbage_queue, BlockAccessTimestampTable& input_bts_table,std::queue<vertex_t>& input_thread_local_recycled_vertices):graph(source_graph),  local_txn_id(input_txn_id),read_timestamp(input_ts),
         self_entry(input_txn_ptr),txn_tables(input_txn_tables),commit_manager(input_commit_manager), block_manager(input_block_manager),per_thread_garbage_queue(input_garbage_queue), block_access_ts_table(input_bts_table),thread_local_recycled_vertices(input_thread_local_recycled_vertices){
             thread_id = get_threadID(local_txn_id);
+            current_delta_offset=0;
+            current_data_offset=0;
 #if TRACK_EXECUTION_TIME
             txn_start_time = std::chrono::high_resolution_clock::now();
 #endif
@@ -452,6 +455,8 @@ namespace bwgraph{
         RWTransaction( RWTransaction&& other):graph(other.graph),  local_txn_id(other.local_txn_id),read_timestamp(other.read_timestamp),
                                               self_entry(other.self_entry),txn_tables(other.txn_tables),commit_manager(other.commit_manager), block_manager(other.block_manager),per_thread_garbage_queue(other.per_thread_garbage_queue), block_access_ts_table(other.block_access_ts_table),thread_local_recycled_vertices(other.thread_local_recycled_vertices){
             thread_id = other.thread_id;
+            current_delta_offset=0;
+            current_data_offset=0;
 #if TRACK_EXECUTION_TIME
             txn_start_time = std::chrono::high_resolution_clock::now();
 #endif
@@ -516,7 +521,7 @@ namespace bwgraph{
        inline BwLabelEntry* writer_access_label(vertex_t vid, label_t label){
            auto& vertex_index_entry = graph.get_vertex_index_entry(vid);
            //cannot insert to invalid vertex entry
-           if(!vertex_index_entry.valid.load()){
+           if(!vertex_index_entry.valid.load(std::memory_order_acquire)){
                return nullptr;
            }
            auto edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
@@ -542,16 +547,19 @@ namespace bwgraph{
             return emplace_result.first->second;
         }*/
         inline BwLabelEntry* reader_access_label(vertex_t vid, label_t label){
-            auto block_id = generate_block_id(vid,label);
+           // [[maybe_unused]]auto block_id = generate_block_id(vid,label);
                 auto& vertex_index_entry = graph.get_vertex_index_entry(vid);
-                if(!vertex_index_entry.valid.load()){
+                if(!vertex_index_entry.valid.load(std::memory_order_acquire)){
                     return nullptr;
                 }
                 auto edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
                 BwLabelEntry* result= nullptr;
                 auto found = edge_label_block->reader_lookup_label(label, result);
-
-
+                if(found){
+                    return result;
+                }else{
+                    return nullptr;
+                }
         }
         //this function is only invoked when we know the entry must exist (access from txn own label cache)
         inline BwLabelEntry* get_label_entry(uint64_t block_id){

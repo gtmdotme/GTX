@@ -74,22 +74,23 @@ namespace bwgraph{
         std::uniform_int_distribution<> offset_distribution(0,current_writer_num-1);
         std::random_device rd; // obtain a random number from hardware
         std::mt19937 gen(rd());
-        while(running.load()){
+        while(running.load(std::memory_order_acquire)){
             size_t commit_count =0;
             offset = offset_distribution(gen);
             uint32_t current_offset = offset;
             global_write_epoch++;
             do{
-                auto current_txn_entry = commit_array[current_offset].txn_ptr.load();
+                auto current_txn_entry = commit_array[current_offset].txn_ptr.load(std::memory_order_acquire);
                 if(current_txn_entry){
-                    current_txn_entry->status.store(global_write_epoch);
-                    commit_array[current_offset].txn_ptr.store(nullptr);
+                    //Libin shifted their orders
+                    commit_array[current_offset].txn_ptr.store(nullptr,std::memory_order_release);
+                    current_txn_entry->status.store(global_write_epoch,std::memory_order_release);
                     commit_count++;
                 }
                 current_offset = (current_offset+1)%current_writer_num;
             }while(current_offset!=offset);
             if(commit_count){
-                global_read_epoch.fetch_add(1);
+                global_read_epoch.fetch_add(1,std::memory_order_acq_rel);
             }else{
                 global_write_epoch--;
             }
@@ -97,13 +98,13 @@ namespace bwgraph{
         //now the stop running signal is sent
         global_write_epoch++;
         for(uint32_t i=0; i<current_writer_num;i++){
-            auto current_txn_entry = commit_array[i].txn_ptr.load();
+            auto current_txn_entry = commit_array[i].txn_ptr.load(std::memory_order_acquire);
             if(current_txn_entry){
                 current_txn_entry->status.store(global_write_epoch);
                 commit_array[i].txn_ptr.store(nullptr);
             }
         }
-        global_read_epoch.fetch_add(1);
+        global_read_epoch.fetch_add(1,std::memory_order_acq_rel);
     }
 #endif
 }

@@ -43,7 +43,7 @@ namespace bwgraph{
     inline uint64_t get_local_txn_id(uint64_t txnID){
         return ((txnID<<8)>>8);
     }
-    inline uint64_t generate_block_id(int64_t vertex_id, label_t label){
+    inline uint64_t generate_block_id(vertex_t vertex_id, label_t label){
         return (static_cast<uint64_t>(label)<<48)|static_cast<uint64_t>(vertex_id);
     }
     inline std::pair<vertex_t, label_t> decompose_block_id(uint64_t block_id){

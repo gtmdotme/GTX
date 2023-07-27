@@ -16,7 +16,7 @@
 #include "utils.hpp"
 
 namespace bwgraph {
-#define TXN_TABLE_TEST false
+#define TXN_TABLE_TEST true
     class BwGraph;
     class GarbageBlockQueue;
     struct touched_block_entry{
@@ -29,33 +29,38 @@ namespace bwgraph {
 
 #if USING_ARRAY_TABLE
     struct alignas(64) txn_table_entry {
-        txn_table_entry():txn_id(0),op_count(0) {
-            status.store(IN_PROGRESS);
-        };
+        txn_table_entry(){
+            txn_id.store(0,std::memory_order_release);
+            op_count.store(0,std::memory_order_release);
+            status.store(IN_PROGRESS,std::memory_order_release);
+        }
 
-        txn_table_entry(uint64_t new_txn_id) : txn_id(new_txn_id),op_count(0) {
-            status.store(IN_PROGRESS);
+        explicit txn_table_entry(uint64_t new_txn_id) {
+            txn_id.store(new_txn_id,std::memory_order_release);
+            op_count.store(0,std::memory_order_release);
+            status.store(IN_PROGRESS,std::memory_order_release);
         }
 
         txn_table_entry(const txn_table_entry &other) {
-            txn_id.store(other.txn_id.load());
-            status.store(other.status.load());
-            op_count.store(other.op_count.load());
+            txn_id.store(other.txn_id.load(std::memory_order_acquire),std::memory_order_release);
+            status.store(other.status.load(std::memory_order_acquire),std::memory_order_release);
+            op_count.store(other.op_count.load(std::memory_order_acquire),std::memory_order_release);
         }
 
         txn_table_entry &operator=(const txn_table_entry &other) {
-            txn_id.store(other.txn_id.load());
-            status.store(other.status.load());
-            op_count.store(other.op_count.load());
+            txn_id.store(other.txn_id.load(std::memory_order_acquire),std::memory_order_release);
+            status.store(other.status.load(std::memory_order_acquire),std::memory_order_release);
+            op_count.store(other.op_count.load(std::memory_order_acquire),std::memory_order_release);
             return *this;
         }
         //we do not eagerly delete entries, just check if the next entry has op_count == 0.
         inline bool reduce_op_count(int64_t num) {
-            if (op_count.fetch_sub(num) == num) {
+            if (op_count.fetch_sub(num,std::memory_order_acq_rel) == num) {
                 return true;
             }
 #if TXN_TABLE_TEST
-            if (op_count.load() < 0) {
+            if (op_count.load(std::memory_order_acquire) < 0) {
+                std::cout<<num<<std::endl;
                 throw TransactionTableOpCountException();
             }
 #endif
@@ -63,18 +68,18 @@ namespace bwgraph {
         }
 
         inline void commit(uint64_t ts) {
-            status.store(ts);
+            status.store(ts,std::memory_order_release);
         }
 
         inline void abort() {
-            status.store(ABORT);
+            status.store(ABORT,std::memory_order_release);
         }
 
-        std::atomic_uint64_t txn_id;
-        std::atomic_uint64_t status;
-        std::atomic_int64_t op_count;
+        std::atomic_uint64_t txn_id{};
+        std::atomic_uint64_t status{};
+        std::atomic_int64_t op_count{};
         std::vector<touched_block_entry> touched_blocks;
-        char padding[16];
+        char padding[16]{};
        //std::map<touched_block_entry,LockOffsetCache> touched_blocks;
        // char padding[16]
     };
@@ -264,13 +269,13 @@ namespace bwgraph {
             uint64_t index =txn_id % per_thread_table_size;
 #endif
 
-            status_result= local_table[index].status.load();
-            return local_table[index].txn_id == txn_id;
+            status_result= local_table[index].status.load(std::memory_order_acquire);
+            return local_table[index].txn_id.load(std::memory_order_acquire) == txn_id;
         }
         //only invoked at the end to check lazy update progress
         inline bool is_empty(){
             for(uint32_t i=0; i<per_thread_table_size;i++){
-                if(local_table[i].op_count){
+                if(local_table[i].op_count.load(std::memory_order_acquire)){
                     std::cout<<"txn id is "<<local_table[i].txn_id<<" status is "<<local_table[i].status<<" op_count is "<<local_table[i].op_count<<" touched block count is "<<local_table[i].touched_blocks.size()<<std::endl;
                     return false;
                 }
@@ -290,14 +295,14 @@ namespace bwgraph {
             uint64_t index =txn_id % per_thread_table_size;
 #endif
 #if TXN_TABLE_TEST
-            if(local_table[index].txn_id!=txn_id){
+            if(local_table[index].txn_id.load(std::memory_order_acquire)!=txn_id){
                 throw LazyUpdateException();
             }
-            if(local_table[index].status.load()==IN_PROGRESS){
-                throw new std::runtime_error("error, try to reduce operation count of an in progress transaction");
+            if(local_table[index].status.load(std::memory_order_acquire)==IN_PROGRESS){
+                throw std::runtime_error("error, try to reduce operation count of an in progress transaction");
             }
-            if(local_table[index].op_count.load()<op_count){
-                throw new std::runtime_error("error, reduce op count is greater than remaining op count");
+            if(local_table[index].op_count.load(std::memory_order_acquire)<op_count){
+                throw std::runtime_error("error, reduce op count is greater than remaining op count");
             }
 #endif
             local_table[index].reduce_op_count(op_count);
@@ -314,22 +319,22 @@ namespace bwgraph {
 #endif
 #if TXN_TABLE_TEST
             //assert(!local_table[index].txn_id.load());
-            if(local_table[index].op_count.load()){
+            if(local_table[index].op_count.load(std::memory_order_acquire)){
                 throw TransactionTableOpCountException();
             }
 #endif
-            local_table[index].txn_id.store(txn_id);
-            local_table[index].status.store(IN_PROGRESS);
+            local_table[index].txn_id.store(txn_id,std::memory_order_release);
+            local_table[index].status.store(IN_PROGRESS,std::memory_order_release);
             local_table[index].touched_blocks.clear();
             return &local_table[index];
         }
         inline void commit_txn(entry_ptr ptr, uint64_t op_count, uint64_t commit_ts){
-            ptr->op_count.store(op_count);
-            ptr->status.store(commit_ts);
+            ptr->op_count.store(op_count,std::memory_order_release);
+            ptr->status.store(commit_ts,std::memory_order_release);
         }
         inline void abort_txn(entry_ptr ptr, uint64_t op_count){
-            ptr->op_count.store(op_count);
-            ptr->status.store(ABORT);
+            ptr->op_count.store(op_count,std::memory_order_release);
+            ptr->status.store(ABORT,std::memory_order_release);
         }
         inline void set_bwgraph(BwGraph* source_graph){
             bwGraph = source_graph;
@@ -345,11 +350,11 @@ namespace bwgraph {
         inline uint64_t generate_txn_id(){
             uint64_t index = offset%per_thread_table_size;
 #if TXN_TABLE_TEST
-            if(offset>per_thread_table_size&&local_table[index].status==IN_PROGRESS){
-                throw new std::runtime_error("error, the txn did not get a final state");
+            if(offset>per_thread_table_size&&local_table[index].status.load(std::memory_order_acquire)==IN_PROGRESS){
+                throw std::runtime_error("error, the txn did not get a final state");
             }
 #endif
-            if(local_table[index].op_count.load()){
+            if(local_table[index].op_count.load(std::memory_order_acquire)){
                 eager_clean(index);
             }
             uint64_t new_txn_id = bwgraph::generate_txnID(thread_id,offset);
@@ -371,8 +376,8 @@ namespace bwgraph {
                 range_eager_clean(calculate_range_clean_index(index));
             }
 #if TXN_TABLE_TEST
-            if(offset>per_thread_table_size&&local_table[index].status==IN_PROGRESS){
-                throw new std::runtime_error("error, the txn did not get a final state");
+            if(offset>per_thread_table_size&&local_table[index].status.load(std::memory_order_acquire)==IN_PROGRESS){
+                throw std::runtime_error("error, the txn did not get a final state");
             }
 #endif
           /*  if(local_table[index].op_count.load()){
@@ -421,13 +426,13 @@ namespace bwgraph {
             uint8_t thread_id = bwgraph::get_threadID(txn_id);
             tables[thread_id].reduce_op_count(txn_id, op_count);
         }
-        inline void commit_txn(entry_ptr ptr, uint64_t op_count, uint64_t commit_ts){
-            ptr->op_count.store(op_count);
-            ptr->status.store(commit_ts);
+        inline void commit_txn(entry_ptr ptr, int64_t op_count, uint64_t commit_ts){
+            ptr->op_count.store(op_count,std::memory_order_release);
+            ptr->status.store(commit_ts,std::memory_order_release);
         }
-        inline void abort_txn(entry_ptr ptr, uint64_t op_count){
-            ptr->op_count.store(op_count);
-            ptr->status.store(ABORT);
+        inline void abort_txn(entry_ptr ptr, int64_t op_count){
+            ptr->op_count.store(op_count,std::memory_order_release);
+            ptr->status.store(ABORT,std::memory_order_release);
         }
         inline ArrayTransactionTable& get_table(uint8_t thread_id){
             return tables[thread_id];

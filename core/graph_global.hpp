@@ -43,6 +43,6 @@ constexpr uint8_t index_lookup_order_threshold = 12;
 #define CHECKED_PUT_EDGE true
 #define USING_RANGE_CLEAN false
 #define USING_EAGER_COMMIT true
-#define PRINTING_FINAL_GARBAGE_STATUS false
+#define PRINTING_FINAL_GARBAGE_STATUS true
 #define USING_EAGER_CONSOLIDATION false
 //#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

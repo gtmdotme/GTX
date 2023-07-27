@@ -61,7 +61,7 @@ namespace bwgraph{
         void collaborative_commit();
         void server_loop();//server loops to commit
         inline void shutdown_signal(){
-            running.store(false);
+            running.store(false,std::memory_order_release);
         }
 #endif
     private:
@@ -81,12 +81,14 @@ namespace bwgraph{
        // size_t current_entries = 0;
     };
     struct alignas(64) padded_txn_entry_ptr{
-        padded_txn_entry_ptr(): txn_ptr(nullptr){
+        padded_txn_entry_ptr(){
+            txn_ptr.store(nullptr,std::memory_order_release);
             for(int i=0; i<56;i++){
                 padding[i]=0;
             }
         }
-        padded_txn_entry_ptr(const padded_txn_entry_ptr& other):txn_ptr(other.txn_ptr.load()){
+        padded_txn_entry_ptr(const padded_txn_entry_ptr& other){
+            txn_ptr.store(other.txn_ptr.load(std::memory_order_acquire),std::memory_order_release);
             for(int i=0; i<56;i++){
                 padding[i]=0;
             }
@@ -99,34 +101,59 @@ namespace bwgraph{
         ConcurrentArrayCommitManager(){
             commit_array.resize(current_writer_num);
             for(uint32_t i=0; i<current_writer_num;i++){
-                commit_array[i].txn_ptr = nullptr;
+                commit_array[i].txn_ptr.store(nullptr,std::memory_order_release);
             }
         }
         //void resize(uint64_t new_txn_num=)
-        inline bool txn_commit(uint8_t thread_id,entry_ptr txn_entry, bool willing_to_wait){
+        /*
+         * the current implementation still assumes lazy update, in eager commit model, we can do different
+         */
+        inline bool txn_commit(uint8_t thread_id,entry_ptr txn_entry, [[maybe_unused]] bool willing_to_wait){
+#if USING_EAGER_COMMIT
+            //Libin's July 25th debug
+            auto current_txn_ptr = commit_array[thread_id].txn_ptr.load();
+            if(current_txn_ptr&&current_txn_ptr->status.load()==0){
+                std::cout<<current_txn_ptr->txn_id<<" "<<current_txn_ptr->status<<std::endl;
+                throw std::runtime_error("how is this possible?");
+            }
+            commit_array[thread_id].txn_ptr.store(txn_entry,std::memory_order_release);
+            return true;
             entry_ptr null_ptr = nullptr;
             if(willing_to_wait){
                 //todo:: check memory order more
-                while(!commit_array[thread_id].txn_ptr.compare_exchange_strong(null_ptr, txn_entry /*,std::memory_order_acquire*/)){
+                while(!commit_array[thread_id].txn_ptr.compare_exchange_strong(null_ptr, txn_entry, std::memory_order_acq_rel)){
                     null_ptr = nullptr;
                     //do something?
                 }
                 return true;
             }else{
-                return commit_array[thread_id].txn_ptr.compare_exchange_strong(null_ptr, txn_entry /*,std::memory_order_acquire*/);
+                return commit_array[thread_id].txn_ptr.compare_exchange_strong(null_ptr, txn_entry, std::memory_order_acq_rel);
             }
+#else
+            entry_ptr null_ptr = nullptr;
+            if(willing_to_wait){
+                //todo:: check memory order more
+                while(!commit_array[thread_id].txn_ptr.compare_exchange_strong(null_ptr, txn_entry, std::memory_order_acq_rel)){
+                    null_ptr = nullptr;
+                    //do something?
+                }
+                return true;
+            }else{
+                return commit_array[thread_id].txn_ptr.compare_exchange_strong(null_ptr, txn_entry, std::memory_order_acq_rel);
+            }
+#endif
         }
         inline void resize_commit_array(uint64_t new_writer_size){
             current_writer_num = new_writer_size;
             commit_array.resize(current_writer_num);
             for(uint32_t i=0; i<current_writer_num;i++){
-                commit_array[i].txn_ptr = nullptr;
+                commit_array[i].txn_ptr.store(nullptr,std::memory_order_release);
             }
         }
         void server_loop();
-        inline uint64_t get_current_read_ts(){return global_read_epoch.load();}
-        inline void shutdown_signal(){running.store(false);}
-        inline void restart(){running.store(true);}
+        inline uint64_t get_current_read_ts(){return global_read_epoch.load(std::memory_order_acquire);}
+        inline void shutdown_signal(){running.store(false,std::memory_order_release);}
+        inline void restart(){running.store(true,std::memory_order_release);}
     private:
         //std::array<padded_txn_entry_ptr, max_writer_num> commit_array;
         std::vector<padded_txn_entry_ptr> commit_array;

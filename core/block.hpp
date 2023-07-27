@@ -29,7 +29,7 @@ namespace bwgraph {
 #define MAX_LOCK_INHERITANCE_ROUND 3
 #define ERROR_ENTRY_OFFSET 0xFFFFFFFF
 
-#define EDGE_DELTA_TEST false
+#define EDGE_DELTA_TEST true
 #define Count_Lazy_Protocol true
 #define PESSIMISTIC_DELTA_BLOCK true
 
@@ -37,40 +37,40 @@ namespace bwgraph {
     struct AtomicDeltaOffset {
         std::atomic_uint32_t delta_offset;//0 means the end of the block which is impossible, the minimum meaningful offset value is 64
         AtomicDeltaOffset() {
-            delta_offset.store(0);
+            delta_offset.store(0, std::memory_order_release);
         }
 
         AtomicDeltaOffset(const AtomicDeltaOffset &other) {
-            this->delta_offset.store(other.delta_offset.load());
+            this->delta_offset.store(other.delta_offset.load(std::memory_order_acquire),std::memory_order_release);
         }
 
         AtomicDeltaOffset &operator=(const AtomicDeltaOffset &other) {
-            delta_offset.store(other.delta_offset);
+            delta_offset.store(other.delta_offset,std::memory_order_release);
             return *this;
         }
 
         inline uint32_t get_offset() {
-            return delta_offset.load();
+            return delta_offset.load(std::memory_order_acquire);
         }
 
         //return the offset ignoring lock bit
         inline uint32_t get_raw_offset() {
-            return delta_offset.load() & UNLOCK_MASK;
+            return delta_offset.load(std::memory_order_acquire) & UNLOCK_MASK;
         }
 
         inline void update_offset(uint32_t offset) {
-            delta_offset.store(offset);
+            delta_offset.store(offset,std::memory_order_release);
         }
 
         //todo: check if we can use weak
         inline bool try_set_lock() {
             while (true) {
-                uint32_t current_offset = delta_offset.load();
+                uint32_t current_offset = delta_offset.load(std::memory_order_acquire);
                 if (current_offset & LOCK_MASK) {
                     return false;
                 }
                 uint32_t new_offset = current_offset | LOCK_MASK;
-                if (delta_offset.compare_exchange_strong(current_offset, new_offset)) {
+                if (delta_offset.compare_exchange_strong(current_offset, new_offset, std::memory_order_acq_rel)) {
                     return true;
                 }
             }
@@ -78,24 +78,24 @@ namespace bwgraph {
 
         inline bool try_set_lock(uint32_t expected_offset) {
             uint32_t new_offset = expected_offset | LOCK_MASK;
-            return delta_offset.compare_exchange_strong(expected_offset, new_offset);
+            return delta_offset.compare_exchange_strong(expected_offset, new_offset,std::memory_order_acq_rel);
         }
 
         void release_lock() {
-            uint32_t current_offset = delta_offset.load();
+            uint32_t current_offset = delta_offset.load(std::memory_order_acquire);
 #if EDGE_DELTA_TEST
             if(!(current_offset&LOCK_MASK)){
                 throw DeltaLockException();
             }
             uint32_t new_offset = current_offset&UNLOCK_MASK;
-            if(delta_offset.compare_exchange_strong(current_offset,new_offset)){
+            if(delta_offset.compare_exchange_strong(current_offset,new_offset,std::memory_order_acq_rel)){
                 return;
             }else{
                 throw DeltaLockException();
             }
 #else
             current_offset &= UNLOCK_MASK;
-            delta_offset.store(current_offset);
+            delta_offset.store(current_offset,std::memory_order_acquire);
 #endif
         }
 
@@ -111,40 +111,40 @@ namespace bwgraph {
         BaseEdgeDelta &operator=(const BaseEdgeDelta &other) {
             toID = other.toID;
             delta_type = other.delta_type;
-            creation_ts.store(other.creation_ts.load());
-            invalidate_ts.store(other.invalidate_ts.load());
+            creation_ts.store(other.creation_ts.load(std::memory_order_acquire),std::memory_order_release);
+            invalidate_ts.store(other.invalidate_ts.load(std::memory_order_acquire),std::memory_order_release);
             data_length = other.data_length;
             data_offset = other.data_offset;
             previous_offset = other.previous_offset;
-            is_last_delta.store(other.is_last_delta);
-            valid.store(other.valid);
+            is_last_delta.store(other.is_last_delta.load(std::memory_order_acquire),std::memory_order_release);
+            valid.store(other.valid.load(std::memory_order_acquire),std::memory_order_release);
             return *this;
         }
 
         BaseEdgeDelta(const BaseEdgeDelta &other) {
             toID = other.toID;
             delta_type = other.delta_type;
-            creation_ts.store(other.creation_ts.load());
-            invalidate_ts.store(other.invalidate_ts.load());
+            creation_ts.store(other.creation_ts.load(std::memory_order_acquire),std::memory_order_release);
+            invalidate_ts.store(other.invalidate_ts.load(std::memory_order_acquire),std::memory_order_release);
             data_length = other.data_length;
             data_offset = other.data_offset;
             previous_offset = other.previous_offset;
-            is_last_delta.store(other.is_last_delta);
-            valid.store(other.valid);
+            is_last_delta.store(other.is_last_delta.load(std::memory_order_acquire),std::memory_order_release);
+            valid.store(other.valid.load(std::memory_order_acquire),std::memory_order_release);
         }
 
         inline bool lazy_update(uint64_t original_txn_id, uint64_t status) {
-            return creation_ts.compare_exchange_strong(original_txn_id, status);
+            return creation_ts.compare_exchange_strong(original_txn_id, status,std::memory_order_acq_rel);
         }
 
         //eager abort should always succeed
         inline void eager_abort(uint64_t original_txn_id = 0) {
 #if EDGE_DELTA_TEST
-            if(!creation_ts.compare_exchange_strong(original_txn_id,ABORT)){
+            if(!creation_ts.compare_exchange_strong(original_txn_id,ABORT,std::memory_order_acq_rel)){
                 throw EagerAbortException();//eager update should always succeed here
             }
 #else
-            creation_ts.store(ABORT);
+            creation_ts.store(ABORT,std::memory_order_release);
 #endif
         }
 
@@ -185,7 +185,7 @@ namespace bwgraph {
         }
 
         inline void set_offset(uint64_t input_offset) {
-            combined_offsets.store(input_offset);
+            combined_offsets.store(input_offset,std::memory_order_release);
         }
 
         inline uintptr_t get_previous_ptr() {
@@ -193,7 +193,7 @@ namespace bwgraph {
         }
 
         inline uint64_t get_current_offset() {
-            return combined_offsets.load();
+            return combined_offsets.load(std::memory_order_acquire);
         }
 
         inline char *get_edge_data(uint32_t offset) {
@@ -217,7 +217,7 @@ namespace bwgraph {
         }
 
         inline bool already_overflow() {
-            return is_overflow_offset(combined_offsets.load());
+            return is_overflow_offset(combined_offsets.load(std::memory_order_acquire));
         }
 
         //metadata modifier
@@ -230,8 +230,8 @@ namespace bwgraph {
             prev_pointer = input_prev_pointer;
             order = input_order;
             //define a function that determines how many delta chains it has:
-            delta_chain_num = 1ul << ((order == DEFAULT_EDGE_DELTA_BLOCK_ORDER) ? 1 : (order + 1 -
-                                                                                       DEFAULT_EDGE_DELTA_BLOCK_ORDER));//index takes less than 1% in storage
+            delta_chain_num = static_cast<int32_t>(1ul << ((order == DEFAULT_EDGE_DELTA_BLOCK_ORDER) ? 1 : (order + 1 -
+                                                                                                            DEFAULT_EDGE_DELTA_BLOCK_ORDER)));//index takes less than 1% in storage
             txn_tables = txn_table_ptr;
             delta_chains_index = input_index_ptr;
         }
@@ -254,14 +254,14 @@ namespace bwgraph {
             while (offset) {
                 current_delta = get_edge_delta(offset);
 #if EDGE_DELTA_TEST
-                if(!current_delta->valid){
+                if(!current_delta->valid.load(std::memory_order_acquire)){
                     throw DeltaChainCorruptionException();
                 }
 #endif //EDGE_DELTA_TEST
                 if (current_delta->creation_ts == txn_id && current_delta->toID == dst) {
                     return current_delta;
                 }//else if(current_delta->creation_ts==txn_id){continue}
-                uint64_t original_ts = current_delta->creation_ts.load();
+                uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                 if (is_txn_id(original_ts)) {
                     uint64_t status = 0;
                     if (txn_tables->get_status(original_ts, status)) {
@@ -290,7 +290,7 @@ namespace bwgraph {
                                 }
                             }
 #if EDGE_DELTA_TEST
-                            if(current_delta->creation_ts!=status){
+                            if(current_delta->creation_ts.load(std::memory_order_acquire)!=status){
                                 throw LazyUpdateException();
                             }
 #endif
@@ -298,13 +298,13 @@ namespace bwgraph {
                     }
                 }
 #if EDGE_DELTA_TEST
-                if(current_delta->creation_ts==IN_PROGRESS|| is_txn_id(current_delta->creation_ts)){
+                if(current_delta->creation_ts.load(std::memory_order_acquire)==IN_PROGRESS|| is_txn_id(current_delta->creation_ts)){
                     throw new std::runtime_error("error, lazy update failed");
                 }
 #endif
 #if CHECKED_PUT_EDGE
                 if (current_delta->toID == dst ) {//aborted delta should not be in the secondary index, only special case is when there is a system crash
-                    if(current_delta->creation_ts.load() <=txn_read_ts)
+                    if(current_delta->creation_ts.load(std::memory_order_acquire) <=txn_read_ts)
                         return current_delta;
                     offset = current_delta->previous_version_offset;
                 }else{
@@ -313,7 +313,7 @@ namespace bwgraph {
                 //offset = current_delta->previous_offset;
 #else
                 if (current_delta->toID == dst &&
-                    /*current_delta->creation_ts!=ABORT&&*/current_delta->creation_ts.load() <=
+                    /*current_delta->creation_ts!=ABORT&&*/current_delta->creation_ts.load(std::memory_order_acquire) <=
                                                            txn_read_ts) {//aborted delta should not be in the secondary index, only special case is when there is a system crash
                     return current_delta;
                 }
@@ -332,11 +332,11 @@ namespace bwgraph {
             while (offset) {
                 current_delta = get_edge_delta(offset);
 #if EDGE_DELTA_TEST
-                if(!current_delta->valid){
+                if(!current_delta->valid.load(std::memory_order_acquire)){
                     throw DeltaChainCorruptionException();
                 }
 #endif
-                uint64_t original_ts = current_delta->creation_ts.load();
+                uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                 if (is_txn_id(original_ts)) {
                     uint64_t status = 0;
                     if (txn_tables->get_status(original_ts, status)) {
@@ -367,7 +367,7 @@ namespace bwgraph {
                                 }
                             }
 #if EDGE_DELTA_TEST
-                            if(current_delta->creation_ts!=status){
+                            if(current_delta->creation_ts.load(std::memory_order_acquire)!=status){
                                 throw LazyUpdateException();
                             }
 #endif
@@ -375,13 +375,13 @@ namespace bwgraph {
                     }
                 }
 #if EDGE_DELTA_TEST
-                if(current_delta->creation_ts==IN_PROGRESS|| is_txn_id(current_delta->creation_ts)){
-                    throw new std::runtime_error("error, lazy update failed");
+                if(current_delta->creation_ts.load(std::memory_order_acquire)==IN_PROGRESS|| is_txn_id(current_delta->creation_ts.load(std::memory_order_acquire))){
+                    throw std::runtime_error("error, lazy update failed");
                 }
 #endif
 #if CHECKED_PUT_EDGE
                 if (current_delta->toID == dst) {//aborted delta should not be in the secondary index, only special case is when there is a system crash
-                    if(current_delta->creation_ts.load() <=txn_read_ts)
+                    if(current_delta->creation_ts.load(std::memory_order_acquire) <=txn_read_ts)
                         return current_delta;
                     offset = current_delta->previous_version_offset;
                 }else{
@@ -389,7 +389,7 @@ namespace bwgraph {
                 }
 #else
                 if (current_delta->toID == dst &&
-                    /*current_delta->creation_ts!=ABORT&&*/current_delta->creation_ts.load() <=
+                    /*current_delta->creation_ts!=ABORT&&*/current_delta->creation_ts.load(std::memory_order_acquire) <=
                                                            txn_read_ts) {//aborted delta should not be in the secondary index, only special case is when there is a system crash
                     return current_delta;
                 }
@@ -399,20 +399,13 @@ namespace bwgraph {
             return nullptr;
         }
 
-        /*
-         * use scan to locate the previous version of the edge to update invalidate ts
-         */
-        void update_previous_delta_invalidate_ts_scan() {
-
-        }
-
         //lazy update function
         inline void update_previous_delta_invalidate_ts(vertex_t target_vid, uint32_t offset, uint64_t invalidate_ts) {
 #if CHECKED_PUT_EDGE
             if(offset){
                 auto target_delta = get_edge_delta(offset);
 #if EDGE_DELTA_TEST
-                uint64_t current_invalidate_ts = target_delta->invalidate_ts;
+                uint64_t current_invalidate_ts = target_delta->invalidate_ts.load(std::memory_order_acquire);
                 if(!is_txn_id(current_invalidate_ts)&&current_invalidate_ts!=invalidate_ts){
                     throw std::runtime_error("error, update invalidation ts of a already previous version");
                 }
@@ -420,18 +413,18 @@ namespace bwgraph {
                     throw std::runtime_error("error, the previous version is not actually a previous versiom");
                 }
 #endif
-                target_delta->invalidate_ts.store(invalidate_ts);
+                target_delta->invalidate_ts.store(invalidate_ts,std::memory_order_release);
             }
-#else
+#else //not checked put edge
             while (offset) {
                 BaseEdgeDelta *current_delta = get_edge_delta(offset);
                 if (current_delta->toID == target_vid) {//for the first entry of a lazy updated entry,
-                    current_delta->invalidate_ts = invalidate_ts;
+                    current_delta->invalidate_ts.store(invalidate_ts,std::memory_order_release);
                     return;
                 }
                 offset = current_delta->previous_offset;
             }
-#endif
+#endif //checked put edge
         }
         //maybe unused
         inline void update_previous_delta_invalidate_ts(BaseEdgeDelta* current_delta){
@@ -442,13 +435,13 @@ namespace bwgraph {
                 throw std::runtime_error("error, the previous version is not actually a previous version");
             }
 #endif //EDGE_DELTA_TEST
-            target_delta->invalidate_ts.store(current_delta->creation_ts.load());
+            target_delta->invalidate_ts.store(current_delta->creation_ts.load(std::memory_order_acquire),std::memory_order_release);
 #else //CHECKED_PUT_EDGE
             uint32_t offset = current_delta->previous_offset;
             while (offset) {
                 BaseEdgeDelta *previous_delta = get_edge_delta(offset);
                 if (previous_delta->toID == current_delta->toID) {//for the first entry of a lazy updated entry,
-                    previous_delta->invalidate_ts.store(current_delta->creation_ts.load());
+                    previous_delta->invalidate_ts.store(current_delta->creation_ts.load(std::memory_order_acquire),std::memory_order_release);
                     return;
                 }
                 offset = previous_delta->previous_offset;
@@ -463,7 +456,7 @@ namespace bwgraph {
                 throw std::runtime_error("error, the previous version is not actually a previous versiom");
             }
 #endif
-            target_delta->invalidate_ts.store(invalidate_ts);
+            target_delta->invalidate_ts.store(invalidate_ts,std::memory_order_release);
         }
         //concurrency functions
         Delta_Chain_Lock_Response lock_inheritance(vertex_t vid,
@@ -489,10 +482,10 @@ namespace bwgraph {
             //todo: also check lock?
             if (raw_delta_chain_offset) {
                 delta_chain_head = get_edge_delta(raw_delta_chain_offset);
-                uint64_t original_ts = delta_chain_head->creation_ts.load();
+                uint64_t original_ts = delta_chain_head->creation_ts.load(std::memory_order_acquire);
                 if (is_txn_id(original_ts)) {
 #if EDGE_DELTA_TEST
-                    if(!delta_chain_head->valid){
+                    if(!delta_chain_head->valid.load(std::memory_order_acquire)){
                         throw DeltaChainCorruptionException();
                     }
                     if(!(latest_delta_chain_head_offset&LOCK_MASK)){
@@ -515,15 +508,15 @@ namespace bwgraph {
                 if (raw_delta_chain_offset) {
                     delta_chain_head = get_edge_delta(raw_delta_chain_offset);
 #if EDGE_DELTA_TEST
-                    if(!delta_chain_head->valid){
+                    if(!delta_chain_head->valid.load(std::memory_order_acquire)){
                         throw DeltaChainCorruptionException();
                     }
-                    if(is_txn_id(delta_chain_head->creation_ts.load())){
+                    if(is_txn_id(delta_chain_head->creation_ts.load(std::memory_order_acquire))){
                         throw LazyUpdateException();
                     }
 #endif
                     //most recent update is concurrent: we must abort
-                    if (delta_chain_head->creation_ts.load() > txn_read_ts) {
+                    if (delta_chain_head->creation_ts.load(std::memory_order_acquire) > txn_read_ts) {
                         target_chain_index_entry.release_lock();
                         return Delta_Chain_Lock_Response::CONFLICT;
                     }
@@ -545,10 +538,10 @@ namespace bwgraph {
             //Delta_Chain_Lock_Response temporary_result;
             if (raw_delta_chain_offset) {
                 delta_chain_head = get_edge_delta(raw_delta_chain_offset);
-                uint64_t original_ts = delta_chain_head->creation_ts.load();
+                uint64_t original_ts = delta_chain_head->creation_ts.load(std::memory_order_acquire);
                 if (is_txn_id(original_ts)) {
 #if EDGE_DELTA_TEST
-                    if(!delta_chain_head->valid){
+                    if(!delta_chain_head->valid.load(std::memory_order_acquire)){
                         throw DeltaChainCorruptionException();
                     }
                     if(!(latest_delta_chain_head_offset&LOCK_MASK)){
@@ -572,15 +565,15 @@ namespace bwgraph {
                 if (raw_delta_chain_offset) {
                     delta_chain_head = get_edge_delta(raw_delta_chain_offset);
 #if EDGE_DELTA_TEST
-                    if(!delta_chain_head->valid){
+                    if(!delta_chain_head->valid.load(std::memory_order_acquire)){
                         throw DeltaChainCorruptionException();
                     }
-                    if(is_txn_id(delta_chain_head->creation_ts.load())){
+                    if(is_txn_id(delta_chain_head->creation_ts.load(std::memory_order_acquire))){
                         throw LazyUpdateException();
                     }
 #endif
                     //most recent update is concurrent: we must abort
-                    if (delta_chain_head->creation_ts.load() > txn_read_ts) {
+                    if (delta_chain_head->creation_ts.load(std::memory_order_acquire) > txn_read_ts) {
                         target_chain_index_entry.release_lock();
                         return Delta_Chain_Lock_Response::CONFLICT;
                     }
@@ -607,7 +600,7 @@ namespace bwgraph {
             //unlocked and has offset
             if (latest_delta_chain_head_offset) {
                 auto current_head_delta = get_edge_delta(latest_delta_chain_head_offset);
-                auto current_head_ts = current_head_delta->creation_ts.load();
+                auto current_head_ts = current_head_delta->creation_ts.load(std::memory_order_acquire);
                 if (is_txn_id(current_head_ts)) {
                     uint64_t status = 0;
                     if (txn_tables->get_status(current_head_ts, status)) {
@@ -624,7 +617,7 @@ namespace bwgraph {
                                 record_lazy_update_record(lazy_update_map_ptr, current_head_ts);
                             }
 #if EDGE_DELTA_TEST
-                            if(current_head_delta->creation_ts!=status){
+                            if(current_head_delta->creation_ts.load(std::memory_order_acquire)!=status){
                                 throw LazyUpdateException();
                             }
 #endif
@@ -642,7 +635,7 @@ namespace bwgraph {
                         } else {
 #if EDGE_DELTA_TEST
                             //because of eager abort, if we observe abort from txn table, either a consolidation thread or its owner transaction must lazy abort it
-                            if(current_head_delta->creation_ts!=ABORT){
+                            if(current_head_delta->creation_ts.load(std::memory_order_acquire)!=ABORT){
                                 throw EagerAbortException();
                             }
 #endif
@@ -686,7 +679,7 @@ namespace bwgraph {
                 return Delta_Chain_Lock_Response::CONFLICT;
             }
             auto current_head_delta = get_edge_delta(latest_delta_chain_head_offset);
-            auto current_head_ts = current_head_delta->creation_ts.load();
+            auto current_head_ts = current_head_delta->creation_ts.load(std::memory_order_acquire);
             if (is_txn_id(current_head_ts)) {
                 uint64_t status = 0;
                 if (txn_tables->get_status(current_head_ts, status)) {
@@ -697,7 +690,7 @@ namespace bwgraph {
                             record_lazy_update_record(lazy_update_map_ptr, current_head_ts);
                         }
 #if EDGE_DELTA_TEST
-                        if(current_head_delta->creation_ts!=status){
+                        if(current_head_delta->creation_ts.load(std::memory_order_acquire)!=status){
                             throw LazyUpdateException();
                         }
 #endif
@@ -714,7 +707,7 @@ namespace bwgraph {
                         return Delta_Chain_Lock_Response::CONFLICT;
                     } else {
 #if EDGE_DELTA_TEST
-                        if(current_head_delta->creation_ts!=ABORT){
+                        if(current_head_delta->creation_ts.load(std::memory_order_acquire)!=ABORT){
                             throw EagerAbortException();
                         }
 #endif
@@ -773,7 +766,8 @@ namespace bwgraph {
         //delta allocation
         inline uint64_t allocate_space_for_new_delta(uint32_t data_size) {
             uint64_t to_atomic = ((static_cast<uint64_t>(data_size)) << 32) + ENTRY_DELTA_SIZE;
-            return combined_offsets.fetch_add(to_atomic);
+            return combined_offsets.fetch_add(to_atomic, std::memory_order_acq_rel);
+           // return combined_offsets.fetch_add(to_atomic, std::memory_order_seq_cst);
         }
 
         void print_metadata() {
@@ -793,8 +787,8 @@ namespace bwgraph {
                 auto current_delta = get_edge_delta(start_offset);
                 while (start_offset) {
                     //skip invalid deltas
-                    if(current_delta->valid.load()){
-                        uint64_t original_ts = current_delta->creation_ts.load();
+                    if(current_delta->valid.load(std::memory_order_acquire)){
+                        uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                         //still do lazy update
                         if (original_ts!=txn_id && is_txn_id(original_ts)) {
                             uint64_t status = 0;
@@ -807,7 +801,7 @@ namespace bwgraph {
 #endif
                                     if (current_delta->lazy_update(original_ts, status)) {
 #if LAZY_LOCKING
-                                        if(current_delta->is_last_delta){
+                                        if(current_delta->is_last_delta.load(std::memory_order_acquire)){
                                 release_protection(current_delta->toID);
                             }
 #endif
@@ -839,17 +833,17 @@ namespace bwgraph {
                         }
                         //now current ts is either myself or a valid ts
 #if EDGE_DELTA_TEST
-                        if(is_txn_id(current_delta->creation_ts)){
-                            if(current_delta->creation_ts!=txn_id){
+                        if(is_txn_id(current_delta->creation_ts.load(std::memory_order_acquire))){
+                            if(current_delta->creation_ts.load(std::memory_order_acquire)!=txn_id){
                                 throw LazyUpdateException();
                             }
                         }
-                        if(current_delta->creation_ts==ABORT){
+                        if(current_delta->creation_ts.load(std::memory_order_acquire)==ABORT){
                             throw LazyUpdateException();
                         }
 #endif
                         if(current_delta->toID== vid){
-                            current_delta->invalidate_ts.store(txn_id);
+                            current_delta->invalidate_ts.store(txn_id,std::memory_order_release);
                             if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
                                 return start_offset;
                             }else{
@@ -864,7 +858,7 @@ namespace bwgraph {
             }else{
                 while (start_offset) {
                     auto current_delta = get_edge_delta(start_offset);
-                    uint64_t original_ts = current_delta->creation_ts.load();
+                    uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                     //still do lazy update
                     if (original_ts!=txn_id && is_txn_id(original_ts)) {
                         uint64_t status = 0;
@@ -883,7 +877,7 @@ namespace bwgraph {
 #endif
                             if (current_delta->lazy_update(original_ts, status)) {
 #if LAZY_LOCKING
-                                if(current_delta->is_last_delta){
+                                if(current_delta->is_last_delta.load(std::memory_order_acquire)){
                                 release_protection(current_delta->toID);
                             }
 #endif
@@ -894,7 +888,7 @@ namespace bwgraph {
                             }
 
 #if EDGE_DELTA_TEST
-                            if(current_delta->creation_ts!=status){
+                            if(current_delta->creation_ts.load(std::memory_order_acquire)!=status){
                                 throw LazyUpdateException();
                             }
 #endif
@@ -906,7 +900,7 @@ namespace bwgraph {
                     }
 #endif
                     if(current_delta->toID== vid){
-                        current_delta->invalidate_ts.store(txn_id);
+                        current_delta->invalidate_ts.store(txn_id,std::memory_order_release);
                         if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
                             return start_offset;
                         }else{
@@ -926,20 +920,22 @@ namespace bwgraph {
         }
 
         //delta append
-        void append_edge_delta(vertex_t toID, uint64_t txnID, EdgeDeltaType type, const char *edge_data, int data_size,
+        void append_edge_delta(vertex_t toID, uint64_t txnID, EdgeDeltaType type, const char *edge_data, uint32_t data_size,
                                uint32_t previous_delta_offset, uint32_t current_delta_offset,
                                uint32_t current_data_offset) {
             BaseEdgeDelta *edgeDelta = (get_edge_delta(current_delta_offset));
             edgeDelta->toID = toID;
             edgeDelta->delta_type = type;
-            edgeDelta->creation_ts = txnID;//todo in the future we need to handle checking txn id and ts
+            edgeDelta->creation_ts.store(txnID, std::memory_order_release);//todo in the future we need to handle checking txn id and ts
             edgeDelta->data_length = data_size;
             edgeDelta->data_offset = current_data_offset;
-            edgeDelta->is_last_delta = true;
-            for (int i = 0; i < data_size; i++) {
+#if LAZY_LOCKING
+            edgeDelta->is_last_delta.store(true,std::memory_order_release);
+#endif
+            for (uint32_t i = 0; i < data_size; i++) {
                 (get_edge_data(current_data_offset))[i] = edge_data[i];
             }
-            edgeDelta->valid.store(true);
+            edgeDelta->valid.store(true,std::memory_order_release);
             if (previous_delta_offset) {
                 edgeDelta->previous_offset = previous_delta_offset;
 #if LAZY_LOCKING
@@ -953,7 +949,7 @@ namespace bwgraph {
                 previous_edge_delta->is_last_delta=false;
 #endif//LAZY_LOCKING
             }
-            return;
+            //return;
         }
 
         //it is only used during consolidation
@@ -984,14 +980,16 @@ namespace bwgraph {
             BaseEdgeDelta *edgeDelta = (get_edge_delta(newEntryOffset));
             edgeDelta->toID = toID;
             edgeDelta->delta_type = type;
-            edgeDelta->creation_ts = creation_ts;//it is guaranteed a ts
+            edgeDelta->creation_ts.store(creation_ts,std::memory_order_release);//it is guaranteed a ts
             edgeDelta->data_length = data_size;
             edgeDelta->data_offset = originalDataOffset;
+#if LAZY_LOCKING
             edgeDelta->is_last_delta = true;
+#endif
             for (int i = 0; i < data_size; i++) {
                 (get_edge_data(originalDataOffset))[i] = edge_data[i];
             }
-            edgeDelta->valid.store(true);
+            edgeDelta->valid.store(true,std::memory_order_release);
             if (previous_delta_offset) {
                 edgeDelta->previous_offset = previous_delta_offset;
 #if LAZY_LOCKING
@@ -1004,25 +1002,28 @@ namespace bwgraph {
                 previous_edge_delta->is_last_delta=false;
 #endif //LAZY_LOCKING
             }
-            return std::pair<EdgeDeltaInstallResult, uint32_t>(EdgeDeltaInstallResult::SUCCESS, newEntryOffset);
+            return {EdgeDeltaInstallResult::SUCCESS, newEntryOffset};
+            //return std::pair<EdgeDeltaInstallResult, uint32_t>(EdgeDeltaInstallResult::SUCCESS, newEntryOffset);
         }
 
         //delta append
-        void checked_append_edge_delta(vertex_t toID, uint64_t txnID, EdgeDeltaType type, const char *edge_data, int data_size,
+        void checked_append_edge_delta(vertex_t toID, uint64_t txnID, EdgeDeltaType type, const char *edge_data, uint32_t data_size,
                                uint32_t previous_delta_offset, uint32_t previous_version_offset, uint32_t current_delta_offset,
                                uint32_t current_data_offset) {
             BaseEdgeDelta *edgeDelta = (get_edge_delta(current_delta_offset));
             edgeDelta->toID = toID;
             edgeDelta->delta_type = type;
-            edgeDelta->creation_ts = txnID;//todo in the future we need to handle checking txn id and ts
+            edgeDelta->creation_ts.store(txnID,std::memory_order_release);//todo in the future we need to handle checking txn id and ts
             edgeDelta->data_length = data_size;
             edgeDelta->data_offset = current_data_offset;
             edgeDelta->previous_version_offset = previous_version_offset;
+#if LAZY_LOCKING
             edgeDelta->is_last_delta = true;
-            for (int i = 0; i < data_size; i++) {
+#endif
+            for (uint32_t i = 0; i < data_size; i++) {
                 (get_edge_data(current_data_offset))[i] = edge_data[i];
             }
-            edgeDelta->valid.store(true);
+            edgeDelta->valid.store(true,std::memory_order_release);
             if (previous_delta_offset) {
                 edgeDelta->previous_offset = previous_delta_offset;
 #if LAZY_LOCKING
@@ -1036,13 +1037,13 @@ namespace bwgraph {
                 previous_edge_delta->is_last_delta=false;
 #endif//LAZY_LOCKING
             }
-            return;
+            //return;
         }
 
         //it is only used during consolidation
         std::pair<EdgeDeltaInstallResult, uint32_t>
         checked_append_edge_delta(vertex_t toID, timestamp_t creation_ts, EdgeDeltaType type, const char *edge_data,
-                          int data_size, uint32_t previous_delta_offset, uint32_t previous_version_offset) {
+                          uint32_t data_size, uint32_t previous_delta_offset, uint32_t previous_version_offset) {
             //allocate space for new delta installation
             uint32_t size = get_size();
             uint64_t originalOffset = allocate_space_for_new_delta(data_size);
@@ -1058,24 +1059,26 @@ namespace bwgraph {
             if ((newDataOffset + newEntryOffset) > size) {
                 //do consolidation.
                 if ((originalDataOffset + originalEntryOffset) <= size) {
-                    return std::pair<EdgeDeltaInstallResult, uint32_t>(EdgeDeltaInstallResult::CAUSE_OVERFLOW, 0);
+                    return {EdgeDeltaInstallResult::CAUSE_OVERFLOW, 0};
                 }
                 //unset_protection(toID);
-                return std::pair<EdgeDeltaInstallResult, uint32_t>(EdgeDeltaInstallResult::ALREADY_OVERFLOW, 0);
+                return {EdgeDeltaInstallResult::ALREADY_OVERFLOW, 0};
             }
 
             BaseEdgeDelta *edgeDelta = (get_edge_delta(newEntryOffset));
             edgeDelta->toID = toID;
             edgeDelta->delta_type = type;
-            edgeDelta->creation_ts = creation_ts;//it is guaranteed a ts
+            edgeDelta->creation_ts.store(creation_ts,std::memory_order_release);//it is guaranteed a ts
             edgeDelta->data_length = data_size;
             edgeDelta->data_offset = originalDataOffset;
             edgeDelta->previous_version_offset = previous_version_offset;
+#if LAZY_LOCKING
             edgeDelta->is_last_delta = true;
-            for (int i = 0; i < data_size; i++) {
+#endif
+            for (uint32_t i = 0; i < data_size; i++) {
                 (get_edge_data(originalDataOffset))[i] = edge_data[i];
             }
-            edgeDelta->valid.store(true);
+            edgeDelta->valid.store(true,std::memory_order_release);
             if (previous_delta_offset) {
                 edgeDelta->previous_offset = previous_delta_offset;
 #if LAZY_LOCKING
@@ -1088,7 +1091,7 @@ namespace bwgraph {
                 previous_edge_delta->is_last_delta=false;
 #endif //LAZY_LOCKING
             }
-            return std::pair<EdgeDeltaInstallResult, uint32_t>(EdgeDeltaInstallResult::SUCCESS, newEntryOffset);
+            return {EdgeDeltaInstallResult::SUCCESS, newEntryOffset};
         }
     private:
         vertex_t owner_id;
@@ -1109,7 +1112,7 @@ namespace bwgraph {
     class VertexDeltaHeader {
     public:
         inline bool is_visible(uint64_t txn_read_timestamp) {
-            return txn_read_timestamp >= creation_time;
+            return txn_read_timestamp >= creation_time.load(std::memory_order_acquire);
         }
 
         void print_metadata() {
@@ -1118,11 +1121,11 @@ namespace bwgraph {
             std::cout << "size is " << data_size << std::endl;
         }
 
-        inline void eager_abort() { creation_time.store(ABORT); }
+        inline void eager_abort() { creation_time.store(ABORT,std::memory_order_release); }
 
         inline void fill_metadata(uint64_t input_creation_ts, size_t input_to_write_size, order_t input_block_order,
                                   uintptr_t input_previous_ptr = 0) {
-            creation_time = input_creation_ts;
+            creation_time.store(input_creation_ts,std::memory_order_release);
             previous_ptr = input_previous_ptr;
             //todo: throw exception is data size + header size is greater than 2^ block order
             data_size = input_to_write_size;
@@ -1134,7 +1137,7 @@ namespace bwgraph {
         }
 
         inline uint64_t get_creation_ts() {
-            return creation_time;
+            return creation_time.load(std::memory_order_acquire);
         }
 
         inline size_t get_data_size() {
@@ -1154,7 +1157,7 @@ namespace bwgraph {
         }
 
         inline bool lazy_update(uint64_t original_txn_id, uint64_t new_ts) {
-            return creation_time.compare_exchange_strong(original_txn_id, new_ts);
+            return creation_time.compare_exchange_strong(original_txn_id, new_ts,std::memory_order_acq_rel);
         }
 
         inline uintptr_t get_previous_ptr() {

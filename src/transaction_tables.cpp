@@ -27,8 +27,8 @@ namespace bwgraph{
         uint32_t current_delta_offset = static_cast<uint32_t>(current_combined_offset&SIZE2MASK);
         BaseEdgeDelta* current_delta = current_edge_delta_block->get_edge_delta(current_delta_offset);
         while(current_delta_offset>0){
-            if(current_delta->valid.load()){
-                uint64_t original_ts = current_delta->creation_ts.load();
+            if(current_delta->valid.load(std::memory_order_acquire)){
+                uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                 if(is_txn_id(original_ts)){
                     uint64_t status =0;
                     if(txn_tables->get_status(original_ts,status)){
@@ -81,8 +81,8 @@ namespace bwgraph{
         BaseEdgeDelta* current_delta = current_edge_delta_block->get_edge_delta(current_delta_offset);
         int32_t found =0;
         while(current_delta_offset>0){
-            if(current_delta->valid.load()){
-                uint64_t original_ts = current_delta->creation_ts.load();
+            if(current_delta->valid.load(std::memory_order_acquire)){
+                uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                 if(original_ts==txn_id){
                     found++;
                 }
@@ -150,7 +150,7 @@ namespace bwgraph{
 #endif
         for(size_t i=0; i<entry.touched_blocks.size();i++){
             //if already cleaned-up, can quickly return
-            if(!entry.op_count.load()){
+            if(!entry.op_count.load(std::memory_order_acquire)){
 #if TRACK_EXECUTION_TIME
                 auto stop = std::chrono::high_resolution_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
@@ -163,7 +163,7 @@ namespace bwgraph{
             auto& index_entry = bwGraph->get_vertex_index_entry(target_vid_label_pair.first);//get vertex index entry
             //if the entry is already invalid, its edge delta blocks must already be lazy updated and freed.
             //todo: check its correctness
-            if (!index_entry.valid.load()){
+            if (!index_entry.valid.load(std::memory_order_acquire)){
                 //throw std::runtime_error("touched block not valid?");
                 continue;
             }
@@ -173,7 +173,7 @@ namespace bwgraph{
                 auto edge_clean_start = std::chrono::high_resolution_clock::now();
 #endif
                 //label block never gets deleted because we can reuse it
-                EdgeLabelBlock* target_label_block = bwGraph->get_block_manager().convert<EdgeLabelBlock>(index_entry.edge_label_block_ptr.load());
+                EdgeLabelBlock* target_label_block = bwGraph->get_block_manager().convert<EdgeLabelBlock>(index_entry.edge_label_block_ptr.load(std::memory_order_acquire));
                 BwLabelEntry* target_label_entry;
                 if(target_label_block->reader_lookup_label(target_vid_label_pair.second,target_label_entry)){
                     //if the block is under overflow or installation states, we know another thread is doing consolidation work so it will lazy update our transaction!
@@ -208,7 +208,7 @@ namespace bwgraph{
 #if TRACK_EXECUTION_TIME
                 auto vertex_clean_start = std::chrono::high_resolution_clock::now();
 #endif
-                auto current_vertex_ptr = index_entry.vertex_delta_chain_head_ptr.load();
+                auto current_vertex_ptr = index_entry.vertex_delta_chain_head_ptr.load(std::memory_order_acquire);
                 if(current_vertex_ptr){
                     VertexDeltaHeader* vertex_delta = bwGraph->get_block_manager().convert<VertexDeltaHeader>(current_vertex_ptr);
                     auto current_ts = vertex_delta->get_creation_ts();
@@ -311,7 +311,7 @@ namespace bwgraph{
                 throw EagerCleanException();
             }
         }*/
-        while(entry.op_count.load()){
+        while(entry.op_count.load(std::memory_order_acquire)){
             if(count++==10000000000){
               /*  std::cout<<"found is "<<found<<std::endl;
                 std::cout<<"number of cleaned edge block is "<<number_of_cleaned_edge_blocks<<std::endl;

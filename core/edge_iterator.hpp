@@ -61,12 +61,12 @@ namespace bwgraph {
             if(read_current_block){
                 //scan the current block, return pointers as appropriate, then maybe switch to the previous block
                 while(current_delta_offset>0){
-                    if(!current_delta->valid){
+                    if(!current_delta->valid.load(std::memory_order_acquire)){
                         current_delta_offset-=ENTRY_DELTA_SIZE;
                         current_delta++;
                         continue;
                     }
-                    uint64_t original_ts = current_delta->creation_ts.load();
+                    uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
 #if EDGE_DELTA_TEST
                     if(!original_ts){
                         throw LazyUpdateException();
@@ -97,19 +97,19 @@ namespace bwgraph {
                                     }
                                 }
 #if EDGE_DELTA_TEST
-                                if(current_delta->creation_ts!=status){
+                                if(current_delta->creation_ts.load(std::memory_order_acquire)!=status){
                                     throw LazyUpdateException();
                                 }
 #endif
                             }
                         }
                     }
-                    if(current_delta->creation_ts.load()==txn_id&&current_delta->invalidate_ts.load()!=txn_id&&current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                    if(current_delta->creation_ts.load(std::memory_order_acquire)==txn_id&&current_delta->invalidate_ts.load(std::memory_order_acquire)!=txn_id&&current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
                     }
                     //cannot be delete delta
-                    if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&(current_delta->creation_ts.load()<=txn_read_ts)&&(current_delta->invalidate_ts.load()==0||current_delta->invalidate_ts.load()>txn_read_ts)&&current_delta->invalidate_ts.load()!=txn_id){
+                    if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&(current_delta->creation_ts.load(std::memory_order_acquire)<=txn_read_ts)&&(current_delta->invalidate_ts.load(std::memory_order_acquire)==0||current_delta->invalidate_ts.load(std::memory_order_acquire)>txn_read_ts)&&current_delta->invalidate_ts.load(std::memory_order_acquire)!=txn_id){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
                     }
@@ -132,7 +132,7 @@ namespace bwgraph {
             if((!read_current_block)&&read_previous_block){
                  while(current_delta_offset>0){
                      //abort deltas will always have larger creation ts than any read ts
-                     if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&current_delta->creation_ts.load()<=txn_read_ts&&(current_delta->invalidate_ts==0||current_delta->invalidate_ts>txn_read_ts)){
+                     if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&current_delta->creation_ts.load(std::memory_order_acquire)<=txn_read_ts&&(current_delta->invalidate_ts.load(std::memory_order_acquire)==0||current_delta->invalidate_ts.load(std::memory_order_acquire)>txn_read_ts)){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
                      }
@@ -318,18 +318,18 @@ namespace bwgraph {
             //if(__builtin_expect(read_current_block,true)){
                 //scan the current block, return pointers as appropriate, then maybe switch to the previous block
                 while(current_delta_offset>0){
-                    if(!current_delta->valid.load()){
+                    if(!current_delta->valid.load(std::memory_order_acquire)){
                         current_delta_offset-=ENTRY_DELTA_SIZE;
                         current_delta++;
                         continue;
                     }
-                    uint64_t original_ts = current_delta->creation_ts.load();
+                    uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
 #if EDGE_DELTA_TEST
                     if(!original_ts){
                         throw LazyUpdateException();
                     }
 #endif
-                    if(is_txn_id(original_ts)){
+                    if(is_txn_id(original_ts)&&original_ts!=txn_id){
                         uint64_t status=0;
                         if(txn_tables->get_status(original_ts,status)){
                             if(status == IN_PROGRESS){
@@ -345,7 +345,7 @@ namespace bwgraph {
 #endif
                                     if(current_delta->lazy_update(original_ts,status)){
 #if LAZY_LOCKING
-                                        if(current_delta->is_last_delta.load()){
+                                        if(current_delta->is_last_delta.load(std::memory_order_acquire)){
                                             current_delta_block-> release_protection(current_delta->toID);
                                         }
 #endif
@@ -354,14 +354,14 @@ namespace bwgraph {
                                     }
                                 }
 #if EDGE_DELTA_TEST
-                                if(current_delta->creation_ts!=status){
+                                if(current_delta->creation_ts.load(std::memory_order_acquire)!=status){
                                     throw LazyUpdateException();
                                 }
 #endif
                             }
                         }
                     }
-                    if(current_delta->creation_ts.load()==txn_id&&current_delta->invalidate_ts.load()!=txn_id&&current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                   /* if(current_delta->creation_ts.load(std::memory_order_acquire)==txn_id&&current_delta->invalidate_ts.load()!=txn_id&&current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
                     }
@@ -369,6 +369,24 @@ namespace bwgraph {
                     if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&(current_delta->creation_ts.load()<=txn_read_ts)&&(current_delta->invalidate_ts.load()==0||current_delta->invalidate_ts.load()>txn_read_ts)&&current_delta->invalidate_ts.load()!=txn_id){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
+                    }*/
+                    //check if it is non-delete delta
+                    if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                        uint64_t current_creation_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                        uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
+                        //cannot be the delta deleted by the current transaction
+                        if(current_invalidation_ts!=txn_id){
+                            //visible committed delta
+                            if(current_creation_ts<=txn_read_ts&&(current_invalidation_ts==0||current_invalidation_ts>txn_read_ts)){
+                                current_delta_offset-=  ENTRY_DELTA_SIZE;
+                                return current_delta++;
+                            }
+                            //visible delta by myself
+                            if(current_creation_ts==txn_id){
+                                current_delta_offset-=  ENTRY_DELTA_SIZE;
+                                return current_delta++;
+                            }
+                        }
                     }
                     current_delta_offset-=ENTRY_DELTA_SIZE;
                     current_delta++;
@@ -376,9 +394,17 @@ namespace bwgraph {
             }else{
                 while(current_delta_offset>0){
                     //abort deltas will always have larger creation ts than any read ts
-                    if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&current_delta->creation_ts.load()<=txn_read_ts&&(current_delta->invalidate_ts==0||current_delta->invalidate_ts>txn_read_ts)){
+               /*     if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&current_delta->creation_ts.load()<=txn_read_ts&&(current_delta->invalidate_ts==0||current_delta->invalidate_ts>txn_read_ts)){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
                         return current_delta++;
+                    }*/
+                    if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                        uint64_t current_creation_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                        uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
+                        if(current_creation_ts<=txn_read_ts&&(current_invalidation_ts==0||current_invalidation_ts>txn_read_ts)){
+                            current_delta_offset-=  ENTRY_DELTA_SIZE;
+                            return current_delta++;
+                        }
                     }
                     current_delta_offset-=ENTRY_DELTA_SIZE;
                     current_delta++;

@@ -33,7 +33,7 @@ Delta_Chain_Lock_Response EdgeDeltaBlockHeader::lock_inheritance(vertex_t vid,
                 if(current_delta->lazy_update(original_ts,status)){
 #if EDGE_DELTA_TEST
                     //on the other hand, no other transactions can write to this chain unless they lazy update the current head.
-                    if (!current_delta->is_last_delta) {
+                    if (!current_delta->is_last_delta.load(std::memory_order_acquire)) {
                         throw LazyUpdateException();
                     }
 #endif
@@ -50,7 +50,7 @@ Delta_Chain_Lock_Response EdgeDeltaBlockHeader::lock_inheritance(vertex_t vid,
             }
 #if EDGE_DELTA_TEST
             else{
-                if(current_delta->creation_ts!=ABORT){
+                if(current_delta->creation_ts.load(std::memory_order_acquire)!=ABORT){
                     throw EagerAbortException();
                 }
             }
@@ -94,7 +94,7 @@ EdgeDeltaBlockHeader::lock_inheritance_on_delta_chain(bwgraph::delta_chain_id_t 
                         throw LazyUpdateException();
                     }
                     //on the other hand, no other transactions can write to this chain unless they lazy uodate the current head.
-                    if (!current_delta->is_last_delta) {
+                    if (!current_delta->is_last_delta.load(std::memory_order_acquire)) {
                         throw LazyUpdateException();
                     }
 #endif
@@ -114,7 +114,7 @@ EdgeDeltaBlockHeader::lock_inheritance_on_delta_chain(bwgraph::delta_chain_id_t 
             }
 #if EDGE_DELTA_TEST
             else{
-                if(current_delta->creation_ts!=ABORT){
+                if(current_delta->creation_ts.load(std::memory_order_acquire)!=ABORT){
                     throw EagerAbortException();
                 }
             }

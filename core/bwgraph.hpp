@@ -33,7 +33,7 @@ namespace bwgraph{
             {
                 block_access_ts_table.set_total_worker_thread_num(worker_thread_num);
             for(uint32_t i=0; i<worker_thread_num;i++){
-                txn_tables.get_table(i).set_garbage_queue(&garbage_queues[i]);
+                txn_tables.get_table(static_cast<uint8_t>(i)).set_garbage_queue(&garbage_queues[i]);
 #if TRACK_EXECUTION_TIME
             /*    global_vertex_read_time_array[i]=0;
                 global_vertex_write_time_array[i]=0;
