@@ -99,6 +99,7 @@ namespace bg {
         void commit();
         //read operations:
         std::string_view get_vertex(vertex_t src);
+        std::string_view get_vertex(vertex_t src,uint8_t thread_id);
         std::string_view get_edge(vertex_t src, vertex_t dst, label_t label);
         EdgeDeltaIterator get_edges(vertex_t src, label_t label);
         std::string_view get_edge(vertex_t src, vertex_t dst, label_t label,uint8_t thread_id);

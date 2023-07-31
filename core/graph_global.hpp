@@ -9,7 +9,7 @@
 #define WORKER_THREAD_NUM 32
 #endif*/
 
-constexpr uint32_t worker_thread_num = 40;
+constexpr uint32_t worker_thread_num = 65;
 //transaction states
 #define ABORT 0x7FFFFFFFFFFFFFFF
 #define IN_PROGRESS 0
@@ -43,6 +43,8 @@ constexpr uint8_t index_lookup_order_threshold = 12;
 #define CHECKED_PUT_EDGE true
 #define USING_RANGE_CLEAN false
 #define USING_EAGER_COMMIT true
-#define PRINTING_FINAL_GARBAGE_STATUS true
+#define PRINTING_FINAL_GARBAGE_STATUS false
 #define USING_EAGER_CONSOLIDATION false
+#define USING_PREFETCH true
+#define USING_COMMIT_WAIT_WORK false
 //#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

@@ -313,12 +313,12 @@ namespace bwgraph {
         }
         BaseEdgeDelta *next_delta() {
             //keep scanning the current block with lazy update, when the current block is exhausted, set "read_current_block" to false and move on
-            if(read_current_block){
+            if(read_current_block)[[likely]]{
             //use __builtin_expect
             //if(__builtin_expect(read_current_block,true)){
                 //scan the current block, return pointers as appropriate, then maybe switch to the previous block
                 while(current_delta_offset>0){
-                    if(!current_delta->valid.load(std::memory_order_acquire)){
+                    if(!current_delta->valid.load(std::memory_order_acquire))[[unlikely]]{
                         current_delta_offset-=ENTRY_DELTA_SIZE;
                         current_delta++;
                         continue;
@@ -329,15 +329,16 @@ namespace bwgraph {
                         throw LazyUpdateException();
                     }
 #endif
-                    if(is_txn_id(original_ts)&&original_ts!=txn_id){
+                    //
+                    if(is_txn_id(original_ts)&&original_ts!=txn_id)[[unlikely]]{
                         uint64_t status=0;
                         if(txn_tables->get_status(original_ts,status)){
-                            if(status == IN_PROGRESS){
+                            if(status == IN_PROGRESS)[[likely]]{
                                 current_delta_offset-=ENTRY_DELTA_SIZE;
                                 current_delta++;
                                 continue;
                             }else{
-                                if(status!=ABORT){
+                                if(status!=ABORT)[[likely]]{
 #if CHECKED_PUT_EDGE
                                     current_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_version_offset,status);
 #else
@@ -375,14 +376,14 @@ namespace bwgraph {
                         uint64_t current_creation_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                         uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
                         //cannot be the delta deleted by the current transaction
-                        if(current_invalidation_ts!=txn_id){
+                        if(current_invalidation_ts!=txn_id)[[likely]]{
                             //visible committed delta
                             if(current_creation_ts<=txn_read_ts&&(current_invalidation_ts==0||current_invalidation_ts>txn_read_ts)){
                                 current_delta_offset-=  ENTRY_DELTA_SIZE;
                                 return current_delta++;
                             }
                             //visible delta by myself
-                            if(current_creation_ts==txn_id){
+                            if(current_creation_ts==txn_id)[[unlikely]]{
                                 current_delta_offset-=  ENTRY_DELTA_SIZE;
                                 return current_delta++;
                             }

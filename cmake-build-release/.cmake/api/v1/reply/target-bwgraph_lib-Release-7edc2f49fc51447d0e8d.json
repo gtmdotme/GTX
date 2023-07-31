@@ -43,14 +43,17 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -O3 -DNDEBUG -fPIC -fdiagnostics-color=always"
+					"fragment" : "-ltbb -std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -O3 -DNDEBUG -fPIC -fdiagnostics-color=always"
+				},
+				{
+					"fragment" : "-std=gnu++20"
 				}
 			],
 			"includes" : 
 			[
 				{
 					"backtrace" : 2,
-					"path" : "/home/zhou822/BwGraph_v2"
+					"path" : "/home/zhou822/BwGraph_Acq_Rel"
 				}
 			],
 			"language" : "CXX",
@@ -60,7 +63,7 @@
 				[
 					1
 				],
-				"standard" : "17"
+				"standard" : "20"
 			},
 			"sourceIndexes" : 
 			[

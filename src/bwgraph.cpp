@@ -81,6 +81,8 @@ RWTransaction BwGraph::begin_read_write_transaction() {
 #endif
     auto txn_entry =  txn_tables.get_table(worker_thread_id).put_entry(txn_id);
     block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
+#if !USING_COMMIT_WAIT_WORK
+
     if(/*garbage_queues[worker_thread_id].need_collection()||*/executed_txn_count.local()==garbage_collection_transaction_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_entry_num_threshold){
         auto safe_ts = block_access_ts_table.calculate_safe_ts();
         garbage_queues[worker_thread_id].free_block(safe_ts);
@@ -88,6 +90,7 @@ RWTransaction BwGraph::begin_read_write_transaction() {
     }else{
         executed_txn_count.local()++;
     }
+#endif //USING_COMMIT_WAIT_WORK
     return RWTransaction(*this,txn_id,read_ts,txn_entry,txn_tables,commit_manager,block_manager,garbage_queues[worker_thread_id],block_access_ts_table,recycled_vids[worker_thread_id]);
  /*   auto read_ts = commit_manager.get_current_read_ts();
     uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
@@ -102,7 +105,7 @@ RWTransaction BwGraph::begin_read_write_transaction() {
         executed_txn_count.local()++;
     }
     return RWTransaction(*this,txn_id,read_ts,txn_entry,txn_tables,commit_manager,block_manager,garbage_queues[worker_thread_id],block_access_ts_table,recycled_vids[worker_thread_id]);*/
-#endif
+#endif //TRACK_EXECUTION_TIME
 }
 
 SharedROTransaction BwGraph::begin_shared_ro_transaction() {

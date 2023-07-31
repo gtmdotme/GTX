@@ -106,7 +106,7 @@ namespace bwgraph {
         std::atomic_uint32_t offset;
     };
 
-    class alignas(64) BaseEdgeDelta {
+    class /*alignas(64)*/ BaseEdgeDelta {
     public:
         BaseEdgeDelta &operator=(const BaseEdgeDelta &other) {
             toID = other.toID;
@@ -777,7 +777,7 @@ namespace bwgraph {
             std::cout << "current offset is " << combined_offsets.load() << std::endl;
             std::cout << "previous address is " << prev_pointer << std::endl;
         }
-        //Libin: todo: for small blocks just scan?
+        //Libin: add prefetch
         /*
          * It finds where the previous version is:
          * only invoked after grabbing the lock, so there is no way we meet an aborted or in progress delta if using delta chains
@@ -787,12 +787,18 @@ namespace bwgraph {
                 auto current_delta = get_edge_delta(start_offset);
                 while (start_offset) {
                     //skip invalid deltas
-                    if(current_delta->valid.load(std::memory_order_acquire)){
+                    if(current_delta->valid.load(std::memory_order_acquire))[[likely]]{
+                        //prefetch
+#if USING_PREFETCH
+                        __builtin_prefetch(current_delta+1,0,0);
+                        __builtin_prefetch(current_delta+2,0,0);
+
+#endif//prefetching
                         uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                         //still do lazy update
                         if (original_ts!=txn_id && is_txn_id(original_ts)) {
                             uint64_t status = 0;
-                            if (txn_tables->get_status(original_ts, status)) {
+                            if (txn_tables->get_status(original_ts, status))[[likely]] {
                                 if(status!=IN_PROGRESS&&status!=ABORT){
 #if CHECKED_PUT_EDGE
                                     update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_version_offset, status);
@@ -826,7 +832,7 @@ namespace bwgraph {
                                 }*/
                             }
                             //skip aborted deltas
-                        }else if(original_ts==ABORT){
+                        }else if(original_ts==ABORT)[[unlikely]]{
                             start_offset -= ENTRY_DELTA_SIZE;
                             current_delta++;
                             continue;
@@ -860,9 +866,9 @@ namespace bwgraph {
                     auto current_delta = get_edge_delta(start_offset);
                     uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                     //still do lazy update
-                    if (original_ts!=txn_id && is_txn_id(original_ts)) {
+                    if (original_ts!=txn_id && is_txn_id(original_ts))[[unlikely]] {
                         uint64_t status = 0;
-                        if (txn_tables->get_status(original_ts, status)) {
+                        if (txn_tables->get_status(original_ts, status))[[likely]] {
 #if EDGE_DELTA_TEST
                             //Libin: no way we meet in progress or abort deltas. We grab a lock on the current delta chain, all deltas in the chain must be committed.
                             if(status == IN_PROGRESS||status == ABORT){
@@ -907,6 +913,12 @@ namespace bwgraph {
                             return 0;//for delete delta, just return 0 as if no previous version exist
                         }
                     }
+                    //prefetch
+#if USING_PREFETCH
+                    if(current_delta->previous_offset){
+                        __builtin_prefetch(get_edge_delta(current_delta->previous_offset),0,0);
+                    }
+#endif//prefetching
                     start_offset = current_delta->previous_offset;
                 }
                 return 0;

@@ -61,6 +61,9 @@ namespace bwgraph{
         inline void print_status(){
             std::cout<<"remaining garbage size is "<<total_garbage_size<<" bytes"<<" remaining entry number is "<< previous_versions_queue.size()<<std::endl;
         }
+        inline bool has_entries(){
+            return !previous_versions_queue.empty();
+        }
     private:
         std::priority_queue<PreviousVersionBlockEntry> previous_versions_queue;
         uint64_t total_garbage_size =0;

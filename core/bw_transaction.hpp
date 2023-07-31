@@ -381,6 +381,7 @@ namespace bwgraph{
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label,uint8_t thread_id);
         std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator> simple_get_edges(vertex_t src, label_t label,uint8_t thread_id);
         std::string_view get_vertex(vertex_t src);
+        std::string_view get_vertex(vertex_t src, uint8_t thread_id);
         inline void commit(){
             batch_lazy_updates();
             auto& local_garbage_queue = graph.get_per_thread_garbage_queue();
@@ -404,6 +405,19 @@ namespace bwgraph{
                 per_thread_op_count.local()=0;
             }
         }
+        inline void on_operation_finish(uint8_t thread_id){
+            per_thread_op_count.local()++;
+            if(per_thread_op_count.local()==shared_txn_op_threshold){
+                batch_lazy_updates();
+                auto& local_garbage_queue = graph.get_per_thread_garbage_queue(thread_id);
+                if(local_garbage_queue.get_queue().size()){
+                    auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                    local_garbage_queue.free_block(safe_ts);
+                }
+                per_thread_op_count.local()=0;
+            }
+        }
+
         inline timestamp_t get_read_ts(){return read_timestamp;}
         inline BwGraph* get_graph(){return &graph;}
     private:
@@ -670,6 +684,12 @@ namespace bwgraph{
             auto emplace_result = graph.to_check_blocks.local().try_emplace(block_id,version_number);
             if(!emplace_result.second){
                 emplace_result.first->second = version_number;
+            }
+        }
+        void eager_garbage_collection(){
+            if(per_thread_garbage_queue.has_entries()){
+                auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                per_thread_garbage_queue.free_block(safe_ts);
             }
         }
         //txn local fields

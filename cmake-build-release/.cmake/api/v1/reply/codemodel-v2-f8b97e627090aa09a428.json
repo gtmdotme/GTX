@@ -11,7 +11,7 @@
 						1
 					],
 					"hasInstallRule" : true,
-					"jsonFile" : "directory-.-Debug-6f2274058ead63fb02f5.json",
+					"jsonFile" : "directory-.-Release-6f2274058ead63fb02f5.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.24"
@@ -29,7 +29,7 @@
 				{
 					"build" : "doctest",
 					"hasInstallRule" : true,
-					"jsonFile" : "directory-doctest-Debug-f2e967e9101ae39ebb5d.json",
+					"jsonFile" : "directory-doctest-Release-e4ab036544888ead15d7.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.0"
@@ -43,7 +43,7 @@
 					]
 				}
 			],
-			"name" : "Debug",
+			"name" : "Release",
 			"projects" : 
 			[
 				{
@@ -82,35 +82,35 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "bwgraph::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-bwgraph-Debug-da4eb71cf6d812dda447.json",
+					"jsonFile" : "target-bwgraph-Release-efa901f51d82fad7d256.json",
 					"name" : "bwgraph",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "bwgraph_lib::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-bwgraph_lib-Debug-3b1d5e732fd4e9174dff.json",
+					"jsonFile" : "target-bwgraph_lib-Release-7edc2f49fc51447d0e8d.json",
 					"name" : "bwgraph_lib",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 1,
 					"id" : "doctest_with_main::@a160a721d7986f0420d1",
-					"jsonFile" : "target-doctest_with_main-Debug-3b2efa8a56f7ac9f919f.json",
+					"jsonFile" : "target-doctest_with_main-Release-ce4994cadfcd7ae56add.json",
 					"name" : "doctest_with_main",
 					"projectIndex" : 1
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "parallel_hashmap_lib::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-parallel_hashmap_lib-Debug-1c1fe97bdad2587cbaf1.json",
+					"jsonFile" : "target-parallel_hashmap_lib-Release-0165e07c12a541852575.json",
 					"name" : "parallel_hashmap_lib",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "tests::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-tests-Debug-a6ba5e812c37f75e0e3f.json",
+					"jsonFile" : "target-tests-Release-eb0097276660e27c0b64.json",
 					"name" : "tests",
 					"projectIndex" : 0
 				}
@@ -120,8 +120,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/home/zhou822/BwGraph_v2/cmake-build-debug",
-		"source" : "/home/zhou822/BwGraph_v2"
+		"build" : "/home/zhou822/BwGraph_Acq_Rel/cmake-build-release",
+		"source" : "/home/zhou822/BwGraph_Acq_Rel"
 	},
 	"version" : 
 	{

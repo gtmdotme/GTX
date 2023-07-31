@@ -49,29 +49,30 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fdiagnostics-color=always"
-				}
-			],
-			"defines" : 
-			[
+					"fragment" : "-ltbb -std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -O3 -DNDEBUG -fdiagnostics-color=always"
+				},
 				{
-					"backtrace" : 2,
-					"define" : "TBB_USE_DEBUG"
+					"fragment" : "-std=gnu++20"
 				}
 			],
 			"includes" : 
 			[
 				{
 					"backtrace" : 3,
-					"path" : "/home/zhou822/BwGraph_v2"
+					"path" : "/home/zhou822/BwGraph_Acq_Rel"
 				},
 				{
 					"backtrace" : 2,
-					"path" : "/home/zhou822/BwGraph_v2/doctest"
+					"path" : "/home/zhou822/BwGraph_Acq_Rel/doctest"
 				},
 				{
 					"backtrace" : 2,
-					"path" : "/home/zhou822/BwGraph_v2/parallel_hashmap"
+					"path" : "/home/zhou822/BwGraph_Acq_Rel/parallel_hashmap"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/opt/intel/oneapi/tbb/2021.9.0/include"
 				}
 			],
 			"language" : "CXX",
@@ -81,7 +82,7 @@
 				[
 					2
 				],
-				"standard" : "17"
+				"standard" : "20"
 			},
 			"sourceIndexes" : 
 			[
@@ -110,12 +111,16 @@
 		"commandFragments" : 
 		[
 			{
-				"fragment" : "-ltbb -std=c++17 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op",
+				"fragment" : "-ltbb -std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -O3 -DNDEBUG",
 				"role" : "flags"
 			},
 			{
 				"fragment" : "",
 				"role" : "flags"
+			},
+			{
+				"fragment" : "-Wl,-rpath,/opt/intel/oneapi/tbb/2021.9.0/lib/intel64/gcc4.8",
+				"role" : "libraries"
 			},
 			{
 				"backtrace" : 2,
@@ -124,7 +129,7 @@
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "/usr/lib/x86_64-linux-gnu/libtbb.so.12.5",
+				"fragment" : "/opt/intel/oneapi/tbb/2021.9.0/lib/intel64/gcc4.8/libtbb.so.12",
 				"role" : "libraries"
 			},
 			{

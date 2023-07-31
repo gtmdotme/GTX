@@ -177,7 +177,9 @@ StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(bg::vertex_t src, 
 std::string_view SharedROTransaction::get_vertex(bg::vertex_t src) {
     return txn->get_vertex(src);
 }
-
+std::string_view SharedROTransaction::get_vertex(bg::vertex_t src, uint8_t thread_id) {
+    return txn->get_vertex(src,thread_id);
+}
 std::string_view SharedROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
     while(true){
         auto result = txn->get_edge(src,dst,label);
