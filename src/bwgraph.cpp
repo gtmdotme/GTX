@@ -110,15 +110,15 @@ RWTransaction BwGraph::begin_read_write_transaction() {
 
 SharedROTransaction BwGraph::begin_shared_ro_transaction() {
     auto read_ts = commit_manager.get_current_read_ts();
-    uint8_t worker_thread_id = thread_manager.get_openmp_worker_thread_id();
-    block_access_ts_table.store_current_ts(worker_thread_id,read_ts);//the creator thread is in charge of storing the transaction ts in the table
-    if(/*garbage_queues[worker_thread_id].need_collection()||*/executed_txn_count.local()==garbage_collection_transaction_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_entry_num_threshold){
-        auto safe_ts = block_access_ts_table.calculate_safe_ts();
-        garbage_queues[worker_thread_id].free_block(safe_ts);
-        executed_txn_count.local()=1;
-    }else{
-        executed_txn_count.local()++;
-    }
+   // uint8_t worker_thread_id = thread_manager.get_openmp_worker_thread_id();
+   // block_access_ts_table.store_current_ts(worker_thread_id,read_ts);//the creator thread is in charge of storing the transaction ts in the table
+   // if(/*garbage_queues[worker_thread_id].need_collection()||*/executed_txn_count.local()==garbage_collection_transaction_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_entry_num_threshold){
+   //     auto safe_ts = block_access_ts_table.calculate_safe_ts();
+   //     garbage_queues[worker_thread_id].free_block(safe_ts);
+   //     executed_txn_count.local()=1;
+   // }else{
+   //     executed_txn_count.local()++;
+   // }
     return SharedROTransaction(*this, read_ts, txn_tables, block_manager, block_access_ts_table);
 }
 

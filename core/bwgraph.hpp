@@ -226,7 +226,7 @@ namespace bwgraph{
         inline void on_openmp_parallel_session_finish(){
             thread_manager.reset_openmp_thread_id();
         }
-
+        inline WorkerThreadManager& get_thread_manager(){return thread_manager;}
        /* inline void reset_worker_thread_num(uint64_t new_num){
             if(new_num>worker_thread_num){
                 throw std::runtime_error("error, the number of worker thread is larger than the max threshold");

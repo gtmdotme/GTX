@@ -66,6 +66,7 @@ namespace bg {
         void manual_commit_server_restart();
         //for debug
         bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
+        void print_thread_id_allocation();
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
         std::thread commit_manager_worker;
@@ -110,6 +111,7 @@ namespace bg {
         std::string_view static_get_edge(vertex_t src, vertex_t dst, label_t label);
         StaticEdgeDeltaIterator static_get_edges(vertex_t src, label_t label);
         uint64_t get_read_timestamp();
+        void print_debug_info();
         Graph* get_graph();
     private:
         const std::unique_ptr<bwgraph::SharedROTransaction> txn;

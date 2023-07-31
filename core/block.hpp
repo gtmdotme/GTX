@@ -790,8 +790,8 @@ namespace bwgraph {
                     if(current_delta->valid.load(std::memory_order_acquire))[[likely]]{
                         //prefetch
 #if USING_PREFETCH
-                        __builtin_prefetch(current_delta+1,0,0);
-                        __builtin_prefetch(current_delta+2,0,0);
+                        __builtin_prefetch((const void*)(current_delta+1),0,0);
+                        __builtin_prefetch((const void*)(current_delta+2),0,0);
 
 #endif//prefetching
                         uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
@@ -916,7 +916,7 @@ namespace bwgraph {
                     //prefetch
 #if USING_PREFETCH
                     if(current_delta->previous_offset){
-                        __builtin_prefetch(get_edge_delta(current_delta->previous_offset),0,0);
+                        __builtin_prefetch((const void*)(get_edge_delta(current_delta->previous_offset)),0,0);
                     }
 #endif//prefetching
                     start_offset = current_delta->previous_offset;

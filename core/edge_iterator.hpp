@@ -380,6 +380,10 @@ namespace bwgraph {
                             //visible committed delta
                             if(current_creation_ts<=txn_read_ts&&(current_invalidation_ts==0||current_invalidation_ts>txn_read_ts)){
                                 current_delta_offset-=  ENTRY_DELTA_SIZE;
+#if USING_PREFETCH
+                                //__builtin_prefetch((const void*)(current_delta+1),0,0);
+                                // __builtin_prefetch((const void*)(current_delta+2),0,0);
+#endif
                                 return current_delta++;
                             }
                             //visible delta by myself

@@ -28,6 +28,7 @@ ROTransaction Graph::begin_read_only_transaction() {
 }
 
 bg::SharedROTransaction Graph::begin_shared_read_only_transaction() {
+    //graph->get_thread_manager().print_debug_stats();
     return {std::make_unique<impl::SharedROTransaction>(graph->begin_shared_ro_transaction()),this};
 }
 
@@ -49,6 +50,9 @@ uint8_t Graph::get_worker_thread_id() {
     return graph->get_worker_thread_id();
 }
 
+void Graph::print_thread_id_allocation() {
+    graph->get_thread_manager().print_debug_stats();
+}
 void Graph::execute_manual_checking(bg::vertex_t vid) {
     graph->execute_manual_delta_block_checking(vid);
 }
@@ -232,6 +236,10 @@ SimpleEdgeDeltaIterator SharedROTransaction::simple_get_edges(bg::vertex_t src, 
     }
 }
 
+void SharedROTransaction::print_debug_info() {
+    std::cout<<"Shared RO Transaction printing debug info"<<std::endl;
+    graph->print_thread_id_allocation();
+}
 Graph *SharedROTransaction::get_graph() {
     return graph;
 }

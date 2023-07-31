@@ -22,6 +22,7 @@ namespace bwgraph{
    using ThreadIDMap = tbb::concurrent_hash_map<thread_id,uint8_t>;
     class WorkerThreadManager{
     public:
+        //~WorkerThreadManager(){std::cout<<static_cast<uint32_t>(openmp_thread_id_allocation.load())<<std::endl;}
         inline uint64_t get_real_worker_thread_size(){
             return thread_id_map.size();
         }
@@ -60,11 +61,19 @@ namespace bwgraph{
          /* if(openmp_thread_id_allocation.load(std::memory_order_acquire)>64){
               throw std::runtime_error("openmp thread ids error");
           }*/
-         /*if(global_thread_id_allocation.load(std::memory_order_acquire)>1){
+        /* if(global_thread_id_allocation.load(std::memory_order_acquire)>1){
              std::cout<<"bad things happened"<<std::endl;
+             throw std::runtime_error("bad memory id allocation");
+         }
+         if(openmp_thread_id_allocation.load(std::memory_order_acquire)>=64){
+             std::cout<<"second bad things happened"<<std::endl;
              throw std::runtime_error("bad memory id allocation");
          }*/
           return openmp_thread_id_allocation.fetch_add(1,std::memory_order_acq_rel)+global_thread_id_allocation.load(std::memory_order_acquire);
+        }
+        inline void print_debug_stats(){
+            std::cout<<"worker thread id is "<<static_cast<uint32_t>(global_thread_id_allocation.load())<<std::endl;
+            std::cout<<"openmp thread id is "<<static_cast<uint32_t>(openmp_thread_id_allocation.load())<<std::endl;
         }
 
     private:
