@@ -17,6 +17,7 @@
 #include "utils.hpp"
 #include "exceptions.hpp"
 #include "transaction_tables.hpp"
+#include <immintrin.h>
 
 namespace bwgraph {
 #define LAZY_LOCKING false
@@ -785,13 +786,23 @@ namespace bwgraph {
         uint32_t fetch_previous_version_offset(vertex_t vid, uint32_t start_offset, uint64_t txn_id, lazy_update_map &lazy_update_records) {
             if(order<index_lookup_order_threshold){
                 auto current_delta = get_edge_delta(start_offset);
+#if USING_PREFETCH
+                auto num = start_offset/ENTRY_DELTA_SIZE;
+                for(uint32_t i=0; i<num;i++){
+                    //__builtin_prefetch((const void*)(current_delta+i),0,0);
+                    _mm_prefetch((const void*)(current_delta+i), _MM_HINT_T2);
+                }
+                //__builtin_prefetch((const void*)(current_delta+1),0,0);
+                //__builtin_prefetch((const void*)(current_delta+2),0,0);
+
+#endif//prefetching
                 while (start_offset) {
                     //skip invalid deltas
                     if(current_delta->valid.load(std::memory_order_acquire))[[likely]]{
                         //prefetch
 #if USING_PREFETCH
-                        __builtin_prefetch((const void*)(current_delta+1),0,0);
-                        __builtin_prefetch((const void*)(current_delta+2),0,0);
+                        //__builtin_prefetch((const void*)(current_delta+1),0,0);
+                        //__builtin_prefetch((const void*)(current_delta+2),0,0);
 
 #endif//prefetching
                         uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
@@ -916,7 +927,8 @@ namespace bwgraph {
                     //prefetch
 #if USING_PREFETCH
                     if(current_delta->previous_offset){
-                        __builtin_prefetch((const void*)(get_edge_delta(current_delta->previous_offset)),0,0);
+                        //__builtin_prefetch((const void*)(get_edge_delta(current_delta->previous_offset)),0,0);
+                        _mm_prefetch((const void*)(get_edge_delta(current_delta->previous_offset)), _MM_HINT_T2);
                     }
 #endif//prefetching
                     start_offset = current_delta->previous_offset;

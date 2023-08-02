@@ -4,6 +4,7 @@
 
 #include "bwgraph.hpp"
 #include "core/bwgraph_include.hpp"
+#include <omp.h>
 using namespace bg;
 namespace impl = bwgraph;
 
@@ -116,6 +117,18 @@ void Graph::manual_commit_server_shutdown() {
 void Graph::manual_commit_server_restart() {
     graph->get_commit_manager().restart();
     commit_manager_worker =std::thread(&Graph::commit_server_start, this);
+}
+
+void Graph::eager_consolidation_on_edge_delta_block(vertex_t vid, label_t label) {
+    graph->eager_consolidation_on_edge_delta_block(vid,label);
+}
+
+void Graph::whole_label_graph_eager_consolidation(bg::label_t label) {
+    auto max_vid = graph->get_max_allocated_vid();
+#pragma omp parallel for
+    for(vertex_t i=1; i<=max_vid;i++){
+        graph->eager_consolidation_on_edge_delta_block(i,label);
+    }
 }
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}

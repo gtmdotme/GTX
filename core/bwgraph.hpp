@@ -226,6 +226,7 @@ namespace bwgraph{
         inline void on_openmp_parallel_session_finish(){
             thread_manager.reset_openmp_thread_id();
         }
+        void eager_consolidation_on_edge_delta_block(vertex_t vid, label_t label);
         inline WorkerThreadManager& get_thread_manager(){return thread_manager;}
        /* inline void reset_worker_thread_num(uint64_t new_num){
             if(new_num>worker_thread_num){

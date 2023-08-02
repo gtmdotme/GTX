@@ -839,3 +839,4 @@ void Cleanup_Transaction::force_to_consolidation(bwgraph::BwLabelEntry *current_
     current_label_entry->block_version_number.fetch_add(1);//increase version by 1 /*consolidation_time.store(commit_manager.get_current_read_ts());*/
     BlockStateVersionProtectionScheme::install_shared_state(EdgeDeltaBlockState::NORMAL,current_label_entry);
 }
+

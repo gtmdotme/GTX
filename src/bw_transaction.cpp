@@ -4,6 +4,7 @@
 #include "../core/bw_transaction.hpp"
 #include "../core/edge_delta_block_state_protection.hpp"
 #include "core/commit_manager.hpp"
+#include <immintrin.h>
 using namespace bwgraph;
 //pessimistic mode
 #if USING_PESSIMISTIC_MODE
@@ -227,7 +228,9 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
             //lookup previous version:
             auto allocate_delta_result = allocate_delta(current_block, static_cast<int32_t>(edge_data.size()));
             if(allocate_delta_result==EdgeDeltaInstallResult::SUCCESS)[[likely]]{
-                uint32_t previous_version_offset = current_block->fetch_previous_version_offset(dst,current_delta_chain_head_offset,local_txn_id,lazy_update_records);
+                uint32_t previous_version_offset=0;
+                if(current_delta_chain_head_offset)
+                    previous_version_offset = current_block->fetch_previous_version_offset(dst,current_delta_chain_head_offset,local_txn_id,lazy_update_records);
                 //todo: maybe add an exist check? if exist, insert delta; otherwise update delta
                // current_block->append_edge_delta(dst,local_txn_id,EdgeDeltaType::UPDATE_DELTA, data,static_cast<int32_t>(edge_data.size()),current_delta_chain_head_offset,current_delta_offset,current_data_offset);
                //insert should be more common than update
@@ -482,8 +485,9 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
             current_delta_chain_head_offset = delta_chains_index->at(target_delta_chain_id).get_raw_offset();
             auto allocate_delta_result = allocate_delta(current_block, 0);
             if(allocate_delta_result==EdgeDeltaInstallResult::SUCCESS){
-                //todo: maybe add an exist check? if exist, insert delta; otherwise update delta
-                uint32_t previous_version_offset = current_block->fetch_previous_version_offset(dst,current_delta_chain_head_offset,local_txn_id,lazy_update_records);
+                uint32_t previous_version_offset = 0;
+                if(current_delta_chain_head_offset)
+                    previous_version_offset = current_block->fetch_previous_version_offset(dst,current_delta_chain_head_offset,local_txn_id,lazy_update_records);
                 if(previous_version_offset){
                     current_block->checked_append_edge_delta(dst,local_txn_id,EdgeDeltaType::DELETE_DELTA, nullptr,0,current_delta_chain_head_offset,previous_version_offset, current_delta_offset,current_data_offset);
                     cached_delta_chain_access.first->second.cache_vid_offset_new(dst,current_delta_offset);
@@ -1106,7 +1110,8 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                     uint32_t previous_version_offset=0;
                     if(current_delta->delta_type==EdgeDeltaType::UPDATE_DELTA){
                         //get potential previous version and install invalidation ts
-                        previous_version_offset = new_block->fetch_previous_version_offset(current_delta->toID,new_delta_chains_index_entry.get_offset(),current_delta->creation_ts.load(),lazy_update_records);
+                        if(new_delta_chains_index_entry.get_offset())
+                            previous_version_offset = new_block->fetch_previous_version_offset(current_delta->toID,new_delta_chains_index_entry.get_offset(),current_delta->creation_ts.load(),lazy_update_records);
 #if EDGE_DELTA_TEST
                         if(!previous_version_offset){
                             throw std::runtime_error("error, under checked version, an update delta must have a previous version");
@@ -1127,7 +1132,10 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                     auto& new_delta_chains_index_entry = new_delta_chains_index.at(new_delta_chain_id);
                     //get potential previous version and install invalidation ts
                     //a committed delete delta must have a previous version of the edge, so update the invalidation ts of previous version and get its offset
-                    uint32_t previous_version_offset = new_block->fetch_previous_version_offset(current_delta->toID,new_delta_chains_index_entry.get_offset(),current_delta->creation_ts.load(),lazy_update_records);
+
+                    uint32_t previous_version_offset = 0;
+                    if(new_delta_chains_index_entry.get_offset())
+                        previous_version_offset= new_block->fetch_previous_version_offset(current_delta->toID,new_delta_chains_index_entry.get_offset(),current_delta->creation_ts.load(),lazy_update_records);
 #if EDGE_DELTA_TEST
                     if(!previous_version_offset){
                         throw std::runtime_error("error, under checked version, a delete delta must have a previous version");
@@ -1177,7 +1185,8 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
             delta_chain_id_t delta_chain_id = new_block->get_delta_chain_id(current_delta->toID);
             uint32_t previous_version_offset = 0;
             if(current_delta->delta_type!=EdgeDeltaType::INSERT_DELTA){
-                previous_version_offset = new_block->fetch_previous_version_offset(current_delta->toID,local_delta_chains_index_cache[delta_chain_id],current_delta->creation_ts.load(),lazy_update_records);
+                if(local_delta_chains_index_cache[delta_chain_id])
+                    previous_version_offset = new_block->fetch_previous_version_offset(current_delta->toID,local_delta_chains_index_cache[delta_chain_id],current_delta->creation_ts.load(),lazy_update_records);
 #if EDGE_DELTA_TEST
                 if(!previous_version_offset){
                     throw std::runtime_error("error, under checked version, a delete or update delta must have a previous version");
@@ -1733,7 +1742,8 @@ void RWTransaction::eager_clean_edge_block(uint64_t block_id, bwgraph::LockOffse
             timestamp_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
             while(current_offset>0&&(original_ts==local_txn_id||original_ts==commit_ts)){
 #if USING_PREFETCH
-                __builtin_prefetch((const void*)current_block->get_edge_delta(current_delta->previous_offset),0,0);
+                //__builtin_prefetch((const void*)current_block->get_edge_delta(current_delta->previous_offset),0,0);
+                _mm_prefetch((const void*)current_block->get_edge_delta(current_delta->previous_offset), _MM_HINT_T2);
 #endif
                 if(original_ts==local_txn_id){
                     current_block->update_previous_delta_invalidate_ts(current_delta->toID, current_delta->previous_version_offset, commit_ts);
@@ -2274,6 +2284,14 @@ StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(bwgraph::vertex_t 
     }
     auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
     uint64_t current_combined_offset = current_block->get_current_offset();
+#if USING_PREFETCH
+ /*   uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset);
+    uint32_t num = current_delta_offset/ENTRY_DELTA_SIZE;
+    num = (num<10)? num:10;
+    for(uint32_t i=0; i<num; i++){
+        _mm_prefetch((const void*)(current_block->get_edge_delta(current_delta_offset-i*ENTRY_DELTA_SIZE)),_MM_HINT_T2);
+    }*/
+#endif
     return StaticEdgeDeltaIterator(current_block, EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset));
 }
 

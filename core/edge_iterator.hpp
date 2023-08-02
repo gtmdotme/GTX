@@ -383,6 +383,7 @@ namespace bwgraph {
 #if USING_PREFETCH
                                 //__builtin_prefetch((const void*)(current_delta+1),0,0);
                                 // __builtin_prefetch((const void*)(current_delta+2),0,0);
+                               // _mm_prefetch((const void*)(current_delta+4),_MM_HINT_T2);
 #endif
                                 return current_delta++;
                             }
@@ -449,8 +450,16 @@ namespace bwgraph {
     class StaticEdgeDeltaIterator{
     public:
         StaticEdgeDeltaIterator(){}
-        StaticEdgeDeltaIterator(EdgeDeltaBlockHeader* input_block, uint32_t input_offset):current_delta_block(input_block){
+        StaticEdgeDeltaIterator(EdgeDeltaBlockHeader* input_block, uint32_t input_offset):current_delta_block(input_block),current_delta_offset(input_offset){
             current_delta = current_delta_block->get_edge_delta(input_offset);
+#if USING_PREFETCH
+          /* auto num = input_offset/ENTRY_DELTA_SIZE;
+           if(num<=10)[[likely]]{
+                for(uint32_t i=1; i<num; i++){
+                    _mm_prefetch((const void*)(current_delta+i),_MM_HINT_T2);
+                }
+           }*/
+#endif
         }
         BaseEdgeDelta *next_delta() {
             while(current_delta_offset>0){

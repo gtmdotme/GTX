@@ -342,6 +342,10 @@
 		<Unit filename="/home/zhou822/BwGraph_Acq_Rel/doctest/doctest/parts/doctest.cpp">
 			<Option target="doctest_with_main"/>
 		</Unit>
+		<Unit filename="/home/zhou822/BwGraph_Acq_Rel/src/after_load_consolidation_transaction.cpp">
+			<Option target="bwgraph_lib"/>
+			<Option target="bwgraph"/>
+		</Unit>
 		<Unit filename="/home/zhou822/BwGraph_Acq_Rel/src/block.cpp">
 			<Option target="bwgraph_lib"/>
 			<Option target="bwgraph"/>

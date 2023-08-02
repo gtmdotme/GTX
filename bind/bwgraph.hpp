@@ -64,6 +64,8 @@ namespace bg {
         void garbage_clean();
         void manual_commit_server_shutdown();
         void manual_commit_server_restart();
+        void eager_consolidation_on_edge_delta_block(vertex_t vid, label_t label);
+        void whole_label_graph_eager_consolidation(label_t label);
         //for debug
         bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
         void print_thread_id_allocation();
