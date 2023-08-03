@@ -2297,12 +2297,12 @@ StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(bwgraph::vertex_t 
 
 std::string_view SharedROTransaction::static_get_vertex(bwgraph::vertex_t src) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
-    if(!vertex_index_entry.valid.load(std::memory_order_acquire)){
+    if(!vertex_index_entry.valid.load(std::memory_order_acquire))[[unlikely]]{
         return std::string_view ();
         //throw IllegalVertexAccessException();
     }
     uintptr_t current_vertex_delta_ptr = vertex_index_entry.vertex_delta_chain_head_ptr.load(std::memory_order_acquire);
-    if(!current_vertex_delta_ptr){
+    if(!current_vertex_delta_ptr)[[unlikely]]{
         return std::string_view ();
     }
     VertexDeltaHeader* current_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta_ptr);

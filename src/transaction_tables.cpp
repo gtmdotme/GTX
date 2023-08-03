@@ -226,6 +226,7 @@ namespace bwgraph{
                                            thread_local_garbage_queue->register_entry(previous_ptr,previous_delta->get_order(),status);
                                        }
                                    }else{
+                                       std::cout<<"eager abort 3"<<std::endl;
                                        throw EagerAbortException();//aborted deltas should be eager aborted.
                                    }
                                 }
@@ -479,6 +480,7 @@ namespace bwgraph{
                                             thread_local_garbage_queue->register_entry(previous_ptr,previous_delta->get_order(),status);
                                         }
                                     }else{
+                                        std::cout<<"eager abort 3"<<std::endl;
                                         throw EagerAbortException();//aborted deltas should be eager aborted.
                                     }
                                 }

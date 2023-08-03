@@ -37,7 +37,7 @@ namespace bwgraph{
                     }
                     continue;
                 }
-                if(table[i].accessed_block_id.load(/*std::memory_order_acquire*/)==block_id){
+                else if(table[i].accessed_block_id.load(/*std::memory_order_acquire*/)==block_id){
                     return false;
                 }
             }

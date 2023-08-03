@@ -657,6 +657,7 @@ namespace bwgraph {
                     }
                 } else {
                     //todo: abort should happen after the restore? so txn will never observe unlocked offset to abort deltas
+                    std::cout<<"eager abort 1"<<std::endl;
                     throw EagerAbortException();
                     //delta chain head failed during validation, so we need to retry
                     //return Delta_Chain_Lock_Response::UNCLEAR;
@@ -875,6 +876,13 @@ namespace bwgraph {
             }else{
                 while (start_offset) {
                     auto current_delta = get_edge_delta(start_offset);
+                    //prefetch
+#if USING_PREFETCH
+                    if(current_delta->previous_offset){
+                        //__builtin_prefetch((const void*)(get_edge_delta(current_delta->previous_offset)),0,0);
+                        _mm_prefetch((const void*)(get_edge_delta(current_delta->previous_offset)), _MM_HINT_T2);
+                    }
+#endif//prefetching
                     uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                     //still do lazy update
                     if (original_ts!=txn_id && is_txn_id(original_ts))[[unlikely]] {
@@ -924,13 +932,6 @@ namespace bwgraph {
                             return 0;//for delete delta, just return 0 as if no previous version exist
                         }
                     }
-                    //prefetch
-#if USING_PREFETCH
-                    if(current_delta->previous_offset){
-                        //__builtin_prefetch((const void*)(get_edge_delta(current_delta->previous_offset)),0,0);
-                        _mm_prefetch((const void*)(get_edge_delta(current_delta->previous_offset)), _MM_HINT_T2);
-                    }
-#endif//prefetching
                     start_offset = current_delta->previous_offset;
                 }
                 return 0;

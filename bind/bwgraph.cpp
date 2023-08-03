@@ -130,6 +130,12 @@ void Graph::whole_label_graph_eager_consolidation(bg::label_t label) {
         graph->eager_consolidation_on_edge_delta_block(i,label);
     }
 }
+
+void Graph::configure_distinct_readers_and_writers(uint64_t reader_count, uint64_t writer_count) {
+    manual_commit_server_shutdown();
+    graph->configure_distinct_readers_and_writers(reader_count,writer_count);
+    manual_commit_server_restart();
+}
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}
 

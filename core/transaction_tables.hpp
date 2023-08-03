@@ -342,6 +342,9 @@ namespace bwgraph {
         inline void set_txn_tables(ArrayTransactionTables* all_tables){
             txn_tables = all_tables;
         }
+        void resize(uint64_t entry_num){
+            local_table.resize(entry_num);
+        }
         void eager_clean(uint64_t index);
         void eager_clean(uint64_t index, std::unordered_set<uint64_t>& cleaned_blocks);
         void range_eager_clean(uint64_t index);
@@ -405,11 +408,11 @@ namespace bwgraph {
     public:
         ArrayTransactionTables(BwGraph* source_graph){
             for(uint8_t i=0; i<worker_thread_num;i++){
+                tables.emplace_back();
                 tables[i].set_thread_id(i);
                 tables[i].set_bwgraph(source_graph);
                 tables[i].set_txn_tables(this);
                 //compatible with vector based table
-
             }
         }
         inline bool get_status(uint64_t txn_id,uint64_t& status_result){
@@ -437,9 +440,19 @@ namespace bwgraph {
         inline ArrayTransactionTable& get_table(uint8_t thread_id){
             return tables[thread_id];
         }
+        void resize(uint64_t thread_num, BwGraph* source_graph){
+            tables.clear();
+            for(uint8_t i=0; i<thread_num;i++){
+                tables.emplace_back();
+                tables[i].set_thread_id(i);
+                tables[i].set_bwgraph(source_graph);
+                tables[i].set_txn_tables(this);
+                //compatible with vector based table
+            }
+        }
     private:
-
-        std::array<ArrayTransactionTable,worker_thread_num> tables;
+        std::vector<ArrayTransactionTable> tables;
+        //std::array<ArrayTransactionTable,worker_thread_num> tables;
     };
 
 # if USING_ARRAY_TABLE

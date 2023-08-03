@@ -34,6 +34,7 @@ namespace bwgraph{
                 block_access_ts_table.set_total_worker_thread_num(worker_thread_num);
             for(uint32_t i=0; i<worker_thread_num;i++){
                 txn_tables.get_table(static_cast<uint8_t>(i)).set_garbage_queue(&garbage_queues[i]);
+                recycled_vids.emplace_back(std::queue<vertex_t>());
 #if TRACK_EXECUTION_TIME
             /*    global_vertex_read_time_array[i]=0;
                 global_vertex_write_time_array[i]=0;
@@ -153,6 +154,21 @@ namespace bwgraph{
         inline uint8_t get_openmp_worker_thread_id(){return thread_manager.get_openmp_worker_thread_id();}
         void execute_manual_delta_block_checking(vertex_t vid);
         void force_consolidation_clean();
+        void configure_distinct_readers_and_writers(uint64_t reader_count, uint64_t writer_count){
+            block_access_ts_table.set_total_worker_thread_num(reader_count+writer_count);
+            total_writer_num = writer_count;
+            thread_manager.reset_worker_thread_id();
+            thread_manager.reset_openmp_thread_id();
+            txn_tables.resize(total_writer_num,this);
+            garbage_queues.clear();
+            garbage_queues.reserve(reader_count+writer_count);
+            for(uint64_t i=0; i<reader_count+writer_count;i++){
+                garbage_queues.emplace_back(&block_manager);
+            }
+            //will be done while the commit server is down
+            commit_manager.resize_commit_array(writer_count);
+            set_writer_thread_num(writer_count);
+        }
         inline void increment_thread_local_update_count(){thread_local_update_count.local()++;}
         inline void print_garbage_status(){
             std::cout<<"total has "<<thread_manager.get_real_worker_thread_size()<<" worker threads"<<std::endl;
@@ -266,7 +282,8 @@ namespace bwgraph{
         BlockAccessTimestampTable block_access_ts_table;
         WorkerThreadManager thread_manager;
         std::vector<GarbageBlockQueue> garbage_queues;
-        std::array<std::queue<vertex_t>,worker_thread_num> recycled_vids;
+        //std::array<std::queue<vertex_t>,worker_thread_num> recycled_vids;
+        std::vector<std::queue<vertex_t>>recycled_vids;
         tbb::enumerable_thread_specific<size_t> executed_txn_count;
         //delete deltas and update deltas are both considered new versions: they are the ones that's worth checking on
         //tbb::enumerable_thread_specific<std::unordered_set<uint64_t>> to_check_blocks;

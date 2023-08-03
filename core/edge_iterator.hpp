@@ -450,16 +450,8 @@ namespace bwgraph {
     class StaticEdgeDeltaIterator{
     public:
         StaticEdgeDeltaIterator(){}
-        StaticEdgeDeltaIterator(EdgeDeltaBlockHeader* input_block, uint32_t input_offset):current_delta_block(input_block),current_delta_offset(input_offset){
+     /*   StaticEdgeDeltaIterator(EdgeDeltaBlockHeader* input_block, uint32_t input_offset):current_delta_block(input_block),current_delta_offset(input_offset){
             current_delta = current_delta_block->get_edge_delta(input_offset);
-#if USING_PREFETCH
-          /* auto num = input_offset/ENTRY_DELTA_SIZE;
-           if(num<=10)[[likely]]{
-                for(uint32_t i=1; i<num; i++){
-                    _mm_prefetch((const void*)(current_delta+i),_MM_HINT_T2);
-                }
-           }*/
-#endif
         }
         BaseEdgeDelta *next_delta() {
             while(current_delta_offset>0){
@@ -475,7 +467,69 @@ namespace bwgraph {
         EdgeDeltaBlockHeader *current_delta_block;
         //bool txn_has_deltas;//whether this txn has deltas in the current delta block
         uint32_t current_delta_offset;
-        BaseEdgeDelta* current_delta = nullptr;
+        BaseEdgeDelta* current_delta = nullptr;*/
+     StaticEdgeDeltaIterator(EdgeDeltaBlockHeader* input_block, uint32_t input_offset):current_delta_block(input_block){
+                edge_deltas = current_delta_block->get_edge_delta(input_offset);
+                size = input_offset/ENTRY_DELTA_SIZE;
+#if USING_PREFETCH
+      //   auto prefetch_size = (size<=10)?size:10;
+      //   for(uint32_t i=0; i<prefetch_size; i++){
+      //       _mm_prefetch((const void*)(edge_deltas+i),_MM_HINT_T2);
+      //   }
+#endif
+        }
+        BaseEdgeDelta *next_delta() {
+#if USING_PREFETCH
+            //if(current_index+10<size){
+                //_mm_prefetch((const void*)(edge_deltas+current_index+10),_MM_HINT_T2);
+            //}
+#endif
+            if(current_index<size)[[likely]]{
+                return &edge_deltas[current_index++];
+            }else{
+                return nullptr;
+            }
+        }
+        inline char* get_data(uint32_t offset){
+            return current_delta_block->get_edge_data(offset);
+        }
+    private:
+        EdgeDeltaBlockHeader *current_delta_block;
+        //bool txn_has_deltas;//whether this txn has deltas in the current delta block
+        BaseEdgeDelta* edge_deltas;
+        uint32_t current_index=0;
+        uint32_t size = 0;
+    };
+    class StaticArrayEdgeDeltaIterator{
+    public:
+        StaticArrayEdgeDeltaIterator(){}
+        StaticArrayEdgeDeltaIterator(EdgeDeltaBlockHeader* input_block, uint32_t input_offset):current_delta_block(input_block){
+            edge_deltas = current_delta_block->get_edge_delta(input_offset);
+            size = input_offset/ENTRY_DELTA_SIZE;
+#if USING_PREFETCH
+         /*    if(size<=10)[[likely]]{
+                  for(uint32_t i=0; i<size; i++){
+                      _mm_prefetch((const void*)(edge_deltas+i),_MM_HINT_T2);
+                  }
+             }*/
+#endif
+        }
+        BaseEdgeDelta *next_delta() {
+            if(current_index<size)[[likely]]{
+                return &edge_deltas[current_index++];
+            }else{
+                return nullptr;
+            }
+        }
+        inline char* get_data(uint32_t offset){
+            return current_delta_block->get_edge_data(offset);
+        }
+    private:
+        EdgeDeltaBlockHeader *current_delta_block;
+        //bool txn_has_deltas;//whether this txn has deltas in the current delta block
+        BaseEdgeDelta* edge_deltas;
+        uint32_t current_index=0;
+        uint32_t size = 0;
     };
 }
 //#endif //BWGRAPH_V2_EDGE_ITERATOR_HPP

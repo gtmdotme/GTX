@@ -119,7 +119,8 @@ SharedROTransaction BwGraph::begin_shared_ro_transaction() {
    // }else{
    //     executed_txn_count.local()++;
    // }
-    return SharedROTransaction(*this, read_ts, txn_tables, block_manager, block_access_ts_table);
+    on_openmp_transaction_start(read_ts);
+   return SharedROTransaction(*this, read_ts, txn_tables, block_manager, block_access_ts_table);
 }
 
 void BwGraph::execute_manual_delta_block_checking(bwgraph::vertex_t vid) {
