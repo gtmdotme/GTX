@@ -383,12 +383,13 @@ namespace bwgraph{
         std::string_view get_vertex(vertex_t src);
         std::string_view get_vertex(vertex_t src, uint8_t thread_id);
         inline void commit(){
-            batch_lazy_updates();
+           /* batch_lazy_updates();
             auto& local_garbage_queue = graph.get_per_thread_garbage_queue();
             //if(local_garbage_queue.get_queue().size()>=garbage_collection_threshold){
                 auto safe_ts = block_access_ts_table.calculate_safe_ts();
                 local_garbage_queue.free_block(safe_ts);
-            //}
+            //}*/
+
         }
         inline void static_commit(){
             //do nothing
@@ -398,7 +399,7 @@ namespace bwgraph{
             if(per_thread_op_count.local()==shared_txn_op_threshold){
                 batch_lazy_updates();
                 auto& local_garbage_queue = graph.get_per_thread_garbage_queue();
-                if(local_garbage_queue.get_queue().size()){
+                if(local_garbage_queue.get_queue().size())[[unlikely]]{
                     auto safe_ts = block_access_ts_table.calculate_safe_ts();
                     local_garbage_queue.free_block(safe_ts);
                 }
@@ -410,14 +411,21 @@ namespace bwgraph{
             if(per_thread_op_count.local()==shared_txn_op_threshold){
                 batch_lazy_updates();
                 auto& local_garbage_queue = graph.get_per_thread_garbage_queue(thread_id);
-                if(local_garbage_queue.get_queue().size()){
+                if(local_garbage_queue.get_queue().size())[[unlikely]]{
                     auto safe_ts = block_access_ts_table.calculate_safe_ts();
                     local_garbage_queue.free_block(safe_ts);
                 }
                 per_thread_op_count.local()=0;
             }
         }
-
+        void thread_on_openmp_section_finish(uint8_t thread_id){
+            batch_lazy_updates();
+            auto& local_garbage_queue = graph.get_per_thread_garbage_queue(thread_id);
+            if(local_garbage_queue.get_queue().size())[[unlikely]]{
+                auto safe_ts = block_access_ts_table.calculate_safe_ts();
+                local_garbage_queue.free_block(safe_ts);
+            }
+        }
         inline timestamp_t get_read_ts(){return read_timestamp;}
         inline BwGraph* get_graph(){return &graph;}
     private:

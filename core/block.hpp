@@ -148,6 +148,13 @@ namespace bwgraph {
             creation_ts.store(ABORT,std::memory_order_release);
 #endif
         }
+        void print_stats(){
+           std::cout<<"id is "<<toID<<std::endl;
+           std::cout<<"data length is "<<data_length<<std::endl;
+           std::cout<<"data offset is "<<data_offset<<std::endl;
+           std::cout<<"creation ts is "<<creation_ts<<std::endl;
+           std::cout<<"invalidation ts is "<<invalidate_ts<<std::endl;
+        }
 
         vertex_t toID;
         EdgeDeltaType delta_type;

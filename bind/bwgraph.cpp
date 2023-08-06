@@ -136,6 +136,10 @@ void Graph::configure_distinct_readers_and_writers(uint64_t reader_count, uint64
     graph->configure_distinct_readers_and_writers(reader_count,writer_count);
     manual_commit_server_restart();
 }
+
+void Graph::on_openmp_workloads_finish() {
+    graph->on_openmp_workloads_finish();
+}
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}
 
@@ -212,6 +216,9 @@ std::string_view SharedROTransaction::get_edge(bg::vertex_t src, bg::vertex_t ds
     }
 }
 
+void SharedROTransaction::thread_on_openmp_section_finish(uint8_t thread_id) {
+    txn->thread_on_openmp_section_finish(thread_id);
+}
 std::string_view
 SharedROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label, uint8_t thread_id) {
     while (true) {
@@ -452,6 +459,12 @@ void SimpleEdgeDeltaIterator::next() {
 }
 bool SimpleEdgeDeltaIterator::valid() {
     next();
+ /*   if(current_delta&&current_delta->toID==0){
+        current_delta->print_stats();
+        std::cout<<"go to previous delta"<<std::endl;
+        next();
+        current_delta->print_stats();
+    }*/
     return current_delta!= nullptr;
 }
 vertex_t SimpleEdgeDeltaIterator::dst_id() const {

@@ -32,6 +32,7 @@ namespace bwgraph{
         bool is_safe(uint8_t thread_id, uint64_t block_id){
             for(uint8_t i=0; i<static_cast<uint8_t>(table.size()); i++){
                 if(i==thread_id){
+                    //todo:: optimize this part
                     if(table[i].accessed_block_id.load(/*std::memory_order_acquire*/)!=block_id){
                         throw BlockSafeAccessException();
                     }
@@ -49,6 +50,7 @@ namespace bwgraph{
         inline uint64_t get_total_thread_num(){return table.size();}
         /*
          * if a read_ts is x, it can read deltas created at x or >x, and it cannot read deltas invalidated at x, so all deltas invalidated at ts <= 10 is considered safe to deallocate
+         * blocks invalidated at time <= safe_ts can be deallocated.
          */
         uint64_t calculate_safe_ts(){
             uint64_t min_ts = std::numeric_limits<uint64_t>::max();

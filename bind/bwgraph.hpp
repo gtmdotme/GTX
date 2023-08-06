@@ -67,6 +67,7 @@ namespace bg {
         void eager_consolidation_on_edge_delta_block(vertex_t vid, label_t label);
         void whole_label_graph_eager_consolidation(label_t label);
         void configure_distinct_readers_and_writers(uint64_t reader_count, uint64_t writer_count);
+        void on_openmp_workloads_finish();
         //for debug
         bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
         void print_thread_id_allocation();
@@ -115,6 +116,7 @@ namespace bg {
         StaticEdgeDeltaIterator static_get_edges(vertex_t src, label_t label);
         uint64_t get_read_timestamp();
         void print_debug_info();
+        void thread_on_openmp_section_finish(uint8_t thread_id);
         Graph* get_graph();
     private:
         const std::unique_ptr<bwgraph::SharedROTransaction> txn;

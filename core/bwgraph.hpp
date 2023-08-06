@@ -178,6 +178,9 @@ namespace bwgraph{
                 garbage_queues[i].print_status();
             }
         }
+        void print_ts_table(){
+            block_access_ts_table.print_ts_status();
+        }
         inline void thread_exit(){
             block_access_ts_table.thread_exit(get_worker_thread_id());
             auto local_thread_id = get_worker_thread_id();
@@ -244,6 +247,12 @@ namespace bwgraph{
         }
         void eager_consolidation_on_edge_delta_block(vertex_t vid, label_t label);
         inline WorkerThreadManager& get_thread_manager(){return thread_manager;}
+        void on_openmp_workloads_finish(){
+            uint64_t total_worker_num = block_access_ts_table.get_total_thread_num();
+            for(uint64_t i=total_writer_num; i<total_worker_num; i++){
+                block_access_ts_table.store_current_ts(static_cast<uint8_t>(i),std::numeric_limits<uint64_t>::max());
+            }
+        }
        /* inline void reset_worker_thread_num(uint64_t new_num){
             if(new_num>worker_thread_num){
                 throw std::runtime_error("error, the number of worker thread is larger than the max threshold");

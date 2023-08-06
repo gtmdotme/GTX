@@ -21,7 +21,7 @@ constexpr uint32_t worker_thread_num = 64;
 //#define Per_Thread_Table_Size 32
 constexpr uint32_t per_thread_table_size = 32;
 constexpr uint32_t clean_threshold = per_thread_table_size/4;
-constexpr uint64_t garbage_collection_transaction_threshold = 4096;
+constexpr uint64_t garbage_collection_transaction_threshold = 10;
 constexpr uint64_t garbage_collection_entry_num_threshold = 10;
 constexpr uint64_t garbage_collection_size_threshold = 1ul<<20;
 //block allocation
