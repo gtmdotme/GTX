@@ -155,7 +155,11 @@ namespace bwgraph{
         void execute_manual_delta_block_checking(vertex_t vid);
         void force_consolidation_clean();
         void configure_distinct_readers_and_writers(uint64_t reader_count, uint64_t writer_count){
+#if USING_SEPARATED_TABLES
+            block_access_ts_table.set_total_worker_thread_num(writer_count,reader_count);
+#else
             block_access_ts_table.set_total_worker_thread_num(reader_count+writer_count);
+#endif
             total_writer_num = writer_count;
             thread_manager.reset_worker_thread_id();
             thread_manager.reset_openmp_thread_id();

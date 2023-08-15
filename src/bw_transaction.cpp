@@ -1820,6 +1820,7 @@ bool RWTransaction::eager_commit() {
     }
 #else
     while(!self_entry->status.load(std::memory_order_acquire));//loop until committed, fixme: it seems to be a bottleneck, spent 6% of CPU
+    //self_entry->status.wait(IN_PROGRESS,std::memory_order_acquire);
 #endif //USING_COMMIt_WAIT_WORK
     //while()
     //eager clean

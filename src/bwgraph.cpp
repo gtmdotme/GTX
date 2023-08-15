@@ -121,8 +121,8 @@ SharedROTransaction BwGraph::begin_shared_ro_transaction() {
    // }
   // std::cout<<"read ts is "<<read_ts<<std::endl;
    on_openmp_transaction_start(read_ts);
-   //print_ts_table();
-   print_garbage_status();
+  // print_ts_table();
+   //print_garbage_status();
    return SharedROTransaction(*this, read_ts, txn_tables, block_manager, block_access_ts_table);
 }
 

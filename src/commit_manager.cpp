@@ -85,6 +85,7 @@ namespace bwgraph{
                     //Libin shifted their orders
                     commit_array[current_offset].txn_ptr.store(nullptr,std::memory_order_release);
                     current_txn_entry->status.store(global_write_epoch,std::memory_order_release);
+                    //current_txn_entry->status.notify_one();
                     commit_count++;
                 }
                 current_offset = (current_offset+1)%current_writer_num;

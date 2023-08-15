@@ -422,9 +422,21 @@ namespace bwgraph {
                         }*/
                         if(current_creation_ts<=txn_read_ts&&(current_invalidation_ts==0||current_invalidation_ts>txn_read_ts)){
                             current_delta_offset-=  ENTRY_DELTA_SIZE;
+#if USING_PREFETCH
+                            //another manual prefetch
+                            if(current_delta_offset>8*ENTRY_DELTA_SIZE){
+                                _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
+                            }
+#endif
                             return current_delta++;
                         }
                     }
+#if USING_PREFETCH
+                    //another manual prefetch
+                    if(current_delta_offset>8*ENTRY_DELTA_SIZE){
+                        _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
+                    }
+#endif
                     current_delta_offset-=ENTRY_DELTA_SIZE;
                     current_delta++;
                 }
