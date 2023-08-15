@@ -61,12 +61,12 @@ namespace bwgraph {
             if(read_current_block){
                 //scan the current block, return pointers as appropriate, then maybe switch to the previous block
                 while(current_delta_offset>0){
-                    if(!current_delta->valid.load(std::memory_order_acquire)){
+                    uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                    if(!original_ts)[[unlikely]]{
                         current_delta_offset-=ENTRY_DELTA_SIZE;
                         current_delta++;
                         continue;
                     }
-                    uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
 #if EDGE_DELTA_TEST
                     if(!original_ts){
                         throw LazyUpdateException();
@@ -319,12 +319,12 @@ namespace bwgraph {
             //if(__builtin_expect(read_current_block,true)){
                 //scan the current block, return pointers as appropriate, then maybe switch to the previous block
                 while(current_delta_offset>0){
-                    if(!current_delta->valid.load(std::memory_order_acquire))[[unlikely]]{
+                    uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                    if(!original_ts)[[unlikely]]{
                         current_delta_offset-=ENTRY_DELTA_SIZE;
                         current_delta++;
                         continue;
                     }
-                    uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
 #if EDGE_DELTA_TEST
                     if(!original_ts){
                         throw LazyUpdateException();

@@ -36,11 +36,11 @@ bool Cleanup_Transaction::work_on_edge_block(uint64_t block_id, uint64_t block_v
         }
         uint32_t current_head_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset);
         BaseEdgeDelta* current_head_delta = current_block->get_edge_delta(current_head_delta_offset);
-        if(!current_head_delta->valid){
+        uint64_t current_head_ts = current_head_delta->creation_ts.load();
+        if(!current_head_ts){
             BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
             return true;//someone updating the block right now
         }
-        uint64_t current_head_ts = current_head_delta->creation_ts.load();
         //if head ts is txn ID, larger timestamp: then concurrent txns wrote to the block, we are safe. If head ts is abort, concurrent txn will retry, also safe
         if(current_head_ts>=read_timestamp){
             BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
@@ -89,10 +89,10 @@ void Cleanup_Transaction::consolidation(bwgraph::BwLabelEntry *current_label_ent
 #endif
     BlockStateVersionProtectionScheme::install_shared_state(EdgeDeltaBlockState::CONSOLIDATION,current_label_entry);
     BaseEdgeDelta* current_delta = current_block->get_edge_delta(original_delta_offset);
-    if(!current_delta->valid){
+    auto current_head_ts = current_delta->creation_ts.load();
+    if(!current_head_ts){
         throw std::runtime_error("error, under mutex state all installed deltas should be valid");
     }
-    auto current_head_ts = current_delta->creation_ts.load();
     if(current_head_ts>=read_timestamp){
         //good block, just return
         BlockStateVersionProtectionScheme::install_shared_state(EdgeDeltaBlockState::NORMAL,current_label_entry);
@@ -110,10 +110,10 @@ void Cleanup_Transaction::consolidation(bwgraph::BwLabelEntry *current_label_ent
     size_t aborted_delta_count =0;
     while(original_delta_offset>0){
         //should there be no invalid deltas
-        if(!current_delta->valid.load()){
+        timestamp_t original_ts = current_delta->creation_ts.load();
+        if(!original_ts){
             throw std::runtime_error("all writer transactions should already installed their deltas");
         }
-        timestamp_t original_ts = current_delta->creation_ts.load();
         //do lazy update if possible
         if(is_txn_id(original_ts)){
             uint64_t status = 0;
@@ -497,7 +497,7 @@ void Cleanup_Transaction::force_to_consolidation(bwgraph::BwLabelEntry *current_
 #endif
     BlockStateVersionProtectionScheme::install_shared_state(EdgeDeltaBlockState::CONSOLIDATION,current_label_entry);
     BaseEdgeDelta* current_delta = current_block->get_edge_delta(original_delta_offset);
-    if(!current_delta->valid){
+    if(!current_delta->creation_ts.load()){
         throw std::runtime_error("error, under mutex state all installed deltas should be valid");
     }
    // auto current_head_ts = current_delta->creation_ts.load();
@@ -512,11 +512,11 @@ void Cleanup_Transaction::force_to_consolidation(bwgraph::BwLabelEntry *current_
     size_t previous_version_count =0;
     size_t aborted_delta_count =0;
     while(original_delta_offset>0){
+        timestamp_t original_ts = current_delta->creation_ts.load();
         //should there be no invalid deltas
-        if(!current_delta->valid.load()){
+        if(!original_ts){
             throw std::runtime_error("all writer transactions should already installed their deltas");
         }
-        timestamp_t original_ts = current_delta->creation_ts.load();
         //do lazy update if possible
         if(is_txn_id(original_ts)){
             uint64_t status = 0;

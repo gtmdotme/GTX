@@ -578,10 +578,10 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     std::set<delta_chain_id_t> to_check_delta_chains;
     while(original_delta_offset>0){
         //should there be no invalid deltas
-        if(!current_delta->valid.load()){
+        timestamp_t original_ts = current_delta->creation_ts.load();
+        if(!original_ts){
             throw std::runtime_error("all writer transactions should already installed their deltas");
         }
-        timestamp_t original_ts = current_delta->creation_ts.load();
         //do lazy update if possible
         if(is_txn_id(original_ts)){
             uint64_t status = 0;
@@ -894,10 +894,10 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
     std::set<delta_chain_id_t> to_check_delta_chains;
     while(original_delta_offset>0){
         //should there be no invalid deltas
-        if(!current_delta->valid.load(std::memory_order_acquire)){
+        timestamp_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+        if(!original_ts){
             throw std::runtime_error("all writer transactions should already installed their deltas");
         }
-        timestamp_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
         //do lazy update if possible
         if(is_txn_id(original_ts)){
             uint64_t status = 0;

@@ -139,12 +139,13 @@ namespace bwgraph{
                 if(current_delta_offset==0){
                     throw DeltaChainReclaimException();
                 }
-                if(!current_delta->valid.load(std::memory_order_acquire)){
+                timestamp_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                if(!original_ts){
                     current_delta++;
                     current_delta_offset-=ENTRY_DELTA_SIZE;
                     continue;
                 }
-                if(current_delta->creation_ts.load(std::memory_order_acquire)==txn_id){
+                if(original_ts==txn_id){
                     delta_chain_id_t delta_chain_id = calculate_owner_delta_chain_id(current_delta->toID,delta_chain_num);
                     auto emplace_result = settled_delta_chains.emplace(delta_chain_id);
                     if(emplace_result.second){
@@ -264,13 +265,14 @@ namespace bwgraph{
                 uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_block_offset);
                 auto current_delta = current_block->get_edge_delta(current_delta_offset);
                 while(current_delta_offset>0){
-                    if(!current_delta->valid.load(std::memory_order_acquire)){
+                    auto original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                    if(!original_ts){
                         current_delta++;
                         current_delta_offset-=ENTRY_DELTA_SIZE;
                         continue;
                     }
                     //todo:: also lazy update for others?
-                    if(current_delta->creation_ts.load(std::memory_order_acquire)==txn_id){
+                    if(original_ts==txn_id){
 #if EDGE_DELTA_TEST
                         current_delta->eager_abort(txn_id);
 #else

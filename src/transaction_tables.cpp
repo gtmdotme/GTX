@@ -27,8 +27,8 @@ namespace bwgraph{
         uint32_t current_delta_offset = static_cast<uint32_t>(current_combined_offset&SIZE2MASK);
         BaseEdgeDelta* current_delta = current_edge_delta_block->get_edge_delta(current_delta_offset);
         while(current_delta_offset>0){
-            if(current_delta->valid.load(std::memory_order_acquire)){
-                uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+            uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+            if(original_ts)[[likely]]{
                 if(is_txn_id(original_ts)){
                     uint64_t status =0;
                     if(txn_tables->get_status(original_ts,status)){
@@ -81,8 +81,8 @@ namespace bwgraph{
         BaseEdgeDelta* current_delta = current_edge_delta_block->get_edge_delta(current_delta_offset);
         int32_t found =0;
         while(current_delta_offset>0){
-            if(current_delta->valid.load(std::memory_order_acquire)){
-                uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+            uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+            if(original_ts)[[likely]]{
                 if(original_ts==txn_id){
                     found++;
                 }
