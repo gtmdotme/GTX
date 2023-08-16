@@ -598,7 +598,12 @@ namespace bwgraph{
                 throw std::runtime_error("for debug, too large delta");
             }*/
             uint32_t block_size = current_block->get_size();
-            uint64_t original_block_offset = current_block->allocate_space_for_new_delta(data_size);
+            uint64_t original_block_offset;
+            if(data_size<=16){
+                original_block_offset = current_block->allocate_space_for_new_delta(0);
+            }else{
+                original_block_offset = current_block->allocate_space_for_new_delta(data_size);
+            }
 #if EDGE_DELTA_TEST
             uint64_t current_new_block_offset = current_block->get_current_offset();
             if(original_block_offset>=current_new_block_offset){
@@ -607,7 +612,10 @@ namespace bwgraph{
 #endif
             uint32_t original_data_offset = static_cast<uint32_t>(original_block_offset>>32);
             uint32_t original_delta_offset = static_cast<uint32_t>(original_block_offset&SIZE2MASK);
-            uint32_t new_data_offset = original_data_offset+data_size;
+            uint32_t new_data_offset = original_data_offset;
+            if(data_size>16){
+                new_data_offset+=data_size;
+            }
             uint32_t new_delta_offset = original_delta_offset+ENTRY_DELTA_SIZE;
             current_data_offset = original_data_offset;//grow from left to right;
             current_delta_offset = new_delta_offset; //grow from right to left
@@ -616,7 +624,7 @@ namespace bwgraph{
                 throw std::runtime_error("for debug, too large delta 2");
             }*/
 #endif
-            if((new_delta_offset+new_data_offset)>block_size){
+            if((new_delta_offset+new_data_offset)>block_size)[[unlikely]]{
                 if(original_delta_offset+original_data_offset<=block_size){
                     return EdgeDeltaInstallResult::CAUSE_OVERFLOW;
                 }else{

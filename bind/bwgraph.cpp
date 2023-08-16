@@ -444,7 +444,12 @@ vertex_t EdgeDeltaIterator::dst_id() const {
 }
 
 std::string_view EdgeDeltaIterator::edge_delta_data() const {
-    return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
+    //return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
+    if(current_delta->data_length<=16){
+        return std::string_view (current_delta->data, current_delta->data_length);
+    }else{
+        return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
+    }
 }
 
 //simple edge iterator
@@ -472,7 +477,11 @@ vertex_t SimpleEdgeDeltaIterator::dst_id() const {
 }
 
 std::string_view SimpleEdgeDeltaIterator::edge_delta_data() const {
-    return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
+    if(current_delta->data_length<=16){
+        return std::string_view (current_delta->data, current_delta->data_length);
+    }else{
+        return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
+    }
 }
 
 StaticEdgeDeltaIterator::StaticEdgeDeltaIterator(std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
@@ -493,5 +502,9 @@ vertex_t StaticEdgeDeltaIterator::dst_id() const {
 }
 
 std::string_view StaticEdgeDeltaIterator::edge_delta_data() const {
-    return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
+    if(current_delta->data_length<=16){
+        return std::string_view (current_delta->data, current_delta->data_length);
+    }else{
+        return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
+    }
 }

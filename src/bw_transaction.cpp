@@ -9,6 +9,7 @@ using namespace bwgraph;
 //pessimistic mode
 #if USING_PESSIMISTIC_MODE
 //todo:: check if we should care about insert vs. update
+//fixme:: we should not use this function
 Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label_t label, std::string_view edge_data){
     //locate the vertex;
   /*  auto& vertex_index_entry = graph.get_vertex_index_entry(src);
@@ -152,6 +153,9 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
     }
 }
 //added tons of likely or unlikely
+/*
+ * create an edge delta as either insert or update
+ */
 Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
                                                        bwgraph::label_t label, std::string_view edge_data) {
     BwLabelEntry* target_label_entry =writer_access_label(src,label);
@@ -215,10 +219,10 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
             }
 #else
             auto lock_result = current_block->simple_set_protection_on_delta_chain(target_delta_chain_id,&lazy_update_records,read_timestamp);
-            if(lock_result==Delta_Chain_Lock_Response::CONFLICT){
+            if(lock_result==Delta_Chain_Lock_Response::CONFLICT)[[unlikely]]{
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 return Txn_Operation_Response::FAIL; //abort on write-write conflict
-            }else if(lock_result == Delta_Chain_Lock_Response::UNCLEAR){
+            }else if(lock_result == Delta_Chain_Lock_Response::UNCLEAR)[[unlikely]]{
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 //   std::cout<<"3"<<std::endl;
                 return Txn_Operation_Response::WRITER_WAIT;
@@ -305,6 +309,7 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
     }
 }
 
+//fixme:: unchecked functions should not be called
 Txn_Operation_Response
 RWTransaction::delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry =writer_access_label(src,label);
@@ -423,13 +428,13 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
     //calculate block id
     uint64_t block_id = generate_block_id(src,label);
     //enter the block protection first
-    if(BlockStateVersionProtectionScheme::writer_access_block(thread_id,block_id,target_label_entry,block_access_ts_table)){
-        if(target_label_entry->block_ptr==0){
+    if(BlockStateVersionProtectionScheme::writer_access_block(thread_id,block_id,target_label_entry,block_access_ts_table))[[likely]]{
+        if(target_label_entry->block_ptr==0)[[unlikely]]{
             throw GraphNullPointerException();
         }
         auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
         //if the block is already overflow, return and wait
-        if(current_block->already_overflow()){
+        if(current_block->already_overflow())[[unlikely]]{
             BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
             return Txn_Operation_Response::WRITER_WAIT;
         }
@@ -474,17 +479,17 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
             }
 #else
             auto lock_result = current_block->simple_set_protection_on_delta_chain(target_delta_chain_id,&lazy_update_records,read_timestamp);
-            if(lock_result==Delta_Chain_Lock_Response::CONFLICT){
+            if(lock_result==Delta_Chain_Lock_Response::CONFLICT)[[unlikely]]{
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 return Txn_Operation_Response::FAIL; //abort on write-write conflict
-            }else if(lock_result == Delta_Chain_Lock_Response::UNCLEAR){
+            }else if(lock_result == Delta_Chain_Lock_Response::UNCLEAR)[[unlikely]]{
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 return Txn_Operation_Response::WRITER_WAIT;
             }
 #endif //LAZY_LOCKING
             current_delta_chain_head_offset = delta_chains_index->at(target_delta_chain_id).get_raw_offset();
             auto allocate_delta_result = allocate_delta(current_block, 0);
-            if(allocate_delta_result==EdgeDeltaInstallResult::SUCCESS){
+            if(allocate_delta_result==EdgeDeltaInstallResult::SUCCESS)[[likely]]{
                 uint32_t previous_version_offset = 0;
                 if(current_delta_chain_head_offset)
                     previous_version_offset = current_block->fetch_previous_version_offset(dst,current_delta_chain_head_offset,local_txn_id,lazy_update_records);
@@ -518,7 +523,7 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
         }else{//the current transaction already locks the delta chain
             //todo: check if this part can be merged together with the previous part
             auto allocate_delta_result = allocate_delta(current_block,0);
-            if(allocate_delta_result==EdgeDeltaInstallResult::SUCCESS){
+            if(allocate_delta_result==EdgeDeltaInstallResult::SUCCESS)[[likely]]{
                 uint32_t previous_version_offset = current_block->fetch_previous_version_offset(dst,current_delta_chain_head_offset,local_txn_id,lazy_update_records);
                 if(previous_version_offset){
                     current_block->checked_append_edge_delta(dst,local_txn_id,EdgeDeltaType::DELETE_DELTA, nullptr,0,current_delta_chain_head_offset,previous_version_offset,current_delta_offset,current_data_offset);
@@ -548,7 +553,7 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
         return Txn_Operation_Response::WRITER_WAIT;
     }
 }
-
+//fixme:: unchecked functions should not be called
 void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, EdgeDeltaBlockHeader* current_block, uint64_t block_id) {
     //std::cout<<"consolidation starts"<<std::endl;
     BlockStateVersionProtectionScheme::install_exclusive_state(EdgeDeltaBlockState::OVERFLOW,thread_id,block_id,current_label_entry,block_access_ts_table);
@@ -864,6 +869,7 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
 }
 
+//revise size calculation and read
 void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_entry,
                                           bwgraph::EdgeDeltaBlockHeader *current_block, uint64_t block_id) {
     //std::cout<<"consolidation starts"<<std::endl;
@@ -901,7 +907,7 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
         //do lazy update if possible
         if(is_txn_id(original_ts)){
             uint64_t status = 0;
-            if(txn_tables.get_status(original_ts,status)){
+            if(txn_tables.get_status(original_ts,status))[[likely]]{
                 if(status == IN_PROGRESS){
                     //do nothing
                 }else{
@@ -927,7 +933,11 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
         if(is_txn_id(original_ts)){
             auto in_progress_txn_deltas_emplace_result = in_progress_delta_per_txn.try_emplace(original_ts, std::vector<uint32_t>());
             in_progress_txn_deltas_emplace_result.first->second.emplace_back(original_delta_offset);
-            data_size+=current_delta->data_length+ENTRY_DELTA_SIZE;
+            //data_size+=current_delta->data_length+ENTRY_DELTA_SIZE;
+            data_size+=ENTRY_DELTA_SIZE;
+            if(current_delta->data_length>16){
+                data_size+=current_delta->data_length;
+            }
             to_check_delta_chains.emplace(calculate_owner_delta_chain_id(current_delta->toID, current_delta_chain_num));
         }else if(original_ts!=ABORT){
             //skip committed delete deltas
@@ -938,7 +948,10 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                 if(latest_version_emplace_result.second){
                     edge_latest_version_offsets.emplace_back(original_delta_offset);
                     largest_creation_ts = (largest_creation_ts>=original_ts)? largest_creation_ts:original_ts;
-                    data_size+=current_delta->data_length+ENTRY_DELTA_SIZE;
+                    data_size+=ENTRY_DELTA_SIZE;
+                    if(current_delta->data_length>16){
+                        data_size+= current_delta->data_length;
+                    }
                 }else{
                     if(!current_delta->invalidate_ts){
                         throw LazyUpdateException();
@@ -947,8 +960,8 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                 }
             }else{
                 //still need to count delete delta as latest delta
-                vertex_t toID = current_delta->toID;
-                edge_latest_versions_records.emplace(toID);
+                //vertex_t toID = current_delta->toID;
+                edge_latest_versions_records.emplace(current_delta->toID);
             }
         }else{
             //do nothing, can fully skip aborted deltas
@@ -981,17 +994,22 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
     int64_t signed_edge_last_version_size = static_cast<int64_t>(edge_latest_version_offsets.size());
     for(int64_t i = (signed_edge_last_version_size-1); i>=0; i--){
         current_delta = current_block->get_edge_delta(edge_latest_version_offsets.at(i));
-        if(is_txn_id(current_delta->creation_ts.load(std::memory_order_acquire))){
+        if(is_txn_id(current_delta->creation_ts.load(std::memory_order_acquire)))[[unlikely]]{
             throw ConsolidationException();//latest versions should all be committed deltas
         }
         //find which delta chain the latest version delta belongs to
         delta_chain_id_t target_delta_chain_id = new_block->get_delta_chain_id(current_delta->toID);
-        const char* data = current_block->get_edge_data(current_delta->data_offset);
+        char* data; //= current_block->get_edge_data(current_delta->data_offset);
+        if(current_delta->data_length<=16){
+            data = current_delta->data;
+        }else{
+            data = current_block->get_edge_data(current_delta->data_offset);
+        }
         auto& new_delta_chains_index_entry = new_delta_chains_index.at(target_delta_chain_id);
         uint32_t new_block_delta_offset = new_delta_chains_index_entry.get_offset();//if cannot be locked
         //install latest version delta
         auto consolidation_append_result = new_block->append_edge_delta(current_delta->toID,current_delta->creation_ts.load(),current_delta->delta_type,data,current_delta->data_length,new_block_delta_offset);
-        if(consolidation_append_result.first!=EdgeDeltaInstallResult::SUCCESS||!consolidation_append_result.second){
+        if(consolidation_append_result.first!=EdgeDeltaInstallResult::SUCCESS||!consolidation_append_result.second)[[unlikely]]{
             throw ConsolidationException();
         }
         new_delta_chains_index_entry.update_offset(consolidation_append_result.second);
@@ -1104,7 +1122,13 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                 }
                 //only install non-delete deltas
                 if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
-                    const char* data = current_block->get_edge_data(current_delta->data_offset);
+                    //const char* data = current_block->get_edge_data(current_delta->data_offset);
+                    char* data;
+                    if(current_delta->data_length<=16){
+                        data = current_delta->data;
+                    }else{
+                        data = current_block->get_edge_data(current_delta->data_offset);
+                    }
                     delta_chain_id_t new_delta_chain_id = new_block->get_delta_chain_id(current_delta->toID);
                     auto& new_delta_chains_index_entry = new_delta_chains_index.at(new_delta_chain_id);
                     uint32_t previous_version_offset=0;
@@ -1127,7 +1151,7 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                         throw ConsolidationException();
                     }
                     new_delta_chains_index_entry.update_offset(commit_delta_append_result.second);
-                }else{
+                }else{//need to install committed delete deltas in the new block
                     delta_chain_id_t new_delta_chain_id = new_block->get_delta_chain_id(current_delta->toID);
                     auto& new_delta_chains_index_entry = new_delta_chains_index.at(new_delta_chain_id);
                     //get potential previous version and install invalidation ts
@@ -1181,7 +1205,13 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                 throw ConsolidationException();
             }
 #endif
-            const char* data = current_block->get_edge_data(current_delta->data_offset);
+            //const char* data = current_block->get_edge_data(current_delta->data_offset);
+            char* data;
+            if(current_delta->data_length<=16){
+                data = current_delta->data;
+            }else{
+                data = current_block->get_edge_data(current_delta->data_offset);
+            }
             delta_chain_id_t delta_chain_id = new_block->get_delta_chain_id(current_delta->toID);
             uint32_t previous_version_offset = 0;
             if(current_delta->delta_type!=EdgeDeltaType::INSERT_DELTA){
@@ -1235,7 +1265,12 @@ RWTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *prev
             uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
             //abort and txn id are both quite large
             if(original_ts<=read_timestamp){
-                return std::string_view (previous_block->get_edge_data(current_delta->data_offset),current_delta->data_length);
+                //return std::string_view (previous_block->get_edge_data(current_delta->data_offset),current_delta->data_length);
+                if(current_delta->data_length<=16){
+                    return std::string_view (current_delta->get_data(),current_delta->data_length);
+                }else{
+                    return std::string_view (previous_block->get_edge_data(current_delta->data_offset),current_delta->data_length);
+                }
             }
         }
         current_delta ++;
@@ -1294,7 +1329,13 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
                 throw TransactionReadException();
             }
 #endif
-            char* data = current_block->get_edge_data(target_delta->data_offset);
+            //char* data = current_block->get_edge_data(target_delta->data_offset);
+            char* data;
+            if(target_delta->data_length<=16){
+                data = target_delta->data;
+            }else{
+                data = current_block->get_edge_data(target_delta->data_offset);
+            }
             BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
             return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS, std::string_view(data,target_delta->data_length));
         }else{
@@ -1313,11 +1354,13 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
                         target_delta = current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
                     }
                 }
-                if(!target_delta){
-                    BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                    return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,std::string());
-                }else{
-                    char* data = current_block->get_edge_data(target_delta->data_offset);
+                if(target_delta)[[likely]]{
+                    char* data;
+                    if(target_delta->data_length<=16){
+                        data = target_delta->data;
+                    }else{
+                        data = current_block->get_edge_data(target_delta->data_offset);
+                    }
 #if EDGE_DELTA_TEST
                     if(target_delta->toID!=dst){
                         throw TransactionReadException();
@@ -1325,6 +1368,9 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
 #endif
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                     return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS, std::string_view(data,target_delta->data_length));
+                }else{
+                    BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                    return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,std::string());
                 }
             }else{
                 if(current_block->get_previous_ptr()){
@@ -2131,11 +2177,13 @@ ROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
                 }
             }
             //BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records);
-            if(!target_delta){
-                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,std::string());
-            }else{
-                char* data = current_block->get_edge_data(target_delta->data_offset);
+            if(!target_delta)[[likely]]{
+                char* data;
+                if(target_delta->data_length<=16){
+                    data= target_delta->data;
+                }else{
+                    data = current_block->get_edge_data(target_delta->data_offset);
+                }
 #if EDGE_DELTA_TEST
                 if(target_delta->toID!=dst){
                     throw TransactionReadException();
@@ -2143,6 +2191,9 @@ ROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
 #endif
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS, std::string_view(data,target_delta->data_length));
+            }else{
+                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,std::string());
             }
 
         }else{
@@ -2269,7 +2320,11 @@ ROTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *prev
             uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
             //abort and txn id are both quite large
             if(original_ts<=read_timestamp){
-                return std::string_view (previous_block->get_edge_data(current_delta->data_offset),current_delta->data_length);
+                if(current_delta->data_length<=16){
+                    return std::string_view (current_delta->data,current_delta->data_length);
+                }else{
+                    return std::string_view (previous_block->get_edge_data(current_delta->data_offset),current_delta->data_length);
+                }
             }
         }
         current_delta ++;
@@ -2294,7 +2349,12 @@ SharedROTransaction::static_get_edge(bwgraph::vertex_t src, bwgraph::vertex_t ds
     if(!target_delta){
         return std::string_view();
     }else{
-        char* data = current_block->get_edge_data(target_delta->data_offset);
+        char* data;
+        if(target_delta->data_length<=16){
+            data = target_delta->data;
+        }else{
+            data = current_block->get_edge_data(target_delta->data_offset);
+        }
 #if EDGE_DELTA_TEST
         if(target_delta->toID!=dst){
                     throw TransactionReadException();
@@ -2465,11 +2525,12 @@ SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgr
             //BaseEdgeDelta* target_delta = current_block->get_edge_delta(offset);
             BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp, thread_specific_lazy_update_records.local());
             if(!target_delta){
-                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                on_operation_finish();
-                return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,std::string());
-            }else{
-                char* data = current_block->get_edge_data(target_delta->data_offset);
+                char* data ;
+                if(target_delta->data_length<=16){
+                    data = target_delta->data;
+                }else{
+                    data = current_block->get_edge_data(target_delta->data_offset);
+                }
 #if EDGE_DELTA_TEST
                 if(target_delta->toID!=dst){
                     throw TransactionReadException();
@@ -2478,6 +2539,10 @@ SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgr
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 on_operation_finish();
                 return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS, std::string_view(data,target_delta->data_length));
+            }else{
+                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                on_operation_finish();
+                return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,std::string());
             }
         }
     }else{
@@ -2521,11 +2586,12 @@ SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgr
             //BaseEdgeDelta* target_delta = current_block->get_edge_delta(offset);
             BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp, thread_specific_lazy_update_records.local());
             if(!target_delta){
-                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                on_operation_finish(thread_id);
-                return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,std::string());
-            }else{
-                char* data = current_block->get_edge_data(target_delta->data_offset);
+                char* data;
+                if(target_delta->data_length<=16){
+                    data = target_delta->data;
+                }else{
+                    data = current_block->get_edge_data(target_delta->data_offset);
+                }
 #if EDGE_DELTA_TEST
                 if(target_delta->toID!=dst){
                     throw TransactionReadException();
@@ -2534,6 +2600,10 @@ SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgr
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 on_operation_finish(thread_id);
                 return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS, std::string_view(data,target_delta->data_length));
+            }else{
+                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                on_operation_finish(thread_id);
+                return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,std::string());
             }
         }
     }else{
@@ -2660,7 +2730,11 @@ std::string_view SharedROTransaction::scan_previous_block_find_edge(bwgraph::Edg
             uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
             //abort and txn id are both quite large
             if(original_ts<=read_timestamp){
-                return std::string_view (previous_block->get_edge_data(current_delta->data_offset),current_delta->data_length);
+                if(current_delta->data_length<=16){
+                    return std::string_view (current_delta->data,current_delta->data_length);
+                }else{
+                    return std::string_view (previous_block->get_edge_data(current_delta->data_offset),current_delta->data_length);
+                }
             }
         }
         current_delta ++;

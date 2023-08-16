@@ -185,7 +185,11 @@ void BwGraph::execute_manual_delta_block_checking(bwgraph::vertex_t vid) {
         uint32_t current_delta_offset = static_cast<uint32_t>(current_offsets&SIZE2MASK);
         BaseEdgeDelta* current_delta = current_block->get_edge_delta(current_delta_offset);
         while(current_delta_offset){
-            total_size+=current_delta->data_length+ENTRY_DELTA_SIZE;
+            //total_size+=current_delta->data_length+ENTRY_DELTA_SIZE;
+            total_size+=ENTRY_DELTA_SIZE;
+            if(current_delta->data_length>16){
+                total_size+=current_delta->data_length;
+            }
             if(is_txn_id((current_delta->creation_ts.load()))){
                 throw LazyUpdateException();
             }else if(current_delta->creation_ts!=ABORT){

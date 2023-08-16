@@ -96,7 +96,7 @@ namespace bwgraph {
             }
 #else
             current_offset &= UNLOCK_MASK;
-            delta_offset.store(current_offset, std::memory_order_acquire);
+            delta_offset.store(current_offset, std::memory_order_release);
 #endif
         }
 
@@ -149,7 +149,7 @@ namespace bwgraph {
 #endif
         }
         inline bool valid(){
-            return creation_ts.load(std::memory_order_release)!=0;
+            return creation_ts.load(std::memory_order_acquire)!=0;
         }
         inline char* get_data(){return data;}
         void print_stats() {
@@ -1127,12 +1127,18 @@ namespace bwgraph {
             edgeDelta->toID = toID;
             edgeDelta->delta_type = type;
             edgeDelta->data_length = data_size;
-            edgeDelta->data_offset = current_data_offset;
+            if(data_size<=16){
+                for (uint32_t i = 0; i < data_size; i++) {
+                    edgeDelta->data[i] = edge_data[i];
+                }
+            }else{
+                edgeDelta->data_offset = current_data_offset;
 #if LAZY_LOCKING
-            edgeDelta->is_last_delta.store(true,std::memory_order_release);
+                edgeDelta->is_last_delta.store(true,std::memory_order_release);
 #endif
-            for (uint32_t i = 0; i < data_size; i++) {
-                (get_edge_data(current_data_offset))[i] = edge_data[i];
+                for (uint32_t i = 0; i < data_size; i++) {
+                    (get_edge_data(current_data_offset))[i] = edge_data[i];
+                }
             }
             //edgeDelta->valid.store(true, std::memory_order_release);
             //use creation ts as valid flag
@@ -1160,14 +1166,22 @@ namespace bwgraph {
                           int data_size, uint32_t previous_delta_offset) {
             //allocate space for new delta installation
             uint32_t size = get_size();
-            uint64_t originalOffset = allocate_space_for_new_delta(data_size);
+            uint64_t originalOffset = 0 ;
+            if(data_size<=16){
+                originalOffset = allocate_space_for_new_delta(0);
+            }else{
+                originalOffset = allocate_space_for_new_delta(data_size);
+            }
             uint32_t originalDataOffset = (uint32_t) (originalOffset >> 32);
             originalOffset &= SIZE2MASK;
             uint32_t originalEntryOffset = (uint32_t) originalOffset;
-            uint32_t newDataOffset = originalDataOffset + data_size;
+            uint32_t newDataOffset = originalDataOffset;
+            if(data_size>16){
+                newDataOffset += data_size;
+            }
             uint32_t newEntryOffset = originalEntryOffset + ENTRY_DELTA_SIZE;
             //ideally those code should not execute at all
-            if (newEntryOffset < originalEntryOffset || newDataOffset < originalDataOffset) {
+            if (newEntryOffset < originalEntryOffset || newDataOffset < originalDataOffset) [[unlikely]]{
                 throw new std::runtime_error("new offset is not atomically picked correctly");
             }
             if ((newDataOffset + newEntryOffset) > size) {
@@ -1183,12 +1197,19 @@ namespace bwgraph {
             edgeDelta->toID = toID;
             edgeDelta->delta_type = type;
             edgeDelta->data_length = data_size;
-            edgeDelta->data_offset = originalDataOffset;
+
 #if LAZY_LOCKING
             edgeDelta->is_last_delta = true;
 #endif
-            for (int i = 0; i < data_size; i++) {
-                (get_edge_data(originalDataOffset))[i] = edge_data[i];
+            if(data_size<=16){
+                for (int i = 0; i < data_size; i++) {
+                    edgeDelta->data[i] = edge_data[i];
+                }
+            }else{
+                edgeDelta->data_offset = originalDataOffset;
+                for (int i = 0; i < data_size; i++) {
+                    (get_edge_data(originalDataOffset))[i] = edge_data[i];
+                }
             }
             //edgeDelta->valid.store(true, std::memory_order_release);
             //use creation ts as a valid guard
@@ -1219,13 +1240,19 @@ namespace bwgraph {
             edgeDelta->toID = toID;
             edgeDelta->delta_type = type;
             edgeDelta->data_length = data_size;
-            edgeDelta->data_offset = current_data_offset;
             edgeDelta->previous_version_offset = previous_version_offset;
 #if LAZY_LOCKING
             edgeDelta->is_last_delta = true;
 #endif
-            for (uint32_t i = 0; i < data_size; i++) {
-                (get_edge_data(current_data_offset))[i] = edge_data[i];
+            if(data_size<=16){
+                for (uint32_t i = 0; i < data_size; i++) {
+                   edgeDelta->data[i] = edge_data[i];
+                }
+            }else{
+                edgeDelta->data_offset = current_data_offset;
+                for (uint32_t i = 0; i < data_size; i++) {
+                    (get_edge_data(current_data_offset))[i] = edge_data[i];
+                }
             }
             //edgeDelta->valid.store(true, std::memory_order_release);
             //use creation ts as a guard
@@ -1254,14 +1281,22 @@ namespace bwgraph {
                                   uint32_t previous_version_offset) {
             //allocate space for new delta installation
             uint32_t size = get_size();
-            uint64_t originalOffset = allocate_space_for_new_delta(data_size);
+            uint64_t originalOffset = 0;
+            if(data_size<=16){
+                originalOffset = allocate_space_for_new_delta(0);
+            }else{
+                originalOffset = allocate_space_for_new_delta(data_size);
+            }
             uint32_t originalDataOffset = (uint32_t) (originalOffset >> 32);
             originalOffset &= SIZE2MASK;
             uint32_t originalEntryOffset = (uint32_t) originalOffset;
-            uint32_t newDataOffset = originalDataOffset + data_size;
+            uint32_t newDataOffset = originalDataOffset;
+            if(data_size>16){
+                newDataOffset+= data_size;
+            }
             uint32_t newEntryOffset = originalEntryOffset + ENTRY_DELTA_SIZE;
             //ideally those code should not execute at all
-            if (newEntryOffset < originalEntryOffset || newDataOffset < originalDataOffset) {
+            if (newEntryOffset < originalEntryOffset || newDataOffset < originalDataOffset)[[unlikely]] {
                 throw new std::runtime_error("new offset is not atomically picked correctly");
             }
             if ((newDataOffset + newEntryOffset) > size) {
@@ -1277,13 +1312,19 @@ namespace bwgraph {
             edgeDelta->toID = toID;
             edgeDelta->delta_type = type;
             edgeDelta->data_length = data_size;
-            edgeDelta->data_offset = originalDataOffset;
             edgeDelta->previous_version_offset = previous_version_offset;
 #if LAZY_LOCKING
             edgeDelta->is_last_delta = true;
 #endif
-            for (uint32_t i = 0; i < data_size; i++) {
-                (get_edge_data(originalDataOffset))[i] = edge_data[i];
+            if(data_size<=16){
+                for (uint32_t i = 0; i < data_size; i++) {
+                    edgeDelta->data[i] = edge_data[i];
+                }
+            }else{
+                edgeDelta->data_offset = originalDataOffset;
+                for (uint32_t i = 0; i < data_size; i++) {
+                    (get_edge_data(originalDataOffset))[i] = edge_data[i];
+                }
             }
             //edgeDelta->valid.store(true, std::memory_order_release);
             edgeDelta->creation_ts.store(creation_ts, std::memory_order_release);//it is guaranteed a ts
