@@ -101,6 +101,17 @@ uint8_t Graph::get_openmp_worker_thread_id() {
     return graph->get_openmp_worker_thread_id();
 }
 
+void Graph::print_and_clear_txn_stats() {
+#if TRACK_COMMIT_ABORT
+    graph->print_and_clear_txn_stats();
+#endif
+#if TRACK_GARBAGE_RECORD_TIME
+    graph->get_block_manager().print_avg_alloc_time();
+    graph->get_block_manager().print_avg_free_time();
+    graph->get_block_manager().print_avg_garbage_record_time();
+#endif
+}
+
 void Graph::on_openmp_txn_start(uint64_t read_ts) {
     graph->on_openmp_transaction_start(read_ts);
 }
@@ -330,8 +341,14 @@ RWTransaction::checked_put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_
             return false;
         }
         else if(result ==bwgraph::Txn_Operation_Response::FAIL){
+#if TRACK_COMMIT_ABORT
+            txn->get_graph().register_abort();
+#endif
             throw RollbackExcept("write write conflict edge");
         }
+#if TRACK_COMMIT_ABORT
+        txn->get_graph().register_loop();
+#endif
     }
 }
 void RWTransaction::delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst) {
@@ -370,6 +387,9 @@ bool RWTransaction::checked_delete_edge(bg::vertex_t src, bg::label_t label, bg:
             return false;
         }
         else if(result ==bwgraph::Txn_Operation_Response::FAIL){
+#if TRACK_COMMIT_ABORT
+            txn->get_graph().register_abort();
+#endif
             throw RollbackExcept("write write conflict edge");
         }
     }

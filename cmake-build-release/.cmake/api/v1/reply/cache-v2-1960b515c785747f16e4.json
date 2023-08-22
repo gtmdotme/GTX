@@ -23,7 +23,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/zhou822/BwGraph_Acq_Rel/cmake-build-debug"
+			"value" : "/home/zhou822/BwGraph_Acq_Rel/cmake-build-release"
 		},
 		{
 			"name" : "BwGraph_v2_IS_TOP_LEVEL",
@@ -91,7 +91,7 @@
 				}
 			],
 			"type" : "STRING",
-			"value" : "Debug"
+			"value" : "Release"
 		},
 		{
 			"name" : "CMAKE_CACHEFILE_DIR",
@@ -103,7 +103,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/zhou822/BwGraph_Acq_Rel/cmake-build-debug"
+			"value" : "/home/zhou822/BwGraph_Acq_Rel/cmake-build-release"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -199,7 +199,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/bin/cmake"
+			"value" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/daa08baf5ffde_CLion-2023.1.5/bin/cmake/linux/x64/bin/cmake"
 		},
 		{
 			"name" : "CMAKE_CPACK_COMMAND",
@@ -211,7 +211,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/bin/cpack"
+			"value" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/daa08baf5ffde_CLion-2023.1.5/bin/cmake/linux/x64/bin/cpack"
 		},
 		{
 			"name" : "CMAKE_CTEST_COMMAND",
@@ -223,7 +223,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/bin/ctest"
+			"value" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/daa08baf5ffde_CLion-2023.1.5/bin/cmake/linux/x64/bin/ctest"
 		},
 		{
 			"name" : "CMAKE_CXX_COMPILER",
@@ -675,7 +675,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/zhou822/BwGraph_Acq_Rel/cmake-build-debug/CMakeFiles/pkgRedirects"
+			"value" : "/home/zhou822/BwGraph_Acq_Rel/cmake-build-release/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -1351,7 +1351,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/d7cdd13ba7998_CLion-2023.1.2/bin/cmake/linux/x64/share/cmake-3.25"
+			"value" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/daa08baf5ffde_CLion-2023.1.5/bin/cmake/linux/x64/share/cmake-3.25"
 		},
 		{
 			"name" : "CMAKE_SHARED_LINKER_FLAGS",
@@ -1931,7 +1931,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/zhou822/BwGraph_Acq_Rel/cmake-build-debug/doctest"
+			"value" : "/home/zhou822/BwGraph_Acq_Rel/cmake-build-release/doctest"
 		},
 		{
 			"name" : "doctest_IS_TOP_LEVEL",

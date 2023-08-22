@@ -284,6 +284,19 @@ namespace bwgraph{
         tbb::enumerable_thread_specific<size_t> local_vertex_clean_real_work_time;
         tbb::enumerable_thread_specific<size_t> txn_execution_time;
 #endif
+#if TRACK_COMMIT_ABORT
+        inline void register_commit(){commit_count.fetch_add(1,std::memory_order_acq_rel);}
+        inline void register_abort(){abort_count.fetch_add(1,std::memory_order_acq_rel);}
+        inline void register_loop(){retry_count.fetch_add(1,std::memory_order_acq_rel);}
+        void print_and_clear_txn_stats(){
+            std::cout<<"total committed txns number is "<<commit_count.load(std::memory_order_acquire)<<std::endl;
+            std::cout<<"total abort txns number is "<<abort_count.load(std::memory_order_acquire)<<std::endl;
+            std::cout<<"total retry count is "<<retry_count.load(std::memory_order_acquire)<<std::endl;
+            commit_count.store(0,std::memory_order_release);
+            abort_count.store(0,std::memory_order_release);
+            retry_count.store(0,std::memory_order_release);
+        }
+#endif
     private:
         //todo::add eager clean related functions
         void eager_consolidation_clean();
@@ -303,6 +316,11 @@ namespace bwgraph{
         tbb::enumerable_thread_specific<std::unordered_map<uint64_t, uint64_t>> to_check_blocks;
         tbb::enumerable_thread_specific<size_t> thread_local_update_count;
         uint64_t total_writer_num =0;
+#if TRACK_COMMIT_ABORT
+        std::atomic_uint64_t commit_count = 0;
+        std::atomic_uint64_t abort_count = 0;
+        std::atomic_uint64_t retry_count = 0;
+#endif
         //uint64_t total_reader_num = 0;
         friend class ROTransaction;
         friend class RWTransaction;

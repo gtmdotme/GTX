@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 #include "types.hpp"
-
+#include "graph_global.hpp"
 namespace bwgraph
 {
     class BlockManager
@@ -32,6 +32,11 @@ namespace bwgraph
                   mutex(),
                   free_blocks(std::vector<std::vector<uintptr_t>>(LARGE_BLOCK_THRESHOLD, std::vector<uintptr_t>())),
                   large_free_blocks(MAX_ORDER, std::vector<uintptr_t>())
+#if TRACK_GARBAGE_RECORD_TIME
+                  ,thread_local_garbage_record_time(0),
+                  thread_local_allocation_time(0),
+                  thread_local_free_time(0)
+#endif
         {
             if (path.empty())
             {
@@ -84,6 +89,9 @@ namespace bwgraph
 
         uintptr_t alloc(order_t order)
         {
+#if TRACK_GARBAGE_RECORD_TIME
+            auto start = std::chrono::high_resolution_clock::now();
+#endif
             if(order>MAX_ORDER){
                 throw std::runtime_error("error, too large block");
             }
@@ -120,12 +128,19 @@ namespace bwgraph
                     }
                 }
             }
-
+#if TRACK_GARBAGE_RECORD_TIME
+            auto stop = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+            thread_local_allocation_time.local()+= duration.count();
+#endif
             return pointer;
         }
 
         void free(uintptr_t block, order_t order)
         {
+#if TRACK_GARBAGE_RECORD_TIME
+            auto start = std::chrono::high_resolution_clock::now();
+#endif
             if (order < LARGE_BLOCK_THRESHOLD)
             {
                 push(free_blocks.local(), order, block);
@@ -136,6 +151,11 @@ namespace bwgraph
                 // printf("block ptr is %lu order is %c\n",block,order);
                 push(large_free_blocks, order, block);
             }
+#if TRACK_GARBAGE_RECORD_TIME
+            auto stop = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+            thread_local_free_time.local()+= duration.count();
+#endif
         }
 
         template <typename T> inline T *convert(uintptr_t block)
@@ -146,6 +166,38 @@ namespace bwgraph
             return reinterpret_cast<T *>(reinterpret_cast<char *>(data) + block);
         }
 
+#if TRACK_GARBAGE_RECORD_TIME
+        inline void record_garbage_record_time(uint64_t garbage_collect_time){
+            thread_local_garbage_record_time.local()+= garbage_collect_time;
+        }
+        inline void print_avg_garbage_record_time(){
+            uint64_t thread_num = thread_local_garbage_record_time.size();
+            uint64_t total_time = 0;
+            for(auto t : thread_local_garbage_record_time){
+                total_time+= t;
+            }
+            std::cout<<"avg garbage record time is "<<total_time/thread_num<<" us"<<std::endl;
+            thread_local_garbage_record_time.clear();
+        }
+        inline void print_avg_alloc_time(){
+            uint64_t thread_num = thread_local_allocation_time.size();
+            uint64_t total_time = 0;
+            for(auto t: thread_local_allocation_time){
+                total_time+=t;
+            }
+            std::cout<<"avg memory alloc time is "<<total_time/thread_num<<" us"<<std::endl;
+            thread_local_allocation_time.clear();
+        }
+        inline void print_avg_free_time(){
+            uint64_t thread_num = thread_local_free_time.size();
+            uint64_t total_time = 0;
+            for(auto t: thread_local_free_time){
+                total_time += t;
+            }
+            std::cout<<"avg memory free time is "<<total_time/thread_num<<" us"<<std::endl;
+            thread_local_free_time.clear();
+        }
+#endif
     private:
         const size_t capacity;
         int fd;
@@ -155,7 +207,11 @@ namespace bwgraph
         std::vector<std::vector<uintptr_t>> large_free_blocks;
         std::atomic<size_t> used_size, file_size;
         uintptr_t null_holder;
-
+#if TRACK_GARBAGE_RECORD_TIME
+        tbb::enumerable_thread_specific<uint64_t> thread_local_garbage_record_time;
+        tbb::enumerable_thread_specific<uint64_t> thread_local_allocation_time;
+        tbb::enumerable_thread_specific<uint64_t> thread_local_free_time;
+#endif
         uintptr_t pop(std::vector<std::vector<uintptr_t>> &free_block, order_t order)
         {
             uintptr_t pointer = NULLPOINTER;

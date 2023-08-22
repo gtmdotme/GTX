@@ -11,7 +11,6 @@
 #include <string>
 #include <stdexcept>
 #include <thread>
-
 namespace  bwgraph{
     class BwGraph;
     class RWTransaction;
@@ -68,12 +67,14 @@ namespace bg {
         void whole_label_graph_eager_consolidation(label_t label);
         void configure_distinct_readers_and_writers(uint64_t reader_count, uint64_t writer_count);
         void on_openmp_workloads_finish();
+        void print_and_clear_txn_stats();
         //for debug
         bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
         void print_thread_id_allocation();
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
         std::thread commit_manager_worker;
+
     };
 
     class ROTransaction{

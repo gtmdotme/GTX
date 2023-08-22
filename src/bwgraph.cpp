@@ -52,7 +52,7 @@ RWTransaction BwGraph::begin_read_write_transaction() {
     auto txn_entry =  txn_tables.get_table(worker_thread_id).put_entry(txn_id);
     auto stop_txn_entry= std::chrono::high_resolution_clock::now();
     block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
-    if(/*garbage_queues[worker_thread_id].need_collection()||*/executed_txn_count.local()==garbage_collection_transaction_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_entry_num_threshold){
+    if(/*garbage_queues[worker_thread_id].need_collection()||*/executed_txn_count.local()==garbage_collection_transaction_threshold/*||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_entry_num_threshold*/){
         auto safe_ts = block_access_ts_table.calculate_safe_ts();
         garbage_queues[worker_thread_id].free_block(safe_ts);
         executed_txn_count.local()=1;
@@ -70,7 +70,7 @@ RWTransaction BwGraph::begin_read_write_transaction() {
     local_install_txn_entry_time.local()+=install_txn_entry_time.count();
     auto garbage_collection_time = std::chrono::duration_cast<std::chrono::microseconds>(stop - stop_txn_entry);
     local_garbage_collection_time.local()+=garbage_collection_time.count();
-    return RWTransaction(*this,txn_id,read_ts,txn_entry,txn_tables,commit_manager,block_manager,garbage_queues[worker_thread_id],block_access_ts_table,recycled_vids[worker_thread_id]);
+     return RWTransaction(*this,txn_id,read_ts,txn_entry,txn_tables,commit_manager,block_manager,garbage_queues[worker_thread_id],block_access_ts_table,recycled_vids[worker_thread_id]);
 #else //TRACK_EXECUTION_TIME
     auto read_ts = commit_manager.get_current_read_ts();
     uint8_t worker_thread_id = thread_manager.get_worker_thread_id();
@@ -81,16 +81,16 @@ RWTransaction BwGraph::begin_read_write_transaction() {
 #endif
     auto txn_entry =  txn_tables.get_table(worker_thread_id).put_entry(txn_id);
     block_access_ts_table.store_current_ts(worker_thread_id,read_ts);
-#if !USING_COMMIT_WAIT_WORK
+//#if !USING_COMMIT_WAIT_WORK
 
-    if(/*garbage_queues[worker_thread_id].need_collection()||*/executed_txn_count.local()==garbage_collection_transaction_threshold||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_entry_num_threshold){
+    if(/*garbage_queues[worker_thread_id].need_collection()||*/executed_txn_count.local()==garbage_collection_transaction_threshold/*||garbage_queues[worker_thread_id].get_queue().size()>=garbage_collection_entry_num_threshold*/){
         auto safe_ts = block_access_ts_table.calculate_safe_ts();
         garbage_queues[worker_thread_id].free_block(safe_ts);
         executed_txn_count.local()=1;
     }else{
         executed_txn_count.local()++;
     }
-#endif //USING_COMMIT_WAIT_WORK
+//#endif //USING_COMMIT_WAIT_WORK
     return RWTransaction(*this,txn_id,read_ts,txn_entry,txn_tables,commit_manager,block_manager,garbage_queues[worker_thread_id],block_access_ts_table,recycled_vids[worker_thread_id]);
  /*   auto read_ts = commit_manager.get_current_read_ts();
     uint8_t worker_thread_id = thread_manager.get_worker_thread_id();

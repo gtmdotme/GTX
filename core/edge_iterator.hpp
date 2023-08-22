@@ -274,6 +274,7 @@ namespace bwgraph {
                 current_delta = current_delta_block->get_edge_delta(current_delta_offset);
             }
             else /*(txn_read_ts<current_delta_block->get_creation_time())*/{
+                block_access_ts_table->release_block_access(get_threadID(txn_id));
                /* bool found = true;
                 while(txn_read_ts<current_delta_block->get_creation_time()){
                     if(current_delta_block->get_previous_ptr()){

@@ -1853,21 +1853,24 @@ bool RWTransaction::eager_commit() {
         graph.txn_execution_time.local()+= txn_lifetime.count();
 #endif
         //std::cout<<"simple validation failed"<<std::endl;
+#if TRACK_COMMIT_ABORT
+        graph.register_abort();
+#endif
         return false;
     }
 #endif //LAZY_LOCKING
     self_entry->op_count.store(op_count,std::memory_order_release);
     commit_manager.txn_commit(thread_id,self_entry,true);//now do it simple, just wait
     batch_lazy_updates();
-#if USING_COMMIT_WAIT_WORK
-    if(!self_entry->status.load())[[likely]]{
+//#if USING_COMMIT_WAIT_WORK
+  /*  if(!self_entry->status.load())[[likely]]{
         eager_garbage_collection();
         while(!self_entry->status.load(std::memory_order_acquire));
-    }
-#else
+    }*/
+//#else
     while(!self_entry->status.load(std::memory_order_acquire));//loop until committed, fixme: it seems to be a bottleneck, spent 6% of CPU
     //self_entry->status.wait(IN_PROGRESS,std::memory_order_acquire);
-#endif //USING_COMMIt_WAIT_WORK
+//#endif //USING_COMMIt_WAIT_WORK
     //while()
     //eager clean
     for(auto it = per_block_cached_delta_chain_offsets.begin(); it!=per_block_cached_delta_chain_offsets.end();it++){
@@ -1884,6 +1887,9 @@ bool RWTransaction::eager_commit() {
     graph.local_thread_commit_time.local()+= duration.count();
     auto txn_lifetime = std::chrono::duration_cast<std::chrono::microseconds>(stop - txn_start_time);
     graph.txn_execution_time.local()+= txn_lifetime.count();
+#endif
+#if TRACK_COMMIT_ABORT
+    graph.register_commit();
 #endif
     return true;
 }
