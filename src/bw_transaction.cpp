@@ -919,7 +919,7 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                         }
 
                     }
-                    //if status == abort, must already be eager aborted
+                    //if status == abort, must already be eager aborted, eager abort is either done by that aborted txn or the other consolidation txn
 #if EDGE_DELTA_TEST
                     if(current_delta->creation_ts.load(std::memory_order_acquire)!=status){
                         throw LazyUpdateException();
@@ -953,10 +953,16 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                         data_size+= current_delta->data_length;
                     }
                 }else{
-                    if(!current_delta->invalidate_ts){
+                    auto  current_invalidaation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
+#if CONSOLIDATION_TEST
+                    if(!current_invalidaation_ts){
                         throw LazyUpdateException();
                     }
-                    largest_invalidation_ts = (largest_invalidation_ts>=current_delta->invalidate_ts.load())? largest_invalidation_ts:current_delta->invalidate_ts.load();
+#endif
+                    if(!is_txn_id(current_invalidaation_ts)){
+                        largest_invalidation_ts = (largest_invalidation_ts>=current_invalidaation_ts)? largest_invalidation_ts:current_invalidaation_ts;
+                    }
+                
                 }
             }else{
                 //still need to count delete delta as latest delta
