@@ -132,6 +132,7 @@ namespace bg {
         //read operations:
         std::string_view get_vertex(vertex_t src);
         std::string_view get_edge(vertex_t src, vertex_t dst, label_t label);
+        //bool get_edge_property(vertex_t src, vertex_t dst, label_t label,std::string_view result);
         EdgeDeltaIterator get_edges(vertex_t src, label_t label);
         SimpleEdgeDeltaIterator simple_get_edges(vertex_t src, label_t label);
         //write operations:

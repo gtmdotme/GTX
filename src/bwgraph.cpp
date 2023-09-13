@@ -296,8 +296,14 @@ void BwGraph::eager_consolidation_on_edge_delta_block(bwgraph::vertex_t vid, bwg
         target_label_entry->delta_chain_index->resize(new_block->get_delta_chain_num());
         for(int64_t i = static_cast<int64_t>(latest_versions.size()-1); i>=0; i--){
             current_delta = current_block->get_edge_delta(latest_versions.at(i));
+            char* data;
+            if(current_delta->data_length<=16){
+                data = current_delta->data;
+            }else{
+                data = current_block->get_edge_data(current_delta->data_offset);
+            }
             auto append_result = new_block->checked_append_edge_delta(current_delta->toID,current_delta->creation_ts.load(std::memory_order_acquire),
-                                                                      current_delta->delta_type,current_block->get_edge_data(current_delta->data_offset),
+                                                                      current_delta->delta_type,data,
                                                                       current_delta->data_length,target_label_entry->delta_chain_index->at(new_block->get_delta_chain_id(current_delta->toID)).get_offset(),0);
             if(append_result.first!=EdgeDeltaInstallResult::SUCCESS)[[unlikely]]{
                 throw ConsolidationException();
