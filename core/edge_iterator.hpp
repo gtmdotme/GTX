@@ -331,7 +331,7 @@ namespace bwgraph {
                         throw LazyUpdateException();
                     }
 #endif
-                    //
+                    //only prefetch is current delta is not in progress
                     if(is_txn_id(original_ts)&&original_ts!=txn_id){
                         uint64_t status=0;
                         if(txn_tables->get_status(original_ts,status))[[likely]]{
@@ -363,6 +363,70 @@ namespace bwgraph {
 #endif
                             }
                         }
+                        if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                            uint64_t current_creation_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                            uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
+                            //for debug
+                            /*  if(!current_delta->toID){
+                                  std::cout<<"error, current block is cleared"<<std::endl;
+                                  current_delta->print_stats();
+                                  throw std::runtime_error("error bad");
+                              }*/
+                            //cannot be the delta deleted by the current transaction
+                            if(current_invalidation_ts!=txn_id)[[likely]]{
+                                //visible committed delta
+                                if(current_creation_ts<=txn_read_ts&&(current_invalidation_ts==0||current_invalidation_ts>txn_read_ts)){
+                                    current_delta_offset-=  ENTRY_DELTA_SIZE;
+#if USING_PREFETCH
+                                    //__builtin_prefetch((const void*)(current_delta+1),0,0);
+                                    // __builtin_prefetch((const void*)(current_delta+2),0,0);
+                                    // _mm_prefetch((const void*)(current_delta+4),_MM_HINT_T2);
+#endif
+                                    return current_delta++;
+                                }
+                                    //visible delta by myself
+                                else if(current_creation_ts==txn_id)[[unlikely]]{
+                                    current_delta_offset-=  ENTRY_DELTA_SIZE;
+                                    return current_delta++;
+                                }
+                            }
+                        }
+                        current_delta_offset-=ENTRY_DELTA_SIZE;
+                        current_delta++;
+                    }else{
+                        if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                            uint64_t current_creation_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                            uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
+                            //for debug
+                            /*  if(!current_delta->toID){
+                                  std::cout<<"error, current block is cleared"<<std::endl;
+                                  current_delta->print_stats();
+                                  throw std::runtime_error("error bad");
+                              }*/
+                            //cannot be the delta deleted by the current transaction
+                            if(current_invalidation_ts!=txn_id)[[likely]]{
+                                //visible committed delta
+                                if(current_creation_ts<=txn_read_ts&&(current_invalidation_ts==0||current_invalidation_ts>txn_read_ts)){
+                                    current_delta_offset-=  ENTRY_DELTA_SIZE;
+#if USING_PREFETCH
+                                    //__builtin_prefetch((const void*)(current_delta+1),0,0);
+                                    // __builtin_prefetch((const void*)(current_delta+2),0,0);
+                                    // _mm_prefetch((const void*)(current_delta+4),_MM_HINT_T2);
+#endif
+                                    _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
+                                    return current_delta++;
+                                }
+                                    //visible delta by myself
+                                else if(current_creation_ts==txn_id)[[unlikely]]{
+                                    current_delta_offset-=  ENTRY_DELTA_SIZE;
+                                    _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
+                                    return current_delta++;
+                                }
+                            }
+                        }
+                        _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
+                        current_delta_offset-=ENTRY_DELTA_SIZE;
+                        current_delta++;
                     }
                    /* if(current_delta->creation_ts.load(std::memory_order_acquire)==txn_id&&current_delta->invalidate_ts.load()!=txn_id&&current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
                         current_delta_offset-=  ENTRY_DELTA_SIZE;
@@ -374,36 +438,7 @@ namespace bwgraph {
                         return current_delta++;
                     }*/
                     //check if it is non-delete delta
-                    if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
-                        uint64_t current_creation_ts = current_delta->creation_ts.load(std::memory_order_acquire);
-                        uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
-                        //for debug
-                      /*  if(!current_delta->toID){
-                            std::cout<<"error, current block is cleared"<<std::endl;
-                            current_delta->print_stats();
-                            throw std::runtime_error("error bad");
-                        }*/
-                        //cannot be the delta deleted by the current transaction
-                        if(current_invalidation_ts!=txn_id)[[likely]]{
-                            //visible committed delta
-                            if(current_creation_ts<=txn_read_ts&&(current_invalidation_ts==0||current_invalidation_ts>txn_read_ts)){
-                                current_delta_offset-=  ENTRY_DELTA_SIZE;
-#if USING_PREFETCH
-                                //__builtin_prefetch((const void*)(current_delta+1),0,0);
-                                // __builtin_prefetch((const void*)(current_delta+2),0,0);
-                               // _mm_prefetch((const void*)(current_delta+4),_MM_HINT_T2);
-#endif
-                                return current_delta++;
-                            }
-                            //visible delta by myself
-                            else if(current_creation_ts==txn_id)[[unlikely]]{
-                                current_delta_offset-=  ENTRY_DELTA_SIZE;
-                                return current_delta++;
-                            }
-                        }
-                    }
-                    current_delta_offset-=ENTRY_DELTA_SIZE;
-                    current_delta++;
+
                 }
             }else{
                 while(current_delta_offset>0){
@@ -425,18 +460,18 @@ namespace bwgraph {
                             current_delta_offset-=  ENTRY_DELTA_SIZE;
 #if USING_PREFETCH
                             //another manual prefetch
-                            if(current_delta_offset>8*ENTRY_DELTA_SIZE){
+                            //if(current_delta_offset>8*ENTRY_DELTA_SIZE){
                                 _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
-                            }
+                            //}
 #endif
                             return current_delta++;
                         }
                     }
 #if USING_PREFETCH
                     //another manual prefetch
-                    if(current_delta_offset>8*ENTRY_DELTA_SIZE){
+                    //if(current_delta_offset>8*ENTRY_DELTA_SIZE){
                         _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
-                    }
+                    //}
 #endif
                     current_delta_offset-=ENTRY_DELTA_SIZE;
                     current_delta++;

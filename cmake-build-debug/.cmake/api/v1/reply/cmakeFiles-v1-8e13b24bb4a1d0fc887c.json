@@ -850,8 +850,8 @@
 	"kind" : "cmakeFiles",
 	"paths" : 
 	{
-		"build" : "/home/zhou822/BwGraph_Mono/cmake-build-debug",
-		"source" : "/home/zhou822/BwGraph_Mono"
+		"build" : "/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug",
+		"source" : "/home/zhou822/BwGraph_Mono_Simple_Iterator"
 	},
 	"version" : 
 	{
