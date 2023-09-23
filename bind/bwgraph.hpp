@@ -21,6 +21,7 @@ namespace  bwgraph{
     class SimpleEdgeDeltaIterator;
     class StaticEdgeDeltaIterator;
     class EdgeDeltaBlockHeader;
+    class EarlyStopEdgeDeltaIterator;
 }
 namespace bg {
     using label_t = uint16_t;
@@ -35,7 +36,9 @@ namespace bg {
     class SharedROTransaction;
     class EdgeDeltaIterator;
     class SimpleEdgeDeltaIterator;
+    //class SimpleObjectEdgeDeltaIterator;
     class StaticEdgeDeltaIterator;
+    class EarlyStopEdgeDeltaIterator;
     class Graph {
     public:
         Graph(std::string block_path = "",size_t _max_block_size = 1ul << 40,
@@ -112,6 +115,9 @@ namespace bg {
         EdgeDeltaIterator get_edges(vertex_t src, label_t label,uint8_t thread_id);
         SimpleEdgeDeltaIterator simple_get_edges(vertex_t src, label_t label);
         SimpleEdgeDeltaIterator simple_get_edges(vertex_t src, label_t label,uint8_t thread_id);
+        void simple_get_edges(vertex_t src, label_t label, uint8_t thread_id, SimpleEdgeDeltaIterator& edge_iterator);
+        EarlyStopEdgeDeltaIterator early_stop_get_edges(vertex_t src, label_t label,uint8_t thread_id);
+        SimpleEdgeDeltaIterator generate_edge_delta_iterator(uint8_t thread_id);
         std::string_view static_get_vertex(vertex_t src);
         std::string_view static_get_edge(vertex_t src, vertex_t dst, label_t label);
         StaticEdgeDeltaIterator static_get_edges(vertex_t src, label_t label);
@@ -171,8 +177,10 @@ namespace bg {
         void next();
         vertex_t dst_id() const;
         std::string_view  edge_delta_data() const;
+        double edge_delta_weight() const;
+        uint64_t get_vertex_degree();
+        std::unique_ptr<bwgraph::SimpleEdgeDeltaIterator> iterator;
     private:
-        const std::unique_ptr<bwgraph::SimpleEdgeDeltaIterator> iterator;
         bwgraph::BaseEdgeDelta* current_delta;
     };
     class StaticEdgeDeltaIterator{
@@ -189,6 +197,24 @@ namespace bg {
         const std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> iterator;
         bwgraph::BaseEdgeDelta* current_delta;
     };
+    class EarlyStopEdgeDeltaIterator{
+    public:
+        EarlyStopEdgeDeltaIterator(std::unique_ptr<bwgraph::EarlyStopEdgeDeltaIterator> _iter);
+        ~EarlyStopEdgeDeltaIterator();
+
+        bool valid();
+        void close();
+        void next();
+        vertex_t dst_id() const;
+        std::string_view  edge_delta_data() const;
+    private:
+        const std::unique_ptr<bwgraph::EarlyStopEdgeDeltaIterator> iterator;
+        bwgraph::BaseEdgeDelta* current_delta;
+    };
+   /* class SimpleObjectEdgeDeltaIterator{
+        SimpleObjectEdgeDeltaIterator();
+
+    };*/
 } // bg
 
 //#endif //BWGRAPH_LIB_BWGRAPH_HPP

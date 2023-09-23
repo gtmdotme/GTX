@@ -51,4 +51,5 @@ constexpr uint8_t index_lookup_order_threshold = 12;
 #define USING_QUEUE_PREVIOUS_VERSION false
 #define TRACK_COMMIT_ABORT false
 #define TRACK_GARBAGE_RECORD_TIME false
+#define USING_SEPARATED_PREFETCH true
 //#endif //BWGRAPH_V2_GRAPH_GLOBAL_HPP

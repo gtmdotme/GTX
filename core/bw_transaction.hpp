@@ -382,8 +382,11 @@ namespace bwgraph{
         std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label,uint8_t thread_id);
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label,uint8_t thread_id);
         std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator> simple_get_edges(vertex_t src, label_t label,uint8_t thread_id);
+        Txn_Operation_Response simple_get_edges(vertex_t src, label_t label, uint8_t thread_id,std::unique_ptr<SimpleEdgeDeltaIterator>& edge_iterator);
+        std::pair<Txn_Operation_Response,EarlyStopEdgeDeltaIterator> early_stop_get_edges(vertex_t src, label_t label,uint8_t thread_id);
         std::string_view get_vertex(vertex_t src);
         std::string_view get_vertex(vertex_t src, uint8_t thread_id);
+        //uint64_t vertex_degree(vertex_t src, label_t label, std::unique_ptr<SimpleEdgeDeltaIterator>& edge_iterator);
         inline void commit(){
            /* batch_lazy_updates();
             auto& local_garbage_queue = graph.get_per_thread_garbage_queue();
@@ -428,6 +431,7 @@ namespace bwgraph{
                 local_garbage_queue.free_block(safe_ts);
             }
         }
+        SimpleEdgeDeltaIterator generate_edge_iterator(uint8_t thread_id);
         inline timestamp_t get_read_ts(){return read_timestamp;}
         inline BwGraph* get_graph(){return &graph;}
     private:

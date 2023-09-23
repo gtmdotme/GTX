@@ -5,6 +5,8 @@
 #include "bwgraph.hpp"
 #include "core/bwgraph_include.hpp"
 #include <omp.h>
+#include <charconv>
+
 using namespace bg;
 namespace impl = bwgraph;
 
@@ -240,6 +242,10 @@ SharedROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t la
     }
 }
 
+SimpleEdgeDeltaIterator SharedROTransaction::generate_edge_delta_iterator(uint8_t thread_id) {
+    return std::make_unique<impl::SimpleEdgeDeltaIterator>(txn->generate_edge_iterator(thread_id));
+}
+
 EdgeDeltaIterator SharedROTransaction::get_edges(bg::vertex_t src, bg::label_t label, uint8_t thread_id) {
     while(true){
         auto result = txn->get_edges(src,label, thread_id);
@@ -269,6 +275,26 @@ SimpleEdgeDeltaIterator SharedROTransaction::simple_get_edges(bg::vertex_t src, 
         auto result = txn->simple_get_edges(src,label,thread_id);
         if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
             return std::make_unique<impl::SimpleEdgeDeltaIterator>(result.second);
+        }
+    }
+}
+
+void SharedROTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label, uint8_t thread_id,
+                                           SimpleEdgeDeltaIterator &edge_iterator) {
+    while(true){
+        auto result = txn->simple_get_edges(src,label,thread_id,edge_iterator.iterator);
+        if(result == bwgraph::Txn_Operation_Response::SUCCESS){
+            return;
+        }
+    }
+}
+
+EarlyStopEdgeDeltaIterator
+SharedROTransaction::early_stop_get_edges(bg::vertex_t src, bg::label_t label, uint8_t thread_id) {
+    while(true){
+        auto result = txn->early_stop_get_edges(src,label,thread_id);
+        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+            return std::make_unique<impl::EarlyStopEdgeDeltaIterator>(result.second);
         }
     }
 }
@@ -496,12 +522,27 @@ vertex_t SimpleEdgeDeltaIterator::dst_id() const {
     return current_delta->toID;
 }
 
+uint64_t SimpleEdgeDeltaIterator::get_vertex_degree() {
+    return iterator->vertex_degree();
+}
+
 std::string_view SimpleEdgeDeltaIterator::edge_delta_data() const {
     if(current_delta->data_length<=16){
         return std::string_view (current_delta->data, current_delta->data_length);
     }else{
         return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
     }
+}
+
+double SimpleEdgeDeltaIterator::edge_delta_weight() const {
+   /* double* result = ;
+    if(current_delta->data_length<=16){
+       result = reinterpret_cast<double*>(current_delta->data);
+    }
+    else{
+       result = reinterpret_cast<double*>(iterator->get_data(current_delta->data_offset));
+    }*/
+    return  *reinterpret_cast<double*>(current_delta->data);
 }
 
 StaticEdgeDeltaIterator::StaticEdgeDeltaIterator(std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
@@ -522,6 +563,31 @@ vertex_t StaticEdgeDeltaIterator::dst_id() const {
 }
 
 std::string_view StaticEdgeDeltaIterator::edge_delta_data() const {
+    if(current_delta->data_length<=16){
+        return std::string_view (current_delta->data, current_delta->data_length);
+    }else{
+        return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
+    }
+}
+
+EarlyStopEdgeDeltaIterator::EarlyStopEdgeDeltaIterator(std::unique_ptr<bwgraph::EarlyStopEdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
+
+EarlyStopEdgeDeltaIterator::~EarlyStopEdgeDeltaIterator() = default;
+
+void EarlyStopEdgeDeltaIterator::close() {iterator->close();}
+
+void EarlyStopEdgeDeltaIterator::next() { current_delta = iterator->next_delta();}
+
+bool EarlyStopEdgeDeltaIterator::valid() {
+    next();
+    return current_delta!= nullptr;
+}
+
+vertex_t EarlyStopEdgeDeltaIterator::dst_id() const {
+    return current_delta->toID;
+}
+
+std::string_view EarlyStopEdgeDeltaIterator::edge_delta_data() const {
     if(current_delta->data_length<=16){
         return std::string_view (current_delta->data, current_delta->data_length);
     }else{
