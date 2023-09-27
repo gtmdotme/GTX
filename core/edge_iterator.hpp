@@ -261,7 +261,7 @@ namespace bwgraph {
     class SimpleEdgeDeltaIterator {
     public:
         SimpleEdgeDeltaIterator(){}//empty iterator
-        SimpleEdgeDeltaIterator(TxnTables* input_txn_tables,BlockManager* input_block_manager,lazy_update_map* input_lazy_map, BlockAccessTimestampTable* input_block_table,timestamp_t input_ts, uint64_t input_id):txn_tables(input_txn_tables),block_manager(input_block_manager),txn_lazy_update_records(input_lazy_map),block_access_ts_table(input_block_table),txn_read_ts(input_ts),txn_id(input_id){}
+        SimpleEdgeDeltaIterator(TxnTables* input_txn_tables,BlockManager* input_block_manager,lazy_update_map* input_lazy_map, BlockAccessTimestampTable* input_block_table,timestamp_t input_ts, uint64_t input_id):txn_read_ts(input_ts),txn_id(input_id),txn_tables(input_txn_tables),block_manager(input_block_manager),txn_lazy_update_records(input_lazy_map),block_access_ts_table(input_block_table){}
 
         void fill_new_iterator(EdgeDeltaBlockHeader* input_block,uint32_t input_offset){
             current_delta_block = input_block;
@@ -456,12 +456,10 @@ namespace bwgraph {
                                 //visible committed delta
                                 if(/*current_creation_ts*/original_ts<=txn_read_ts&&(current_invalidation_ts==0||current_invalidation_ts>txn_read_ts)){
                                     current_delta_offset-=  ENTRY_DELTA_SIZE;
-#if USING_PREFETCH
-                                    //__builtin_prefetch((const void*)(current_delta+1),0,0);
-                                    // __builtin_prefetch((const void*)(current_delta+2),0,0);
-                                    // _mm_prefetch((const void*)(current_delta+4),_MM_HINT_T2);
+#if USING_READER_PREFETCH
+                                    //if(current_delta_offset>=prefetch_offset)
+                                        _mm_prefetch((const void*)(current_delta+PREFETCH_STEP),_MM_HINT_T2);
 #endif
-                                    _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
                                     return current_delta++;
                                 }
                                     //visible delta by myself
@@ -472,8 +470,11 @@ namespace bwgraph {
                                 }*/
                            // }//txn_id
                         }
-                        _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
                         current_delta_offset-=ENTRY_DELTA_SIZE;
+#if USING_READER_PREFETCH
+                        //if(current_delta_offset>=prefetch_offset)
+                            _mm_prefetch((const void*)(current_delta+PREFETCH_STEP),_MM_HINT_T2);
+#endif
                         current_delta++;
                     }
                    /* if(current_delta->creation_ts.load(std::memory_order_acquire)==txn_id&&current_delta->invalidate_ts.load()!=txn_id&&current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
@@ -506,22 +507,18 @@ namespace bwgraph {
                         }*/
                         if(current_creation_ts<=txn_read_ts&&(current_invalidation_ts==0||current_invalidation_ts>txn_read_ts)){
                             current_delta_offset-=  ENTRY_DELTA_SIZE;
-#if USING_PREFETCH
-                            //another manual prefetch
-                            //if(current_delta_offset>8*ENTRY_DELTA_SIZE){
-                                _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
-                            //}
+#if USING_READER_PREFETCH
+                            //if(current_delta_offset>=prefetch_offset)
+                                _mm_prefetch((const void*)(current_delta+PREFETCH_STEP),_MM_HINT_T2);
 #endif
                             return current_delta++;
                         }
                     }
-#if USING_PREFETCH
-                    //another manual prefetch
-                    //if(current_delta_offset>8*ENTRY_DELTA_SIZE){
-                        _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
-                    //}
-#endif
                     current_delta_offset-=ENTRY_DELTA_SIZE;
+ #if USING_READER_PREFETCH
+                    //if(current_delta_offset>=prefetch_offset)
+                         _mm_prefetch((const void*)(current_delta+PREFETCH_STEP),_MM_HINT_T2);
+#endif                   
                     current_delta++;
                 }
             }
@@ -780,8 +777,11 @@ namespace bwgraph {
                             }*/
                             // }//txn_id
                         }
-                        _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
                         current_delta_offset-=ENTRY_DELTA_SIZE;
+#if USING_READER_PREFETCH
+                        //if(current_delta_offset>=prefetch_offset)
+                             _mm_prefetch((const void*)(current_delta+PREFETCH_STEP),_MM_HINT_T2);
+#endif
                         current_delta++;
                     }
 
@@ -806,17 +806,15 @@ namespace bwgraph {
                             edge_count++;
                         }
                     }
-#if USING_PREFETCH
-                    //another manual prefetch
-                    //if(current_delta_offset>8*ENTRY_DELTA_SIZE){
-                    _mm_prefetch((const void*)(current_delta+8),_MM_HINT_T2);
-                    //}
-#endif
                     current_delta_offset-=ENTRY_DELTA_SIZE;
+#if USING_READER_PREFETCH
+                    //if(current_delta_offset>=prefetch_offset)
+                         _mm_prefetch((const void*)(current_delta+PREFETCH_STEP),_MM_HINT_T2);
+#endif
                     current_delta++;
                 }
             }
-            close();
+          close();
           return edge_count;
         }
         inline char* get_data(uint32_t offset){

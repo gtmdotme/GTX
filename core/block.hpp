@@ -841,7 +841,90 @@ namespace bwgraph {
                 }
             }
         }
+        Delta_Chain_Lock_Response simple_set_protection_on_delta_chain(delta_chain_id_t delta_chain_id,
+                                                                       std::unordered_map<uint64_t, int32_t> *lazy_update_map_ptr,
+                                                                       uint64_t txn_read_ts, uint32_t* offset_copy) {
+            auto &target_chain_index_entry = delta_chains_index->at(delta_chain_id);
+            uint32_t latest_delta_chain_head_offset = target_chain_index_entry.get_offset();
+            //locked directly return conflict
+            if (latest_delta_chain_head_offset & LOCK_MASK) {
+                return Delta_Chain_Lock_Response::CONFLICT;
+            }
+            //unlocked and has offset
+            if (latest_delta_chain_head_offset) {
+                auto current_head_delta = get_edge_delta(latest_delta_chain_head_offset);
+                auto current_head_ts = current_head_delta->creation_ts.load(std::memory_order_acquire);
+                if (is_txn_id(current_head_ts)) {
+                    uint64_t status = 0;
+                    if (txn_tables->get_status(current_head_ts, status)) {
+                        if (status != IN_PROGRESS && status != ABORT) {
+#if CHECKED_PUT_EDGE
+                            update_previous_delta_invalidate_ts(current_head_delta->toID,
+                                                                current_head_delta->previous_version_offset, status);
+#else
+                            update_previous_delta_invalidate_ts(current_head_delta->toID,
+                                                                current_head_delta->previous_offset, status);
+#endif
 
+                            if (current_head_delta->lazy_update(current_head_ts, status)) {
+                                record_lazy_update_record(lazy_update_map_ptr, current_head_ts);
+                            }
+#if EDGE_DELTA_TEST
+                            if(current_head_delta->creation_ts.load(std::memory_order_acquire)!=status){
+                                throw LazyUpdateException();
+                            }
+#endif
+                            if (status <= txn_read_ts) {
+                                if (target_chain_index_entry.try_set_lock(latest_delta_chain_head_offset)) {
+                                    *offset_copy = latest_delta_chain_head_offset;
+                                    return Delta_Chain_Lock_Response::SUCCESS;
+                                } else {
+                                    return Delta_Chain_Lock_Response::CONFLICT;
+                                }
+                            } else {
+                                return Delta_Chain_Lock_Response::CONFLICT;
+                            }
+                        } else if (status == IN_PROGRESS) {
+                            return Delta_Chain_Lock_Response::CONFLICT;
+                        } else {
+#if EDGE_DELTA_TEST
+                            //because of eager abort, if we observe abort from txn table, either a consolidation thread or its owner transaction must lazy abort it
+                            if(current_head_delta->creation_ts.load(std::memory_order_acquire)!=ABORT){
+                                throw EagerAbortException();
+                            }
+#endif
+                            return Delta_Chain_Lock_Response::UNCLEAR;//is concurrently eager aborted, so retry the get protection
+                        }
+                    } else {
+                        return Delta_Chain_Lock_Response::UNCLEAR;//the txn entry is missing, someone else did lazy update, let's retry
+                    }
+                } else if (current_head_ts != ABORT) {
+                    if (current_head_ts <= txn_read_ts) {
+                        if (target_chain_index_entry.try_set_lock(latest_delta_chain_head_offset)) {
+                            *offset_copy = latest_delta_chain_head_offset;
+                            return Delta_Chain_Lock_Response::SUCCESS;
+                        } else {
+                            return Delta_Chain_Lock_Response::CONFLICT;
+                        }
+                    } else {
+                        return Delta_Chain_Lock_Response::CONFLICT;
+                    }
+                } else {
+                    //todo: abort should happen after the restore? so txn will never observe unlocked offset to abort deltas
+                    std::cout << "eager abort 1" << std::endl;
+                    throw EagerAbortException();
+                    //delta chain head failed during validation, so we need to retry
+                    //return Delta_Chain_Lock_Response::UNCLEAR;
+                }
+            } else {
+                if (target_chain_index_entry.try_set_lock(latest_delta_chain_head_offset)) {
+                    *offset_copy = latest_delta_chain_head_offset;
+                    return Delta_Chain_Lock_Response::SUCCESS;
+                } else {
+                    return Delta_Chain_Lock_Response::CONFLICT;
+                }
+            }
+        }
         Delta_Chain_Lock_Response
         simple_set_protection(vertex_t vid, std::unordered_map<uint64_t, int32_t> *lazy_update_map_ptr,
                               uint64_t txn_read_ts) {

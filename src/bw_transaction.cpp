@@ -218,7 +218,7 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
                 return Txn_Operation_Response::FAIL; //abort on write-write conflict
             }
 #else
-            auto lock_result = current_block->simple_set_protection_on_delta_chain(target_delta_chain_id,&lazy_update_records,read_timestamp);
+            auto lock_result = current_block->simple_set_protection_on_delta_chain(target_delta_chain_id,&lazy_update_records,read_timestamp,&current_delta_chain_head_offset);
             if(lock_result==Delta_Chain_Lock_Response::CONFLICT)[[unlikely]]{
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 return Txn_Operation_Response::FAIL; //abort on write-write conflict
@@ -228,7 +228,7 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
                 return Txn_Operation_Response::WRITER_WAIT;
             }
 #endif //LAZY_LOCKING
-            current_delta_chain_head_offset = delta_chains_index->at(target_delta_chain_id).get_raw_offset();
+            //current_delta_chain_head_offset = delta_chains_index->at(target_delta_chain_id).get_raw_offset();
             //lookup previous version:
             auto allocate_delta_result = allocate_delta(current_block, static_cast<int32_t>(edge_data.size()));
             if(allocate_delta_result==EdgeDeltaInstallResult::SUCCESS)[[likely]]{
@@ -478,7 +478,7 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
                 return Txn_Operation_Response::FAIL; //abort on write-write conflict
             }
 #else
-            auto lock_result = current_block->simple_set_protection_on_delta_chain(target_delta_chain_id,&lazy_update_records,read_timestamp);
+            auto lock_result = current_block->simple_set_protection_on_delta_chain(target_delta_chain_id,&lazy_update_records,read_timestamp,&current_delta_chain_head_offset);
             if(lock_result==Delta_Chain_Lock_Response::CONFLICT)[[unlikely]]{
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 return Txn_Operation_Response::FAIL; //abort on write-write conflict
@@ -487,7 +487,7 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
                 return Txn_Operation_Response::WRITER_WAIT;
             }
 #endif //LAZY_LOCKING
-            current_delta_chain_head_offset = delta_chains_index->at(target_delta_chain_id).get_raw_offset();
+            //current_delta_chain_head_offset = delta_chains_index->at(target_delta_chain_id).get_raw_offset();
             auto allocate_delta_result = allocate_delta(current_block, 0);
             if(allocate_delta_result==EdgeDeltaInstallResult::SUCCESS)[[likely]]{
                 uint32_t previous_version_offset = 0;
@@ -1298,7 +1298,7 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
         uint32_t offset = 0;
         //if we have cache
         if(cached_delta_offsets!=per_block_cached_delta_chain_offsets.end()){
-            if(cached_delta_offsets->second.is_outdated(target_label_entry->block_version_number.load(std::memory_order_acquire))){
+            if(cached_delta_offsets->second.is_outdated(target_label_entry->block_version_number.load(std::memory_order_acquire)))[[unlikely]]{
               /*  uint64_t current_combined_offset = current_block->get_current_offset();
                 if(current_block->is_overflow_offset(current_combined_offset)){
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
@@ -1322,10 +1322,10 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
             offset = cached_delta_offsets->second.is_edge_already_locked(dst);
         }
         //if current txn has writes in the edge delta block
-        if(offset){
+        if(offset)[[unlikely]]{
             BaseEdgeDelta* target_delta;
             if(offset<=8*ENTRY_DELTA_SIZE){
-                current_block->scan_prefetch(offset);
+                //current_block->scan_prefetch(offset);
                 target_delta = current_block->get_visible_target_using_scan(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
             }else{
                 target_delta = current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
@@ -1354,7 +1354,7 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
                 //BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
                 if(offset)[[likely]]{
                     if(offset<=8*ENTRY_DELTA_SIZE){
-                        current_block->scan_prefetch(offset);
+                        //current_block->scan_prefetch(offset);
                         target_delta = current_block->get_visible_target_using_scan(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
                     }else{
                         target_delta = current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
@@ -1379,7 +1379,7 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
                     return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,std::string());
                 }
             }else{
-                if(current_block->get_previous_ptr()){
+                if(current_block->get_previous_ptr())[[likely]]{
                     EdgeDeltaBlockHeader* previous_block = block_manager.convert<EdgeDeltaBlockHeader>(current_block->get_previous_ptr());
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);//reading previous block needs no protection, it is protected by read epoch
                     //if current block is still too old
@@ -1399,7 +1399,7 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
                     return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::SUCCESS,
                                                                               std::string_view());
                 }
-            }
+            }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
         }
     }else{
         return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::READER_WAIT,std::string_view());
@@ -2182,14 +2182,14 @@ ROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
 
             if(offset){
                 if(offset<=ENTRY_DELTA_SIZE*8){
-                    current_block->scan_prefetch(offset);
+                    //current_block->scan_prefetch(offset);
                     target_delta = current_block->get_visible_target_using_scan(offset,dst,read_timestamp,lazy_update_records);
                 }else{
                     target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records);
                 }
             }
             //BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records);
-            if(!target_delta)[[likely]]{
+            if(target_delta)[[likely]]{
                 char* data;
                 if(target_delta->data_length<=16){
                     data= target_delta->data;
@@ -2743,15 +2743,15 @@ Txn_Operation_Response
 SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label, uint8_t thread_id,
                                       std::unique_ptr<bwgraph::SimpleEdgeDeltaIterator> &edge_iterator) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
-    if(!target_label_entry){
+    if(!target_label_entry)[[unlikely]]{
         on_operation_finish(thread_id);
         return Txn_Operation_Response::SUCCESS;
     }
     auto block_id = generate_block_id(src, label);
-    if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table)){
+    if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table))[[likely]]{
         auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
         uint64_t current_combined_offset = current_block->get_current_offset();
-        if(current_block->is_overflow_offset(current_combined_offset)){
+        if(current_block->is_overflow_offset(current_combined_offset))[[unlikely]]{
             BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
             on_operation_finish(thread_id);
             return Txn_Operation_Response::READER_WAIT;
