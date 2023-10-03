@@ -170,6 +170,19 @@ std::string_view ROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg:
     }
 }
 
+double ROTransaction::get_edge_weight(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
+    double* weight = nullptr;
+    while(true){
+        auto result = txn->get_edge_weight(src,label,dst,weight);
+        if(result == bwgraph::Txn_Operation_Response::SUCCESS)[[likely]]{
+            if(weight)[[likely]]{
+                return *weight;
+            }else{
+                return std::numeric_limits<double>::signaling_NaN();
+            }
+        }
+    }
+}
 
 EdgeDeltaIterator ROTransaction::get_edges(bg::vertex_t src, bg::label_t label) {
    // std::cout<<"ro"<<std::endl;
@@ -289,15 +302,6 @@ void SharedROTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label, 
     }
 }
 
-EarlyStopEdgeDeltaIterator
-SharedROTransaction::early_stop_get_edges(bg::vertex_t src, bg::label_t label, uint8_t thread_id) {
-    while(true){
-        auto result = txn->early_stop_get_edges(src,label,thread_id);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
-            return std::make_unique<impl::EarlyStopEdgeDeltaIterator>(result.second);
-        }
-    }
-}
 
 void SharedROTransaction::print_debug_info() {
     std::cout<<"Shared RO Transaction printing debug info"<<std::endl;
@@ -570,27 +574,3 @@ std::string_view StaticEdgeDeltaIterator::edge_delta_data() const {
     }
 }
 
-EarlyStopEdgeDeltaIterator::EarlyStopEdgeDeltaIterator(std::unique_ptr<bwgraph::EarlyStopEdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
-
-EarlyStopEdgeDeltaIterator::~EarlyStopEdgeDeltaIterator() = default;
-
-void EarlyStopEdgeDeltaIterator::close() {iterator->close();}
-
-void EarlyStopEdgeDeltaIterator::next() { current_delta = iterator->next_delta();}
-
-bool EarlyStopEdgeDeltaIterator::valid() {
-    next();
-    return current_delta!= nullptr;
-}
-
-vertex_t EarlyStopEdgeDeltaIterator::dst_id() const {
-    return current_delta->toID;
-}
-
-std::string_view EarlyStopEdgeDeltaIterator::edge_delta_data() const {
-    if(current_delta->data_length<=16){
-        return std::string_view (current_delta->data, current_delta->data_length);
-    }else{
-        return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
-    }
-}

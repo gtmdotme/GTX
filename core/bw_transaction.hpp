@@ -311,6 +311,8 @@ namespace bwgraph{
         ~ROTransaction();
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label);
         std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator> simple_get_edges(vertex_t src, label_t label);
+        //specialized function for weight
+        Txn_Operation_Response get_edge_weight(vertex_t src, label_t label, vertex_t dst, double*& weight);
         std::string_view get_vertex(vertex_t src);
         inline void commit(){
             batch_lazy_updates();
@@ -349,6 +351,7 @@ namespace bwgraph{
             lazy_update_records.clear();
         }
         std::string_view scan_previous_block_find_edge(EdgeDeltaBlockHeader* previous_block, vertex_t vid);
+        void scan_previous_block_find_weight(EdgeDeltaBlockHeader* previous_block, vertex_t vid,double*& weight);
         BwGraph& graph;
         const timestamp_t read_timestamp;
         TxnTables& txn_tables;
@@ -383,7 +386,7 @@ namespace bwgraph{
         std::pair<Txn_Operation_Response,EdgeDeltaIterator> get_edges(vertex_t src, label_t label,uint8_t thread_id);
         std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator> simple_get_edges(vertex_t src, label_t label,uint8_t thread_id);
         Txn_Operation_Response simple_get_edges(vertex_t src, label_t label, uint8_t thread_id,std::unique_ptr<SimpleEdgeDeltaIterator>& edge_iterator);
-        std::pair<Txn_Operation_Response,EarlyStopEdgeDeltaIterator> early_stop_get_edges(vertex_t src, label_t label,uint8_t thread_id);
+        //std::pair<Txn_Operation_Response,EarlyStopEdgeDeltaIterator> early_stop_get_edges(vertex_t src, label_t label,uint8_t thread_id);
         std::string_view get_vertex(vertex_t src);
         std::string_view get_vertex(vertex_t src, uint8_t thread_id);
         //uint64_t vertex_degree(vertex_t src, label_t label, std::unique_ptr<SimpleEdgeDeltaIterator>& edge_iterator);
@@ -432,6 +435,7 @@ namespace bwgraph{
             }
         }
         SimpleEdgeDeltaIterator generate_edge_iterator(uint8_t thread_id);
+        StaticEdgeDeltaIterator generate_static_edge_iterator();
         inline timestamp_t get_read_ts(){return read_timestamp;}
         inline BwGraph* get_graph(){return &graph;}
     private:

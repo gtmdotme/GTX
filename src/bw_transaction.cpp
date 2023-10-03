@@ -2232,6 +2232,68 @@ ROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
     }
 }
 
+Txn_Operation_Response
+ROTransaction::get_edge_weight(bwgraph::vertex_t src, bwgraph::label_t label, bwgraph::vertex_t dst, double *&weight) {
+    BwLabelEntry* target_label_entry = reader_access_label(src,label);
+    if(!target_label_entry)[[unlikely]]{
+        return Txn_Operation_Response::SUCCESS;
+    }
+    auto block_id = generate_block_id(src,label);
+    if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table))[[likely]]{
+        auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
+        if(read_timestamp>=current_block->get_creation_time())[[likely]]{
+            auto& delta_chains_index_entry = target_label_entry->delta_chain_index->at(current_block->get_delta_chain_id(dst));
+            uint32_t offset = delta_chains_index_entry.get_raw_offset();//may be locked
+            //BaseEdgeDelta* target_delta = current_block->get_edge_delta(offset);
+            BaseEdgeDelta* target_delta = nullptr;
+
+            if(offset){
+                if(offset<=ENTRY_DELTA_SIZE*8){
+                    //current_block->scan_prefetch(offset);
+                    target_delta = current_block->get_visible_target_using_scan(offset,dst,read_timestamp,lazy_update_records);
+                }else{
+                    target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records);
+                }
+            }
+            //BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records);
+            if(target_delta)[[likely]]{
+                weight = reinterpret_cast<double*>(target_delta->data);
+#if EDGE_DELTA_TEST
+                if(target_delta->toID!=dst){
+                    throw TransactionReadException();
+                }
+#endif
+                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                return Txn_Operation_Response::SUCCESS;
+            }else{
+                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                return Txn_Operation_Response::SUCCESS;
+            }
+
+        }else{
+#if EDGE_DELTA_TEST
+            if(!current_block->get_previous_ptr()){
+                throw TransactionReadException();
+            }
+#endif
+            EdgeDeltaBlockHeader* previous_block = block_manager.convert<EdgeDeltaBlockHeader>(current_block->get_previous_ptr());
+            while(read_timestamp<previous_block->get_creation_time()){
+#if EDGE_DELTA_TEST
+                if(!previous_block->get_previous_ptr()){
+                    throw TransactionReadException();
+                }
+#endif
+                previous_block = block_manager.convert<EdgeDeltaBlockHeader>(previous_block->get_previous_ptr());
+            }
+            BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);//reading previous block needs no protection, it is protected by read epoch
+            scan_previous_block_find_weight(previous_block,dst,weight);
+            return Txn_Operation_Response::SUCCESS;
+        }
+    }else{
+        return Txn_Operation_Response::READER_WAIT;
+    }
+}
+
 std::pair<Txn_Operation_Response, EdgeDeltaIterator>
 ROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
@@ -2344,6 +2406,27 @@ ROTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *prev
     }
     return std::string_view();
 }
+
+void
+ROTransaction::scan_previous_block_find_weight(bwgraph::EdgeDeltaBlockHeader *previous_block, bwgraph::vertex_t vid,
+                                               double *&weight) {
+    uint64_t combined_offset = previous_block->get_current_offset();
+    uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(combined_offset);
+    BaseEdgeDelta* current_delta = previous_block->get_edge_delta(current_delta_offset);
+    while(current_delta_offset>0){
+        if(current_delta->toID==vid){
+            uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+            //abort and txn id are both quite large
+            if(original_ts<=read_timestamp)[[likely]]{
+                weight = reinterpret_cast<double*>(current_delta->data);
+                return;
+            }
+        }
+        current_delta ++;
+        current_delta_offset-=ENTRY_DELTA_SIZE;
+    }
+}
+
 ROTransaction::~ROTransaction() = default;
 
 SharedROTransaction::~SharedROTransaction() = default;
@@ -2380,7 +2463,9 @@ SimpleEdgeDeltaIterator SharedROTransaction::generate_edge_iterator(uint8_t thre
     return {&txn_tables,&block_manager,&thread_specific_lazy_update_records.local(),&block_access_ts_table,read_timestamp,((static_cast<uint64_t>(thread_id)<<56)|placeholder_txn_id)};
     //& thread_specific_lazy_update_records.local()
 }
+SimpleEdgeDeltaIterator SharedROTransaction::generate_static_edge_iterator(uint8_t thread_id){
 
+}
 //read operations for static graph
 StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
@@ -2765,7 +2850,7 @@ SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t la
     }
 }
 
-std::pair<Txn_Operation_Response, EarlyStopEdgeDeltaIterator>
+/*std::pair<Txn_Operation_Response, EarlyStopEdgeDeltaIterator>
 SharedROTransaction::early_stop_get_edges(bwgraph::vertex_t src, bwgraph::label_t label, uint8_t thread_id) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
@@ -2785,15 +2870,14 @@ SharedROTransaction::early_stop_get_edges(bwgraph::vertex_t src, bwgraph::label_
         }
         //block protection released by iterator close
         on_operation_finish(thread_id);
-       /* return std::pair<Txn_Operation_Response,SimpleEdgeDeltaIterator>(Txn_Operation_Response::SUCCESS,SimpleEdgeDeltaIterator(current_block,read_timestamp,((static_cast<uint64_t>(thread_id)<<56)|placeholder_txn_id),EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset),
-                                                                                                                                 graph,& thread_specific_lazy_update_records.local(),&block_access_ts_table));*/
+
         return {Txn_Operation_Response::SUCCESS, EarlyStopEdgeDeltaIterator(current_block,read_timestamp,((static_cast<uint64_t>(thread_id)<<56)|placeholder_txn_id),
                                                                             graph,& thread_specific_lazy_update_records.local(),&block_access_ts_table,target_label_entry->delta_chain_index)};
     }else{
         on_operation_finish(thread_id);
         return {Txn_Operation_Response::READER_WAIT,EarlyStopEdgeDeltaIterator()};
     }
-}
+}*/
 
 std::string_view SharedROTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *previous_block,
                                                                     bwgraph::vertex_t vid) {

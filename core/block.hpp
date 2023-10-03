@@ -278,16 +278,18 @@ namespace bwgraph {
                 throw DeltaChainCorruptionException();
             }
 #endif //EDGE_DELTA_TEST
-                if (current_delta->creation_ts.load(std::memory_order_acquire) == txn_id &&
+
+                uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                if (original_ts == txn_id &&
                     current_delta->toID == dst) {
                     return current_delta;
                 }//else if(current_delta->creation_ts==txn_id){continue}
-                uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                 if (is_txn_id(original_ts)) {
                     uint64_t status = 0;
-                    if (txn_tables->get_status(original_ts, status)) {
+                    if (txn_tables->get_status(original_ts, status))[[likely]] {
                         if (status == IN_PROGRESS) {
-                            offset = current_delta->previous_offset;
+                            offset -= ENTRY_DELTA_SIZE;
+                            current_delta++;
                             continue;
                         } else {
                             if (status != ABORT) {
@@ -316,7 +318,10 @@ namespace bwgraph {
                             throw LazyUpdateException();
                         }
 #endif
+                            original_ts = status;
                         }
+                    }else{
+                        original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                     }
                 }
 #if EDGE_DELTA_TEST
@@ -325,7 +330,7 @@ namespace bwgraph {
             }
 #endif
                 if (current_delta->toID ==dst) {//aborted delta should not be in the secondary index, only special case is when there is a system crash
-                    if (current_delta->creation_ts.load(std::memory_order_acquire) <= txn_read_ts)
+                    if (/*current_delta->creation_ts.load(std::memory_order_acquire)*/original_ts <= txn_read_ts)
                         return current_delta;
                 }
                 offset-=ENTRY_DELTA_SIZE;
@@ -346,15 +351,16 @@ namespace bwgraph {
                 }
 #endif
                 uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
-                if (is_txn_id(original_ts)) {
+                if (is_txn_id(original_ts))[[unlikely]] {
                     uint64_t status = 0;
-                    if (txn_tables->get_status(original_ts, status)) {
-                        if (status == IN_PROGRESS) {
-                            offset = current_delta->previous_offset;
-                            continue;
+                    if (txn_tables->get_status(original_ts, status)) [[likely]]{
+                        if (status == IN_PROGRESS)[[likely]] {
+                           offset -=ENTRY_DELTA_SIZE;
+                           current_delta++;
+                           continue;
                         } else {
                             //status can still be abort because of eager abort from validation txns
-                            if (status != ABORT) {
+                            if (status != ABORT) [[likely]]{
                                 //move it before lazy update to enforce serialization
 #if CHECKED_PUT_EDGE
                                 update_previous_delta_invalidate_ts(current_delta->toID,
@@ -370,18 +376,22 @@ namespace bwgraph {
                                         release_protection(current_delta->toID);
                                     }
 #endif
-                                    auto result = lazy_update_records.try_emplace(original_ts, 1);
+                                    /*auto result = lazy_update_records.try_emplace(original_ts, 1);
                                     if (!result.second) {
                                         result.first->second++;
-                                    }
+                                    }*/
+                                    txn_tables->reduce_op_count(original_ts,1);
                                 }
                             }
+                            original_ts = status;
 #if EDGE_DELTA_TEST
                             if(current_delta->creation_ts.load(std::memory_order_acquire)!=status){
                                 throw LazyUpdateException();
                             }
 #endif
                         }
+                    }else{
+                        original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                     }
                 }
 #if EDGE_DELTA_TEST
@@ -392,7 +402,7 @@ namespace bwgraph {
 #if CHECKED_PUT_EDGE
                 if (current_delta->toID ==
                     dst) {//aborted delta should not be in the secondary index, only special case is when there is a system crash
-                    if (current_delta->creation_ts.load(std::memory_order_acquire) <= txn_read_ts)
+                    if (/*current_delta->creation_ts.load(std::memory_order_acquire)*/original_ts <= txn_read_ts)
                         return current_delta;
                 }
 #else
@@ -503,15 +513,15 @@ namespace bwgraph {
                 }
 #endif
                 uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
-                if (is_txn_id(original_ts)) {
+                if (is_txn_id(original_ts))[[unlikely]] {
                     uint64_t status = 0;
-                    if (txn_tables->get_status(original_ts, status)) {
-                        if (status == IN_PROGRESS) {
+                    if (txn_tables->get_status(original_ts, status))[[likely]] {
+                        if (status == IN_PROGRESS)[[likely]] {
                             offset = current_delta->previous_offset;
                             continue;
                         } else {
                             //status can still be abort because of eager abort from validation txns
-                            if (status != ABORT) {
+                            if (status != ABORT)[[likely]] {
                                 //move it before lazy update to enforce serialization
 #if CHECKED_PUT_EDGE
                                 update_previous_delta_invalidate_ts(current_delta->toID,
@@ -527,18 +537,22 @@ namespace bwgraph {
                                         release_protection(current_delta->toID);
                                     }
 #endif
-                                    auto result = lazy_update_records.try_emplace(original_ts, 1);
+                                   /* auto result = lazy_update_records.try_emplace(original_ts, 1);
                                     if (!result.second) {
                                         result.first->second++;
-                                    }
+                                    }*/
+                                   txn_tables->reduce_op_count(original_ts,1);
                                 }
                             }
+                            original_ts=status;
 #if EDGE_DELTA_TEST
                             if(current_delta->creation_ts.load(std::memory_order_acquire)!=status){
                                 throw LazyUpdateException();
                             }
 #endif
                         }
+                    }else{
+                        original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                     }
                 }
 #if EDGE_DELTA_TEST
@@ -549,7 +563,7 @@ namespace bwgraph {
 #if CHECKED_PUT_EDGE
                 if (current_delta->toID ==
                     dst) {//aborted delta should not be in the secondary index, only special case is when there is a system crash
-                    if (current_delta->creation_ts.load(std::memory_order_acquire) <= txn_read_ts)
+                    if (/*current_delta->creation_ts.load(std::memory_order_acquire)*/original_ts <= txn_read_ts)
                         return current_delta;
                     offset = current_delta->previous_version_offset;
                 } else {

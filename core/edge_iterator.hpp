@@ -410,6 +410,8 @@ namespace bwgraph {
 #endif
                                 original_ts = status;
                             }
+                        }else{
+                            original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                         }
                         if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
                             //uint64_t current_creation_ts = current_delta->creation_ts.load(std::memory_order_acquire);
@@ -925,7 +927,7 @@ namespace bwgraph {
     /*
      * Libin:  fixme: seems good, but does not work. Logically broken
      */
-    class EarlyStopEdgeDeltaIterator{
+  /*  class EarlyStopEdgeDeltaIterator{
     public:
         EarlyStopEdgeDeltaIterator(){}
         //give the current block, determine what to read
@@ -936,18 +938,8 @@ namespace bwgraph {
                 get_start_offset_and_delta_chains_num(delta_chain_index);
                 current_delta = current_delta_block->get_edge_delta(current_delta_offset);
             }
-            else /*(txn_read_ts<current_delta_block->get_creation_time())*/{
+            else{
                 block_access_ts_table->release_block_access(get_threadID(txn_id));
-                /* bool found = true;
-                 while(txn_read_ts<current_delta_block->get_creation_time()){
-                     if(current_delta_block->get_previous_ptr()){
-                         current_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_delta_block->get_previous_ptr());
-                     }else{
-                         found=false;
-                         break;
-                         //throw EdgeIteratorNoBlockToReadException();
-                     }
-                 }*/
                 bool found = false;
                 while(current_delta_block->get_previous_ptr()){
                     current_delta_block = block_manager->convert<EdgeDeltaBlockHeader>(current_delta_block->get_previous_ptr());
@@ -971,10 +963,6 @@ namespace bwgraph {
                     current_delta_offset=0;
                 }
             }
-            //todo::if it is null, then there just does not exist any visible blocks at all.
-            /* if(current_delta== nullptr){
-                 throw EdgeIteratorNoBlockToReadException();
-             }*/
         }
 
         BaseEdgeDelta *next_delta() {
@@ -1030,12 +1018,6 @@ namespace bwgraph {
                         if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
                             uint64_t current_creation_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                             uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
-                            //for debug
-                            /*  if(!current_delta->toID){
-                                  std::cout<<"error, current block is cleared"<<std::endl;
-                                  current_delta->print_stats();
-                                  throw std::runtime_error("error bad");
-                              }*/
                             //cannot be the delta deleted by the current transaction
                             if(current_invalidation_ts!=txn_id)[[likely]]{
                                 //visible committed delta
@@ -1064,11 +1046,6 @@ namespace bwgraph {
                             uint64_t current_creation_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                             uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
                             //for debug
-                            /*  if(!current_delta->toID){
-                                  std::cout<<"error, current block is cleared"<<std::endl;
-                                  current_delta->print_stats();
-                                  throw std::runtime_error("error bad");
-                              }*/
                             //cannot be the delta deleted by the current transaction
                             if(current_invalidation_ts!=txn_id)[[likely]]{
                                 //visible committed delta
@@ -1094,34 +1071,13 @@ namespace bwgraph {
                         current_delta_offset-=ENTRY_DELTA_SIZE;
                         current_delta++;
                     }
-                    /* if(current_delta->creation_ts.load(std::memory_order_acquire)==txn_id&&current_delta->invalidate_ts.load()!=txn_id&&current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
-                         current_delta_offset-=  ENTRY_DELTA_SIZE;
-                         return current_delta++;
-                     }
-                     //cannot be delete delta
-                     if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&(current_delta->creation_ts.load()<=txn_read_ts)&&(current_delta->invalidate_ts.load()==0||current_delta->invalidate_ts.load()>txn_read_ts)&&current_delta->invalidate_ts.load()!=txn_id){
-                         current_delta_offset-=  ENTRY_DELTA_SIZE;
-                         return current_delta++;
-                     }*/
-                    //check if it is non-delete delta
 
                 }
             }else{
                 while(current_delta_offset>0){
-                    //abort deltas will always have larger creation ts than any read ts
-                    /*     if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&current_delta->creation_ts.load()<=txn_read_ts&&(current_delta->invalidate_ts==0||current_delta->invalidate_ts>txn_read_ts)){
-                             current_delta_offset-=  ENTRY_DELTA_SIZE;
-                             return current_delta++;
-                         }*/
                     if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
                         uint64_t current_creation_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                         uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
-                        //for debug
-                        /* if(!current_delta->toID){
-                             std::cout<<"error, previous block is cleared"<<std::endl;
-                             current_delta->print_stats();
-                             throw std::runtime_error("error bad");
-                         }*/
                         if(current_creation_ts<=txn_read_ts&&(current_invalidation_ts==0||current_invalidation_ts>txn_read_ts)){
                             current_delta_offset-=  ENTRY_DELTA_SIZE;
 #if USING_PREFETCH
@@ -1143,17 +1099,6 @@ namespace bwgraph {
                     current_delta++;
                 }
             }
-            /* if((!read_current_block)&&read_previous_block){
-                 while(current_delta_offset>0){
-                     //abort deltas will always have larger creation ts than any read ts
-                     if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA&&current_delta->creation_ts.load()<=txn_read_ts&&(current_delta->invalidate_ts==0||current_delta->invalidate_ts>txn_read_ts)){
-                         current_delta_offset-=  ENTRY_DELTA_SIZE;
-                         return current_delta++;
-                     }
-                     current_delta_offset-=ENTRY_DELTA_SIZE;
-                     current_delta++;
-                 }
-             }*/
             return nullptr;
         }
         void close(){
@@ -1189,6 +1134,6 @@ namespace bwgraph {
         std::vector<uint8_t> to_track_delta_chains;
         uint64_t remaining_active_delta_chains=0;
         uint64_t total_delta_chain_num=0;
-    };
+    };*/
 }
 //#endif //BWGRAPH_V2_EDGE_ITERATOR_HPP

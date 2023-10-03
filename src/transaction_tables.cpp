@@ -314,6 +314,14 @@ namespace bwgraph{
         }*/
         while(entry.op_count.load(std::memory_order_acquire)){
             if(count++==10000000000){
+                std::cout<<"index is "<<index<<std::endl;
+                std::cout<<"txn id is "<<entry.txn_id<<std::endl;
+                std::cout<<"touched block size is "<<entry.touched_blocks.size()<<std::endl;
+                std::cout<<"status is "<<entry.status<<" op count is "<<entry.op_count.load()<<std::endl;
+                auto& touched_block_entry = entry.touched_blocks.at(0);
+                auto target_vid_label_pair =decompose_block_id(touched_block_entry.block_id);
+                std::cout<<"vid is "<<target_vid_label_pair.first<<std::endl;
+                std::cout<<"label is "<<static_cast<uint32_t>(target_vid_label_pair.second)<<std::endl;
               /*  std::cout<<"found is "<<found<<std::endl;
                 std::cout<<"number of cleaned edge block is "<<number_of_cleaned_edge_blocks<<std::endl;
                 std::cout<<"number of cleaned vertex block is "<<number_of_cleaned_vertex_blocks<<std::endl;
