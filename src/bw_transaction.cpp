@@ -2463,13 +2463,14 @@ SimpleEdgeDeltaIterator SharedROTransaction::generate_edge_iterator(uint8_t thre
     return {&txn_tables,&block_manager,&thread_specific_lazy_update_records.local(),&block_access_ts_table,read_timestamp,((static_cast<uint64_t>(thread_id)<<56)|placeholder_txn_id)};
     //& thread_specific_lazy_update_records.local()
 }
-SimpleEdgeDeltaIterator SharedROTransaction::generate_static_edge_iterator(uint8_t thread_id){
 
+StaticEdgeDeltaIterator SharedROTransaction::generate_static_edge_iterator() {
+    return {};
 }
 //read operations for static graph
 StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
-    if(!target_label_entry){
+    if(!target_label_entry)[[unlikely]]{
         return StaticEdgeDeltaIterator();
     }
     auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
@@ -2484,7 +2485,15 @@ StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(bwgraph::vertex_t 
 #endif
     return StaticEdgeDeltaIterator(current_block, EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset));
 }
-
+void SharedROTransaction::static_get_edges(vertex_t src, label_t label, std::unique_ptr<StaticEdgeDeltaIterator>& edge_iterator){
+    BwLabelEntry* target_label_entry = reader_access_label(src,label);
+    if(!target_label_entry)[[unlikely]]{
+        return;
+    }
+    auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
+    uint64_t current_combined_offset = current_block->get_current_offset();
+    edge_iterator.get()->fill_information(current_block,EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset));
+}
 std::string_view SharedROTransaction::static_get_vertex(bwgraph::vertex_t src) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load(std::memory_order_acquire))[[unlikely]]{

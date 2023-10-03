@@ -226,7 +226,10 @@ std::string_view SharedROTransaction::static_get_edge(bg::vertex_t src, bg::vert
 StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(bg::vertex_t src, bg::label_t label) {
     return std::make_unique<impl::StaticEdgeDeltaIterator>(txn->static_get_edges(src,label));
 }
-
+void  SharedROTransaction::static_get_edges(vertex_t src, label_t label, StaticEdgeDeltaIterator& edge_iterator){
+    edge_iterator.clear();
+    txn->static_get_edges(src,label,edge_iterator.iterator);
+}
 std::string_view SharedROTransaction::get_vertex(bg::vertex_t src) {
     return txn->get_vertex(src);
 }
@@ -257,6 +260,10 @@ SharedROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t la
 
 SimpleEdgeDeltaIterator SharedROTransaction::generate_edge_delta_iterator(uint8_t thread_id) {
     return std::make_unique<impl::SimpleEdgeDeltaIterator>(txn->generate_edge_iterator(thread_id));
+}
+
+StaticEdgeDeltaIterator SharedROTransaction::generate_static_edge_delta_iterator(){
+    return std::make_unique<impl::StaticEdgeDeltaIterator>(txn->generate_static_edge_iterator());
 }
 
 EdgeDeltaIterator SharedROTransaction::get_edges(bg::vertex_t src, bg::label_t label, uint8_t thread_id) {
@@ -574,3 +581,6 @@ std::string_view StaticEdgeDeltaIterator::edge_delta_data() const {
     }
 }
 
+uint32_t StaticEdgeDeltaIterator::vertex_degree(){
+    return iterator->get_degree();
+}

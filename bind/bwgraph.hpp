@@ -116,9 +116,11 @@ namespace bg {
         SimpleEdgeDeltaIterator simple_get_edges(vertex_t src, label_t label,uint8_t thread_id);
         void simple_get_edges(vertex_t src, label_t label, uint8_t thread_id, SimpleEdgeDeltaIterator& edge_iterator);
         SimpleEdgeDeltaIterator generate_edge_delta_iterator(uint8_t thread_id);
+        StaticEdgeDeltaIterator generate_static_edge_delta_iterator();
         std::string_view static_get_vertex(vertex_t src);
         std::string_view static_get_edge(vertex_t src, vertex_t dst, label_t label);
         StaticEdgeDeltaIterator static_get_edges(vertex_t src, label_t label);
+        void static_get_edges(vertex_t src, label_t label, StaticEdgeDeltaIterator& edge_iterator);
         uint64_t get_read_timestamp();
         void print_debug_info();
         void thread_on_openmp_section_finish(uint8_t thread_id);
@@ -185,14 +187,18 @@ namespace bg {
     public:
         StaticEdgeDeltaIterator(std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> _iter);
         ~StaticEdgeDeltaIterator();
-
+        void clear(){
+            current_delta = nullptr;
+        }
         bool valid();
         //void close();
         void next();
+        uint32_t vertex_degree();
         vertex_t dst_id() const;
         std::string_view  edge_delta_data() const;
+        std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> iterator;
     private:
-        const std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> iterator;
+       
         bwgraph::BaseEdgeDelta* current_delta;
     };
    /* class SimpleObjectEdgeDeltaIterator{

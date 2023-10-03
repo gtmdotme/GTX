@@ -377,6 +377,7 @@ namespace bwgraph{
         //assume the operation is on a static loaded graph
         std::string_view static_get_edge(vertex_t src, vertex_t dst, label_t label);
         StaticEdgeDeltaIterator static_get_edges(vertex_t src, label_t label);
+        void static_get_edges(vertex_t src, label_t label, std::unique_ptr<StaticEdgeDeltaIterator>& edge_iterator);
         std::string_view static_get_vertex(vertex_t src);
         //assume a dynamic graph
         std::pair<Txn_Operation_Response,std::string_view> get_edge(vertex_t src, vertex_t dst, label_t label);

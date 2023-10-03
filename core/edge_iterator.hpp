@@ -871,6 +871,12 @@ namespace bwgraph {
       //   }
 #endif
         }
+        void fill_information(EdgeDeltaBlockHeader* input_block, uint32_t input_offset){
+                current_delta_block = input_block;
+                edge_deltas = current_delta_block->get_edge_delta(input_offset);
+                size = input_offset/ENTRY_DELTA_SIZE;
+                current_index = 0;
+        }
         BaseEdgeDelta *next_delta() {
 #if USING_PREFETCH
             //if(current_index+10<size){
@@ -886,6 +892,7 @@ namespace bwgraph {
         inline char* get_data(uint32_t offset){
             return current_delta_block->get_edge_data(offset);
         }
+        inline uint32_t get_degree(){return size;}
     private:
         EdgeDeltaBlockHeader *current_delta_block;
         //bool txn_has_deltas;//whether this txn has deltas in the current delta block
@@ -917,6 +924,7 @@ namespace bwgraph {
         inline char* get_data(uint32_t offset){
             return current_delta_block->get_edge_data(offset);
         }
+        inline uint32_t get_degree(){return size;}
     private:
         EdgeDeltaBlockHeader *current_delta_block;
         //bool txn_has_deltas;//whether this txn has deltas in the current delta block
