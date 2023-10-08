@@ -584,3 +584,6 @@ std::string_view StaticEdgeDeltaIterator::edge_delta_data() const {
 uint32_t StaticEdgeDeltaIterator::vertex_degree(){
     return iterator->get_degree();
 }
+double StaticEdgeDeltaIterator::get_weight() {
+    return *reinterpret_cast<double*>(current_delta->data);
+}

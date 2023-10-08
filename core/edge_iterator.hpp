@@ -878,10 +878,11 @@ namespace bwgraph {
                 current_index = 0;
         }
         BaseEdgeDelta *next_delta() {
-#if USING_PREFETCH
+#if USING_READER_PREFETCH
             //if(current_index+10<size){
                 //_mm_prefetch((const void*)(edge_deltas+current_index+10),_MM_HINT_T2);
             //}
+            //_mm_prefetch((const void*)(edge_deltas+current_index+8),_MM_HINT_T2);
 #endif
             if(current_index<size)[[likely]]{
                 return &edge_deltas[current_index++];

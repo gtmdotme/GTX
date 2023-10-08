@@ -196,6 +196,7 @@ namespace bg {
         uint32_t vertex_degree();
         vertex_t dst_id() const;
         std::string_view  edge_delta_data() const;
+        double get_weight();
         std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> iterator;
     private:
        
