@@ -173,8 +173,10 @@ namespace bg {
         ~SimpleEdgeDeltaIterator();
 
         bool valid();
+        bool valid_second_round();
         void close();
         void next();
+        void next_second_round();
         vertex_t dst_id() const;
         std::string_view  edge_delta_data() const;
         double edge_delta_weight() const;

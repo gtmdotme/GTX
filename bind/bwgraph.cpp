@@ -519,6 +519,9 @@ void SimpleEdgeDeltaIterator::close() {iterator->close();}
 void SimpleEdgeDeltaIterator::next() {
     current_delta = iterator->next_delta();
 }
+void SimpleEdgeDeltaIterator::next_second_round() {
+    current_delta = iterator->next_delta_second_round();
+}
 bool SimpleEdgeDeltaIterator::valid() {
     next();
  /*   if(current_delta&&current_delta->toID==0){
@@ -527,6 +530,10 @@ bool SimpleEdgeDeltaIterator::valid() {
         next();
         current_delta->print_stats();
     }*/
+    return current_delta!= nullptr;
+}
+bool SimpleEdgeDeltaIterator::valid_second_round() {
+    next_second_round();
     return current_delta!= nullptr;
 }
 vertex_t SimpleEdgeDeltaIterator::dst_id() const {
