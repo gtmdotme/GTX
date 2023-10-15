@@ -611,7 +611,7 @@ namespace bwgraph {
 #endif
                     //only prefetch is current delta is not in progress
 
-                    if (current_delta->delta_type != EdgeDeltaType::DELETE_DELTA) {
+                    if (original_ts <= txn_read_ts &&current_delta->delta_type != EdgeDeltaType::DELETE_DELTA) {
                         //uint64_t current_creation_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                         uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
                         //for debug
@@ -623,7 +623,7 @@ namespace bwgraph {
                         //cannot be the delta deleted by the current transaction
                         // if(current_invalidation_ts!=txn_id)[[likely]]{//txn_id
                         //visible committed delta
-                        if (/*current_creation_ts*/original_ts <= txn_read_ts && (current_invalidation_ts == 0 ||
+                        if (/*current_creation_ts original_ts <= txn_read_ts &&*/ (current_invalidation_ts == 0 ||
                                                                                   current_invalidation_ts >
                                                                                   txn_read_ts)) {
                             current_delta_offset -= ENTRY_DELTA_SIZE;
