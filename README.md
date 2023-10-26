@@ -108,7 +108,7 @@ int main() {
     txn.commit();
     auto r_txn = g.begin_read_only_transaction();
     auto result = r_txn.get_edge(vid1,vid2,1);
-    if(result.at(0)!='a'||result.at(1)!='b'|result.at(2)!='c'){
+    if(result.at(0)!='a'||result.at(1)!='b'||result.at(2)!='c'){
         std::cout<<"error"<<std::endl;
     }else{
         std::cout<<"no error"<<std::endl;
@@ -120,7 +120,7 @@ int main() {
             std::cout<<"error"<<std::endl;
         }
         auto result2 = iterator.edge_delta_data();
-        if(result2.at(0)!='a'||result2.at(1)!='b'|result2.at(2)!='c'){
+        if(result2.at(0)!='a'||result2.at(1)!='b'||result2.at(2)!='c'){
             std::cout<<"error"<<std::endl;
         }else{
             std::cout<<"no error"<<std::endl;
