@@ -24,10 +24,17 @@ todo: test a bit more about how to link the library
 ### API
 The full Bw-Graph APIs can be found in /bind/bwgraph.hpp.
 Here we list the core APIs to manage and query a dynamic graph using Bw-Graph
+
 #### BwGraph
 - public BwGraph() 
-- 
-
+- ROTransaction begin_read_only_transaction()
+- SharedROTransaction begin_shared_read_only_transaction()
+- RWTransaction begin_read_write_transaction()
+- vertex_t get_max_allocated_vid()
+- void set_worker_thread_num(uint64_t new_size)
+- void set_writer_thread_num(uint64_t writer_thread_num)
+- void whole_label_graph_eager_consolidation(label_t label)
+- bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l)
 #### ROTransaction
 
 #### SharedROTransaction
