@@ -16,7 +16,6 @@ Graph:: ~Graph(){
 }
 Graph::Graph(std::string block_path, size_t _max_block_size, std::string wal_path) :graph(std::make_unique<impl::BwGraph>(block_path, _max_block_size, wal_path)){
     commit_manager_worker =std::thread(&Graph::commit_server_start, this);
-    //commit_manager_worker =
 }
 
 vertex_t Graph::get_max_allocated_vid() {return graph->get_max_allocated_vid();}
@@ -432,12 +431,10 @@ bool RWTransaction::checked_delete_edge(bg::vertex_t src, bg::label_t label, bg:
     }
 }
 std::string_view RWTransaction::get_vertex(bg::vertex_t src) {
-   // std::cout<<"rw r"<<std::endl;
     return txn->get_vertex(src);
 }
 
 std::string_view RWTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
-    //std::cout<<"rw r"<<std::endl;
     while(true){
         auto result = txn->get_edge(src,dst,label);
         if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
@@ -449,7 +446,6 @@ std::string_view RWTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg:
 }
 
 EdgeDeltaIterator RWTransaction::get_edges(bg::vertex_t src, bg::label_t label) {
-   // std::cout<<"rw r"<<std::endl;
     while(true){
         auto result = txn->get_edges(src,label);
         if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
@@ -501,7 +497,6 @@ vertex_t EdgeDeltaIterator::dst_id() const {
 }
 
 std::string_view EdgeDeltaIterator::edge_delta_data() const {
-    //return std::string_view (iterator->get_data(current_delta->data_offset),current_delta->data_length);
     if(current_delta->data_length<=16){
         return std::string_view (current_delta->data, current_delta->data_length);
     }else{
@@ -524,12 +519,6 @@ void SimpleEdgeDeltaIterator::next_second_round() {
 }
 bool SimpleEdgeDeltaIterator::valid() {
     next();
- /*   if(current_delta&&current_delta->toID==0){
-        current_delta->print_stats();
-        std::cout<<"go to previous delta"<<std::endl;
-        next();
-        current_delta->print_stats();
-    }*/
     return current_delta!= nullptr;
 }
 bool SimpleEdgeDeltaIterator::valid_second_round() {
@@ -553,13 +542,6 @@ std::string_view SimpleEdgeDeltaIterator::edge_delta_data() const {
 }
 
 double SimpleEdgeDeltaIterator::edge_delta_weight() const {
-   /* double* result = ;
-    if(current_delta->data_length<=16){
-       result = reinterpret_cast<double*>(current_delta->data);
-    }
-    else{
-       result = reinterpret_cast<double*>(iterator->get_data(current_delta->data_offset));
-    }*/
     return  *reinterpret_cast<double*>(current_delta->data);
 }
 

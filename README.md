@@ -1,14 +1,14 @@
 # Bw-Graph
 
 ## Description
-This is Bw-Graph, a main memory graph system that manages and queries dynamic graphies. Bw-Graph supports concurrent read-write and read-only transactions with snapshot isolation. It supports graph analytics using its OpenMP-tailored read-only transactions and their adjacency list scan protocol. 
+This is Bw-Graph, a main memory graph system that manages and queries dynamic graphs. Bw-Graph supports concurrent read-write and read-only transactions with snapshot isolation. Bw-Graph supports graph analytics using its OpenMP-tailored read-only transactions and transaction adjacency list scan protocol. 
 
 ## Build
 ### Prerequisites 
-- Only Linux is supported.
+- We only tested it on Linux.
 - [CMake](https://gitlab.kitware.com/cmake/cmake)
 - [TBB](https://github.com/oneapi-src/oneTBB) 
-- C++20 although it can run with C++17 
+- C++20 is preferred although it can run with C++17 
 
 ### Build instructions 
 ```
@@ -34,7 +34,7 @@ Here we list the core APIs to manage and query a dynamic graph using Bw-Graph
 - void set_worker_thread_num(uint64_t new_size)
 - void set_writer_thread_num(uint64_t writer_thread_num)
 - void whole_label_graph_eager_consolidation(label_t label)
-- bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l)
+- EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l)
 - uint8_t get_openmp_worker_thread_id()
 
 #### ROTransaction
@@ -79,3 +79,4 @@ The static iterator is used to scan a static graph after the graph is loaded.
 - uint32_t vertex_degree()
 - vertex_t dst_id() 
 - std::string_view  edge_delta_data()
+

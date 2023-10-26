@@ -8,18 +8,9 @@
 using namespace bwgraph;
 //pessimistic mode
 #if USING_PESSIMISTIC_MODE
-//todo:: check if we should care about insert vs. update
-//fixme:: we should not use this function
+//fixme:: we should not use this function. this is unchecked operation
 Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label_t label, std::string_view edge_data){
     //locate the vertex;
-  /*  auto& vertex_index_entry = graph.get_vertex_index_entry(src);
-    //cannot insert to invalid vertex entry
-    if(!vertex_index_entry.valid.load()){
-        return Txn_Operation_Response::FAIL;
-    }
-    auto edge_label_block = block_manager.convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
-    //either access an existing entry or creating a new entry
-    BwLabelEntry* target_label_entry = edge_label_block->writer_lookup_label(label,&txn_tables);*/
     BwLabelEntry* target_label_entry =writer_access_label(src,label);
     if(!target_label_entry){
         //todo:: this should not happen?
@@ -36,25 +27,7 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
         auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
         //if the block is already overflow, return and wait
         if(current_block->already_overflow()){
-            //for debug
-          /*  auto combined_offset = current_block->get_current_offset();
-            uint32_t data_size = (uint32_t)(combined_offset>>32);
-            uint32_t delta_size = (uint32_t)(combined_offset&SIZE2MASK);
-            if(delta_size>current_block->get_size()*10||delta_size%64){
-                std::cout<<"source is "<<src<<" destination is "<<dst<<" label is "<<static_cast<int32_t>(label)<<std::endl;
-
-                print_edge_delta_block_metadata(current_block);
-                if(target_label_entry->state.load()==EdgeDeltaBlockState::NORMAL){
-                    std::cout<<"state is normal"<<std::endl;
-                }
-                std::cout<<"version is "<<target_label_entry->block_version_number<<std::endl;
-                std::cout<<combined_offset<<std::endl;
-                std::cout<<data_size<<" "<<delta_size<<" "<<current_block->get_size()<<std::endl;
-                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                return Txn_Operation_Response::FAIL;
-            }*/
             BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-          //  std::cout<<"1"<<std::endl;
             return Txn_Operation_Response::WRITER_WAIT;
         }
         int32_t total_delta_chain_num = current_block->get_delta_chain_num();
@@ -66,7 +39,6 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
                 uint64_t current_block_offset = current_block->get_current_offset();
                 if(current_block->is_overflow_offset(current_block_offset)){
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-               //     std::cout<<"2"<<std::endl;
                     return Txn_Operation_Response::WRITER_WAIT;
                 }
 #if LAZY_LOCKING
@@ -105,7 +77,6 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
                 return Txn_Operation_Response::FAIL; //abort on write-write conflict
             }else if(lock_result == Delta_Chain_Lock_Response::UNCLEAR){
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-             //   std::cout<<"3"<<std::endl;
                 return Txn_Operation_Response::WRITER_WAIT;
             }
 #endif //LAZY_LOCKING
@@ -119,12 +90,9 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
                 op_count++;
                 return Txn_Operation_Response::SUCCESS;
             }else if (allocate_delta_result==EdgeDeltaInstallResult::ALREADY_OVERFLOW){
-               // current_block->release_protection_delta_chain(target_delta_chain_id);// actually no need to release the lock at all
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-              //  std::cout<<"4"<<std::endl;
                 return Txn_Operation_Response::WRITER_WAIT;
             }else{//I caused overflow
-                //current_block->release_protection_delta_chain(target_delta_chain_id);
                 consolidation(target_label_entry,current_block, block_id);
                 return put_edge(src,dst,label,edge_data);
             }
@@ -140,7 +108,6 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
             }else if(allocate_delta_result==EdgeDeltaInstallResult::ALREADY_OVERFLOW){
                 //do not release lock
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                //std::cout<<"5"<<std::endl;
                 return Txn_Operation_Response::WRITER_WAIT;
             }else{
                 consolidation(target_label_entry, current_block, block_id);
@@ -148,11 +115,9 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
             }
         }
     }else{
-      //  std::cout<<"6"<<std::endl;
         return Txn_Operation_Response::WRITER_WAIT;
     }
 }
-//added tons of likely or unlikely
 /*
  * create an edge delta as either insert or update
  */
@@ -185,7 +150,6 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
                 uint64_t current_block_offset = current_block->get_current_offset();
                 if(current_block->is_overflow_offset(current_block_offset)){
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                    //     std::cout<<"2"<<std::endl;
                     return Txn_Operation_Response::WRITER_WAIT;
                 }
 #if LAZY_LOCKING
@@ -210,7 +174,6 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
         //indicate the current txn does not have the lock
         if(!current_delta_chain_head_offset){
             //todo: maybe also set protection on delta chain id?
-            // auto lock_result = current_block->set_protection(dst,&lazy_update_records, read_timestamp);
 #if LAZY_LOCKING
             auto lock_result = current_block->set_protection_on_delta_chain(target_delta_chain_id,&lazy_update_records,read_timestamp);
             if(lock_result == Delta_Chain_Lock_Response::CONFLICT){
@@ -224,19 +187,15 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
                 return Txn_Operation_Response::FAIL; //abort on write-write conflict
             }else if(lock_result == Delta_Chain_Lock_Response::UNCLEAR)[[unlikely]]{
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                //   std::cout<<"3"<<std::endl;
                 return Txn_Operation_Response::WRITER_WAIT;
             }
 #endif //LAZY_LOCKING
-            //current_delta_chain_head_offset = delta_chains_index->at(target_delta_chain_id).get_raw_offset();
             //lookup previous version:
             auto allocate_delta_result = allocate_delta(current_block, static_cast<int32_t>(edge_data.size()));
             if(allocate_delta_result==EdgeDeltaInstallResult::SUCCESS)[[likely]]{
                 uint32_t previous_version_offset=0;
                 if(current_delta_chain_head_offset)
                     previous_version_offset = current_block->fetch_previous_version_offset(dst,current_delta_chain_head_offset,local_txn_id,lazy_update_records);
-                //todo: maybe add an exist check? if exist, insert delta; otherwise update delta
-               // current_block->append_edge_delta(dst,local_txn_id,EdgeDeltaType::UPDATE_DELTA, data,static_cast<int32_t>(edge_data.size()),current_delta_chain_head_offset,current_delta_offset,current_data_offset);
                //insert should be more common than update
                 if(!previous_version_offset){
                     current_block->checked_append_edge_delta(dst,local_txn_id, EdgeDeltaType::INSERT_DELTA,data,static_cast<int32_t>(edge_data.size()),current_delta_chain_head_offset,previous_version_offset,current_delta_offset,current_data_offset);
@@ -253,28 +212,22 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
                     graph.increment_thread_local_update_count();
                     cache_updated_block_id_and_version(block_id,target_label_entry->block_version_number.load());
 #endif
-                    //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }
             }else if (allocate_delta_result==EdgeDeltaInstallResult::ALREADY_OVERFLOW){
-                // current_block->release_protection_delta_chain(target_delta_chain_id);// actually no need to release the lock at all
                 //release the protection, there is a chance consolidation is not happening in the end.
                 current_block->release_protection_delta_chain(target_delta_chain_id);
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                //  std::cout<<"4"<<std::endl;
                 return Txn_Operation_Response::WRITER_WAIT;
             }else{//I caused overflow
-                //current_block->release_protection_delta_chain(target_delta_chain_id);
                 checked_consolidation(target_label_entry,current_block, block_id);
                 return checked_put_edge(src,dst,label,edge_data);
             }
         }else{//the current transaction already locks the delta chain
-            //uint32_t current_committed_delta_chain_head_offset = delta_chains_index->at(target_delta_chain_id).get_raw_offset();
             //todo: check if this part can be merged together with the previous part
             auto allocate_delta_result = allocate_delta(current_block,static_cast<int32_t>(edge_data.size()));
             if(allocate_delta_result==EdgeDeltaInstallResult::SUCCESS)[[likely]]{
                 uint32_t previous_version_offset = current_block->fetch_previous_version_offset(dst,current_delta_chain_head_offset,local_txn_id,lazy_update_records);
-                //current_block->append_edge_delta(dst,local_txn_id,EdgeDeltaType::UPDATE_DELTA,data,static_cast<int32_t>(edge_data.size()),current_delta_chain_head_offset,current_delta_offset,current_data_offset);
                 if(!previous_version_offset){
                     current_block->checked_append_edge_delta(dst,local_txn_id, EdgeDeltaType::INSERT_DELTA,data,static_cast<int32_t>(edge_data.size()),current_delta_chain_head_offset,previous_version_offset,current_delta_offset,current_data_offset);
                 }else{
@@ -290,13 +243,11 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
                     graph.increment_thread_local_update_count();
                     cache_updated_block_id_and_version(block_id,target_label_entry->block_version_number.load());
 #endif
-                    //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }
             }else if(allocate_delta_result==EdgeDeltaInstallResult::ALREADY_OVERFLOW){
                 //do not release lock, even if the consolidation did not take place.
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                //std::cout<<"5"<<std::endl;
                 return Txn_Operation_Response::WRITER_WAIT;
             }else{
                 checked_consolidation(target_label_entry, current_block, block_id);
@@ -304,7 +255,6 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
             }
         }
     }else{
-        //  std::cout<<"6"<<std::endl;
         return Txn_Operation_Response::WRITER_WAIT;
     }
 }
@@ -419,6 +369,9 @@ RWTransaction::delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph
     }
 }
 
+/*
+ * create an edge deletion delta if the edge exists. Otherwise do nothing.
+ */
 Txn_Operation_Response
 RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry =writer_access_label(src,label);
@@ -502,7 +455,7 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
                     graph.increment_thread_local_update_count();
                     cache_updated_block_id_and_version(block_id,target_label_entry->block_version_number.load());
 #endif
-                    //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
+
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }else{
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
@@ -510,13 +463,11 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
                 }
 
             }else if (allocate_delta_result==EdgeDeltaInstallResult::ALREADY_OVERFLOW){
-                // current_block->release_protection_delta_chain(target_delta_chain_id);// actually no need to release the lock at all
                 //need to release the lock due to eager consolidation
                 current_block->release_protection_delta_chain(target_delta_chain_id);
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 return Txn_Operation_Response::WRITER_WAIT;
             }else{//I caused overflow
-                //current_block->release_protection_delta_chain(target_delta_chain_id);
                 checked_consolidation(target_label_entry,current_block, block_id);
                 return checked_delete_edge(src,dst,label);
             }
@@ -534,7 +485,6 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
                     graph.increment_thread_local_update_count();
                     cache_updated_block_id_and_version(block_id, target_label_entry->block_version_number.load());
 #endif
-                    //graph.to_check_blocks.local().emplace(block_id,target_label_entry->block_version_number.load());
                     return Txn_Operation_Response::SUCCESS_EXISTING_DELTA;
                 }else{
                     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
@@ -869,10 +819,11 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
 }
 
-//revise size calculation and read
+/*
+ * consolidate the overflow block, and allocate a new block version.
+ */
 void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_entry,
                                           bwgraph::EdgeDeltaBlockHeader *current_block, uint64_t block_id) {
-    //std::cout<<"consolidation starts"<<std::endl;
     BlockStateVersionProtectionScheme::install_exclusive_state(EdgeDeltaBlockState::OVERFLOW,thread_id,block_id,current_label_entry,block_access_ts_table);
     uint32_t original_delta_offset = current_delta_offset-ENTRY_DELTA_SIZE;
     uint32_t original_data_offset = current_data_offset;
@@ -966,7 +917,6 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                 }
             }else{
                 //still need to count delete delta as latest delta
-                //vertex_t toID = current_delta->toID;
                 edge_latest_versions_records.emplace(current_delta->toID);
             }
         }else{
@@ -989,10 +939,6 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
       */
     auto new_block_ptr = block_manager.alloc(new_order);
     auto new_block = block_manager.convert<EdgeDeltaBlockHeader>(new_block_ptr);
-    //for debug
-    /*  if(largest_invalidation_ts){
-          std::cout<<"found"<<std::endl;
-      }*/
     new_block->fill_metadata(current_block->get_owner_id(),largest_invalidation_ts, read_timestamp, current_label_entry->block_ptr,new_order, &txn_tables,current_label_entry->delta_chain_index);
     int32_t new_block_delta_chain_num = new_block->get_delta_chain_num();
     std::vector<AtomicDeltaOffset> new_delta_chains_index(new_block_delta_chain_num);
@@ -1108,7 +1054,6 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
     //now check all in progress deltas recorded earlier
     //need 2 for loops because committed deltas should be before in-progress deltas
     for(auto it = in_progress_delta_per_txn.begin();it!=in_progress_delta_per_txn.end();){
-        //uint64_t status;
         auto& all_delta_offsets_of_txn = it->second;
         current_delta = current_block->get_edge_delta(all_delta_offsets_of_txn.at(0));
         //skip them, will be installed at the end.
@@ -1211,7 +1156,6 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                 throw ConsolidationException();
             }
 #endif
-            //const char* data = current_block->get_edge_data(current_delta->data_offset);
             char* data;
             if(current_delta->data_length<=16){
                 data = current_delta->data;
@@ -1229,7 +1173,6 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
                 }
 #endif
             }
-           // auto in_progress_delta_append_result = new_block->append_edge_delta(current_delta->toID, txn_id, current_delta->delta_type, data, current_delta->data_length, local_delta_chains_index_cache[delta_chain_id]);
             auto in_progress_delta_append_result = new_block->checked_append_edge_delta(current_delta->toID, txn_id, current_delta->delta_type, data, current_delta->data_length, local_delta_chains_index_cache[delta_chain_id],previous_version_offset);
 #if CONSOLIDATION_TEST
             if(in_progress_delta_append_result.first!=EdgeDeltaInstallResult::SUCCESS||!in_progress_delta_append_result.second){
@@ -1241,10 +1184,6 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
     }
     //now consolidation is over
     per_thread_garbage_queue.register_entry(current_label_entry->block_ptr,current_block->get_order(),largest_invalidation_ts);
-    //for debug
-  /*  if(largest_invalidation_ts>1000000){
-        std::cout<<largest_invalidation_ts<<std::endl;
-    }*/
 #if !USING_COMMIT_WAIT_WORK
     if(per_thread_garbage_queue.need_collection()){
         auto safe_ts = block_access_ts_table.calculate_safe_ts();
@@ -1261,6 +1200,9 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
     BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
 }
 
+/*
+ * scan the previous block to locate an edge
+ */
 std::string_view
 RWTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *previous_block, bwgraph::vertex_t vid) {
     uint64_t combined_offset = previous_block->get_current_offset();
@@ -1299,17 +1241,6 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
         //if we have cache
         if(cached_delta_offsets!=per_block_cached_delta_chain_offsets.end()){
             if(cached_delta_offsets->second.is_outdated(target_label_entry->block_version_number.load(std::memory_order_acquire)))[[unlikely]]{
-              /*  uint64_t current_combined_offset = current_block->get_current_offset();
-                if(current_block->is_overflow_offset(current_combined_offset)){
-                    BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                    return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::READER_WAIT,std::string_view());
-                }
-                auto reclaim_delta_chains_result = cached_delta_offsets->second.reclaim_delta_chain_lock(current_block,target_label_entry,local_txn_id,read_timestamp,current_combined_offset);
-                if(!reclaim_delta_chains_result){
-                    cached_delta_offsets->second.eager_abort(current_block,target_label_entry,local_txn_id,current_combined_offset);
-                    BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-                    return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::FAIL,std::string_view());
-                }*/
               auto reclaim_result = reclaim_delta_chain_offsets(cached_delta_offsets->second,current_block,target_label_entry);
               if(reclaim_result==ReclaimDeltaChainResult::FAIL){
                   per_block_cached_delta_chain_offsets.erase(cached_delta_offsets->first);//already eager aborted, so the entry can be aborted.
@@ -1325,7 +1256,7 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
         if(offset)[[unlikely]]{
             BaseEdgeDelta* target_delta;
             if(offset<=8*ENTRY_DELTA_SIZE){
-                //current_block->scan_prefetch(offset);
+
                 target_delta = current_block->get_visible_target_using_scan(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
             }else{
                 target_delta = current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
@@ -1335,7 +1266,7 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
                 throw TransactionReadException();
             }
 #endif
-            //char* data = current_block->get_edge_data(target_delta->data_offset);
+
             char* data;
             if(target_delta->data_length<=16){
                 data = target_delta->data;
@@ -1349,12 +1280,12 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
             if(read_timestamp>=current_block->get_creation_time())[[likely]]{
                 auto& delta_chains_index_entry = target_label_entry->delta_chain_index->at(current_block->get_delta_chain_id(dst));
                 offset = delta_chains_index_entry.get_raw_offset();//may be locked
-                //BaseEdgeDelta* target_delta = current_block->get_edge_delta(offset);
+
                 BaseEdgeDelta* target_delta= nullptr;
-                //BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
+
                 if(offset)[[likely]]{
                     if(offset<=8*ENTRY_DELTA_SIZE){
-                        //current_block->scan_prefetch(offset);
+
                         target_delta = current_block->get_visible_target_using_scan(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
                     }else{
                         target_delta = current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records,local_txn_id);
@@ -1405,7 +1336,9 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
         return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::READER_WAIT,std::string_view());
     }
 }
-
+/*
+ * should not use this, it overcomplicates read-write transaction scanning adjacency list
+ */
 std::pair<Txn_Operation_Response, EdgeDeltaIterator>
 RWTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
@@ -1445,6 +1378,9 @@ RWTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     }
 }
 
+/*
+ * scan the neighborhood of a vertex of a label
+ */
 std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>
 RWTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
@@ -1504,7 +1440,6 @@ void RWTransaction::eager_abort() {
                 touched_block_it = per_block_cached_delta_chain_offsets.erase(touched_block_it);
                 continue;
             }
-            //std::cout<<"eager abort edge deltas"<<std::endl;
             auto current_label_entry = get_label_entry(touched_block_it->first);
             auto block_access_result = BlockStateVersionProtectionScheme::committer_aborter_access_block(thread_id,touched_block_it->first,current_label_entry,block_access_ts_table);
             //if has protection now
@@ -1519,8 +1454,6 @@ void RWTransaction::eager_abort() {
                     touched_block_it->second.release_protections(current_block);//if same version, we need to release locks
                 }
                 op_count -=touched_block_it->second.eager_abort(current_block,current_label_entry,local_txn_id,current_combined_offset);
-                //cache_updated_block_id_and_version(touched_block_it->first,current_label_entry->block_version_number.load(std::memory_order_acquire));
-                //graph.to_check_blocks.local().try_emplace(touched_block_it->first,current_label_entry->block_version_number.load());
                 BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
                 touched_block_it = per_block_cached_delta_chain_offsets.erase(touched_block_it);
             }else{
@@ -1571,6 +1504,9 @@ void RWTransaction::eager_abort() {
     }
 }
 
+/*
+ * should not be called, too complicated
+ */
 bool RWTransaction::validation() {
     bool to_abort = false;
     std::map<uint64_t, std::vector<validation_to_revise_entry>>already_validated_offsets_per_block;
@@ -1647,6 +1583,7 @@ bool RWTransaction::validation() {
     }
     return true;
 }
+
 bool RWTransaction::simple_validation() {
     bool to_abort = false;
     std::map<uint64_t, std::vector<validation_to_revise_entry>>already_validated_offsets_per_block;
@@ -1774,10 +1711,6 @@ bool RWTransaction::commit() {
     for(auto it = updated_vertices.begin(); it!=updated_vertices.end();it++){
         self_entry->touched_blocks.emplace_back(*it,0);
     }
-    //todo:: only for insert per txn
-    /*if(op_count!=self_entry->touched_blocks.size()){
-        throw std::runtime_error("op count error");
-    }*/
     self_entry->op_count.store(op_count,std::memory_order_release);
     commit_manager.txn_commit(thread_id,self_entry,true);//now do it simple, just wait
     batch_lazy_updates();
@@ -1790,8 +1723,6 @@ bool RWTransaction::commit() {
 }
 
 void RWTransaction::eager_clean_edge_block(uint64_t block_id, bwgraph::LockOffsetCache &validated_offsets) {
-   /* auto target_vid_label_pair =decompose_block_id(block_id);
-    auto target_label_entry = reader_access_label(target_vid_label_pair.first,target_vid_label_pair.second);*/
    timestamp_t commit_ts = self_entry->status.load(std::memory_order_acquire);
    auto target_label_entry = get_label_entry(block_id);
    //if we can access the block, we will do it and eager commit
@@ -1858,7 +1789,6 @@ bool RWTransaction::eager_commit() {
         auto txn_lifetime = std::chrono::duration_cast<std::chrono::microseconds>(stop - txn_start_time);
         graph.txn_execution_time.local()+= txn_lifetime.count();
 #endif
-        //std::cout<<"simple validation failed"<<std::endl;
 #if TRACK_COMMIT_ABORT
         graph.register_abort();
 #endif
@@ -1881,11 +1811,9 @@ bool RWTransaction::eager_commit() {
     //eager clean
     for(auto it = per_block_cached_delta_chain_offsets.begin(); it!=per_block_cached_delta_chain_offsets.end();it++){
         eager_clean_edge_block(it->first,it->second);
-        //self_entry->touched_blocks.emplace_back(it->first, it->second.block_version_num);//safe because our validated blocks will not get version changed until we commit.
     }
     for(auto it = updated_vertices.begin(); it!=updated_vertices.end();it++){
         eager_clean_vertex_chain(*it);
-        //self_entry->touched_blocks.emplace_back(*it,0);
     }
 #if TRACK_EXECUTION_TIME
     auto stop = std::chrono::high_resolution_clock::now();
@@ -1989,7 +1917,6 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
                 uint64_t status;
                 if(txn_tables.get_status(original_ts,status)){
                     if(status==IN_PROGRESS){
-                       // std::cout<<original_ts<<std::endl;
                         return Txn_Operation_Response::FAIL;
                     }else if(status!=ABORT){
                         if(current_vertex_delta->lazy_update(original_ts,status)){
@@ -2012,8 +1939,6 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
                         }
 #endif
                         if(status>read_timestamp){
-                            //std::cout<<"2"<<std::endl;
-                           // std::cout<<status<<" "<<read_timestamp<<std::endl;
                             return Txn_Operation_Response::FAIL;
                         }else{
                             break;
@@ -2026,7 +1951,6 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
                 }
             }else if(original_ts!=ABORT){
                 if(original_ts>read_timestamp){
-                   // std::cout<<"3"<<std::endl;
                     return Txn_Operation_Response::FAIL;
                 }
                 break;
@@ -2063,7 +1987,6 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
             auto zero_out_ptr = block_manager.convert<uint8_t>(new_delta_ptr);
             memset(zero_out_ptr,'\0',1ul<<new_order);
             block_manager.free(new_delta_ptr,new_order);
-            //std::cout<<"4"<<std::endl;
             return Txn_Operation_Response::FAIL;
         }
     }else{
@@ -2079,7 +2002,6 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
                 auto zero_out_ptr = block_manager.convert<uint8_t>(new_delta_ptr);
                 memset(zero_out_ptr,'\0',1ul<<new_order);
                 block_manager.free(new_delta_ptr,new_order);
-                //std::cout<<"5"<<std::endl;
                 return Txn_Operation_Response::FAIL;
             }
         }else{
@@ -2177,7 +2099,6 @@ ROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
         if(read_timestamp>=current_block->get_creation_time())[[likely]]{
             auto& delta_chains_index_entry = target_label_entry->delta_chain_index->at(current_block->get_delta_chain_id(dst));
             uint32_t offset = delta_chains_index_entry.get_raw_offset();//may be locked
-            //BaseEdgeDelta* target_delta = current_block->get_edge_delta(offset);
             BaseEdgeDelta* target_delta = nullptr;
 
             if(offset){
@@ -2188,7 +2109,6 @@ ROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
                     target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records);
                 }
             }
-            //BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records);
             if(target_delta)[[likely]]{
                 char* data;
                 if(target_delta->data_length<=16){
@@ -2244,18 +2164,15 @@ ROTransaction::get_edge_weight(bwgraph::vertex_t src, bwgraph::label_t label, bw
         if(read_timestamp>=current_block->get_creation_time())[[likely]]{
             auto& delta_chains_index_entry = target_label_entry->delta_chain_index->at(current_block->get_delta_chain_id(dst));
             uint32_t offset = delta_chains_index_entry.get_raw_offset();//may be locked
-            //BaseEdgeDelta* target_delta = current_block->get_edge_delta(offset);
             BaseEdgeDelta* target_delta = nullptr;
 
             if(offset){
                 if(offset<=ENTRY_DELTA_SIZE*8){
-                    //current_block->scan_prefetch(offset);
                     target_delta = current_block->get_visible_target_using_scan(offset,dst,read_timestamp,lazy_update_records);
                 }else{
                     target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records);
                 }
             }
-            //BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp,lazy_update_records);
             if(target_delta)[[likely]]{
                 weight = reinterpret_cast<double*>(target_delta->data);
 #if EDGE_DELTA_TEST
@@ -2508,7 +2425,9 @@ std::string_view SharedROTransaction::static_get_vertex(bwgraph::vertex_t src) {
     char* data = current_vertex_delta->get_data();
     return std::string_view (data,current_vertex_delta->get_data_size());
 }
-
+/*
+ * its usage should be limited. We'd like openmp thread to know its ID before invoking the function
+ */
 std::string_view SharedROTransaction::get_vertex(bwgraph::vertex_t src) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load(std::memory_order_acquire)){
@@ -2600,6 +2519,9 @@ std::string_view SharedROTransaction::get_vertex(bwgraph::vertex_t src, uint8_t 
     }
     return std::string_view();
 }
+/*
+ * its usage should be limited. We'd like openmp thread to know its ID before invoking the function
+ */
 std::pair<Txn_Operation_Response, std::string_view>
 SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
@@ -2609,7 +2531,6 @@ SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgr
     }
     auto block_id = generate_block_id(src,label);
     uint8_t thread_id = graph.get_worker_thread_id();
-    //uint8_t thread_id = graph.get_openmp_worker_thread_id();
     if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table)){
         auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
         if(read_timestamp<current_block->get_creation_time()){
@@ -2634,7 +2555,6 @@ SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgr
         }else{
             auto& delta_chains_index_entry = target_label_entry->delta_chain_index->at(current_block->get_delta_chain_id(dst));
             uint32_t offset = delta_chains_index_entry.get_raw_offset();//may be locked
-            //BaseEdgeDelta* target_delta = current_block->get_edge_delta(offset);
             BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp, thread_specific_lazy_update_records.local());
             if(!target_delta){
                 char* data ;
@@ -2695,7 +2615,6 @@ SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgr
         }else{
             auto& delta_chains_index_entry = target_label_entry->delta_chain_index->at(current_block->get_delta_chain_id(dst));
             uint32_t offset = delta_chains_index_entry.get_raw_offset();//may be locked
-            //BaseEdgeDelta* target_delta = current_block->get_edge_delta(offset);
             BaseEdgeDelta* target_delta =current_block->get_visible_target_delta_using_delta_chain(offset,dst,read_timestamp, thread_specific_lazy_update_records.local());
             if(!target_delta){
                 char* data;
@@ -2723,6 +2642,9 @@ SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgr
         return std::pair<Txn_Operation_Response,std::string_view>(Txn_Operation_Response::READER_WAIT,std::string_view());
     }
 }
+/*
+ * should not be used, not the simple version
+ */
 std::pair<Txn_Operation_Response, EdgeDeltaIterator>
 SharedROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
@@ -2731,7 +2653,6 @@ SharedROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
         return std::pair<Txn_Operation_Response, EdgeDeltaIterator>(Txn_Operation_Response::SUCCESS,EdgeDeltaIterator());
     }
     uint8_t thread_id = graph.get_worker_thread_id();
-    //uint8_t thread_id = graph.get_openmp_worker_thread_id();
     auto block_id = generate_block_id(src, label);
     if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table)){
         auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
@@ -2750,7 +2671,9 @@ SharedROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
         return std::pair<Txn_Operation_Response, EdgeDeltaIterator>(Txn_Operation_Response::READER_WAIT,EdgeDeltaIterator());
     }
 }
-
+/*
+ * should not be used, not the simple version
+ */
 std::pair<Txn_Operation_Response, EdgeDeltaIterator>
 SharedROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label, uint8_t thread_id) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
@@ -2776,7 +2699,9 @@ SharedROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label, ui
         return std::pair<Txn_Operation_Response, EdgeDeltaIterator>(Txn_Operation_Response::READER_WAIT,EdgeDeltaIterator());
     }
 }
-
+/*
+ * its usage should be limited. We'd like openmp thread to know its ID before invoking the function
+ */
 std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>
 SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
@@ -2805,6 +2730,9 @@ SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t la
         return std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>(Txn_Operation_Response::READER_WAIT,SimpleEdgeDeltaIterator());
     }
 }
+/*
+ * use this version, use the simplified iterator and pass thread id as an argument
+ */
 std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>
 SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label, uint8_t thread_id) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
@@ -2812,8 +2740,6 @@ SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t la
         on_operation_finish(thread_id);
         return std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>(Txn_Operation_Response::SUCCESS,SimpleEdgeDeltaIterator());
     }
-    //uint8_t thread_id = graph.get_worker_thread_id();
-    //uint8_t thread_id = graph.get_openmp_worker_thread_id();
     auto block_id = generate_block_id(src, label);
     if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table)){
         auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
@@ -2832,7 +2758,9 @@ SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t la
         return std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>(Txn_Operation_Response::READER_WAIT,SimpleEdgeDeltaIterator());
     }
 }
-
+/*
+ * this function passes edge iterator as an argument to reused the object
+ */
 Txn_Operation_Response
 SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label, uint8_t thread_id,
                                       std::unique_ptr<bwgraph::SimpleEdgeDeltaIterator> &edge_iterator) {
@@ -2858,35 +2786,6 @@ SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t la
         return Txn_Operation_Response::READER_WAIT;
     }
 }
-
-/*std::pair<Txn_Operation_Response, EarlyStopEdgeDeltaIterator>
-SharedROTransaction::early_stop_get_edges(bwgraph::vertex_t src, bwgraph::label_t label, uint8_t thread_id) {
-    BwLabelEntry* target_label_entry = reader_access_label(src,label);
-    if(!target_label_entry){
-        on_operation_finish(thread_id);
-        return {Txn_Operation_Response::SUCCESS,EarlyStopEdgeDeltaIterator()};
-    }
-    //uint8_t thread_id = graph.get_worker_thread_id();
-    //uint8_t thread_id = graph.get_openmp_worker_thread_id();
-    auto block_id = generate_block_id(src, label);
-    if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table)){
-        auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
-        uint64_t current_combined_offset = current_block->get_current_offset();
-        if(current_block->is_overflow_offset(current_combined_offset)){
-            BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
-            on_operation_finish(thread_id);
-            return{Txn_Operation_Response::READER_WAIT,EarlyStopEdgeDeltaIterator()};
-        }
-        //block protection released by iterator close
-        on_operation_finish(thread_id);
-
-        return {Txn_Operation_Response::SUCCESS, EarlyStopEdgeDeltaIterator(current_block,read_timestamp,((static_cast<uint64_t>(thread_id)<<56)|placeholder_txn_id),
-                                                                            graph,& thread_specific_lazy_update_records.local(),&block_access_ts_table,target_label_entry->delta_chain_index)};
-    }else{
-        on_operation_finish(thread_id);
-        return {Txn_Operation_Response::READER_WAIT,EarlyStopEdgeDeltaIterator()};
-    }
-}*/
 
 std::string_view SharedROTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *previous_block,
                                                                     bwgraph::vertex_t vid) {
