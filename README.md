@@ -90,7 +90,7 @@ The static iterator is used to scan a static graph after the graph is loaded.
 - vertex_t dst_id() 
 - std::string_view  edge_delta_data()
 
-###Example
+### Example
 ```
 #include <iostream>
 #include "Library/bwgraph.hpp"
