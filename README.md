@@ -11,10 +11,11 @@ This is Bw-Graph, a main memory graph system that manages and queries dynamic gr
 - C++20 although it can run with C++17 
 
 ### Build instructions 
+```
 - mkdir build && cd build
 - cmake -DCMAKE_BUILD_TYPE=Release ..
 - make -j
-
+```
 ## Usage
 ### Include Bw-Graph in your own project
 todo: test a bit more about how to link the library
