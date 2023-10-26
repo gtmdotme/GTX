@@ -119,6 +119,7 @@
 				<Option compiler="gcc"/>
 				<Compiler>
 					<Add directory="/home/zhou822/BwGraph_Mono_Simple_Iterator"/>
+					<Add directory="/opt/intel/oneapi/tbb/2021.9.0/include"/>
 					<Add directory="/usr/include/c++/11"/>
 					<Add directory="/usr/include/x86_64-linux-gnu/c++/11"/>
 					<Add directory="/usr/include/c++/11/backward"/>
@@ -142,6 +143,7 @@
 				<Option compiler="gcc"/>
 				<Compiler>
 					<Add directory="/home/zhou822/BwGraph_Mono_Simple_Iterator"/>
+					<Add directory="/opt/intel/oneapi/tbb/2021.9.0/include"/>
 					<Add directory="/usr/include/c++/11"/>
 					<Add directory="/usr/include/x86_64-linux-gnu/c++/11"/>
 					<Add directory="/usr/include/c++/11/backward"/>

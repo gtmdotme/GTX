@@ -44,7 +44,7 @@
 			{
 				"command" : 2,
 				"file" : 1,
-				"line" : 24,
+				"line" : 26,
 				"parent" : 3
 			},
 			{
@@ -61,7 +61,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-ltbb -std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -fdiagnostics-color=always"
+					"fragment" : "-ltbb -std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -O3 -DNDEBUG -fdiagnostics-color=always"
 				},
 				{
 					"fragment" : "-std=gnu++11"
