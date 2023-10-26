@@ -50,12 +50,32 @@ This class is used by OpenMP worker thread to implement graph analytics.
 - SimpleEdgeDeltaIterator simple_get_edges(vertex_t src, label_t label,uint8_t thread_id)
 - void simple_get_edges(vertex_t src, label_t label, uint8_t thread_id, SimpleEdgeDeltaIterator& edge_iterator)
 - SimpleEdgeDeltaIterator generate_edge_delta_iterator(uint8_t thread_id)
-- StaticEdgeDeltaIterator generate_static_edge_delta_iterator();
-- StaticEdgeDeltaIterator static_get_edges(vertex_t src, label_t label);
-- void static_get_edges(vertex_t src, label_t label, StaticEdgeDeltaIterator& edge_iterator);
+- StaticEdgeDeltaIterator generate_static_edge_delta_iterator()
+- StaticEdgeDeltaIterator static_get_edges(vertex_t src, label_t label)
+- void static_get_edges(vertex_t src, label_t label, StaticEdgeDeltaIterator& edge_iterator)
 
 #### RWTransaction
+- std::string_view get_vertex(vertex_t src)
+- std::string_view get_edge(vertex_t src, vertex_t dst, label_t label)
+- SimpleEdgeDeltaIterator simple_get_edges(vertex_t src, label_t label)
+- vertex_t new_vertex()
+- void put_vertex(vertex_t vertex_id, std::string_view data)
+- bool checked_put_edge(vertex_t src, label_t label, vertex_t dst, std::string_view edge_data)
+- bool checked_delete_edge(vertex_t src, label_t label, vertex_t dst)
 
 #### SimpleEdgeDeltaIterator
+- bool valid()
+- void close()
+- void next()
+- vertex_t dst_id() 
+- std::string_view  edge_delta_data() 
+- uint64_t get_vertex_degree()
 
 #### StaticEdgeDeltaIterator
+The static iterator is used to scan a static graph after the graph is loaded.
+- void clear()
+- bool valid()
+- void next()
+- uint32_t vertex_degree()
+- vertex_t dst_id() 
+- std::string_view  edge_delta_data()
