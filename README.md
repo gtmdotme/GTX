@@ -18,9 +18,19 @@ This is Bw-Graph, a main memory graph system that manages and queries dynamic gr
 ```
 ## Usage
 ### Include Bw-Graph in your own project
-todo: test a bit more about how to link the library
-- include llibbwgraph.so in your project (e.g. CMakeLists.txt) and link against it during compilation.
+- include library bwgraph in your project (e.g. CMakeLists.txt).
+```
+cmake_minimum_required(VERSION 3.24)
+project(BwGraph_Link_Test)
+set(CMAKE_CXX_STANDARD 20)
+list(APPEND CMAKE_MODULE_PATH "~/cmake_modules/FindTBB")
+set(CMAKE_CXX_FLAGS_DEBUG "-std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op")
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -O3 -DNDEBUG")
+LINK_DIRECTORIES(/home/zhou822/BwGraph_Mono_Simple_Iterator/build/)
+add_executable(BwGraph_Link_Test main.cpp)
 
+TARGET_LINK_LIBRARIES(BwGraph_Link_Test bwgraph)
+```
 ### API
 The full Bw-Graph APIs can be found in /bind/bwgraph.hpp.
 Here we list the core APIs to manage and query a dynamic graph using Bw-Graph
@@ -80,3 +90,44 @@ The static iterator is used to scan a static graph after the graph is loaded.
 - vertex_t dst_id() 
 - std::string_view  edge_delta_data()
 
+###Example
+```
+#include <iostream>
+#include "Library/bwgraph.hpp"
+using Bw_Graph = bg::Graph;
+int main() {
+    Bw_Graph g;
+    auto txn = g.begin_read_write_transaction();
+    std::string data = "abc";
+    auto vid1 = txn.new_vertex();
+    auto vid2 = txn.new_vertex();
+    txn.put_vertex(vid1, data.c_str());
+    txn.put_vertex(vid2, data.c_str());
+    txn.checked_put_edge(vid1,1,vid2,data.c_str());
+    txn.checked_put_edge(vid2,1,vid1,data.c_str());
+    txn.commit();
+    auto r_txn = g.begin_read_only_transaction();
+    auto result = r_txn.get_edge(vid1,vid2,1);
+    if(result.at(0)!='a'||result.at(1)!='b'|result.at(2)!='c'){
+        std::cout<<"error"<<std::endl;
+    }else{
+        std::cout<<"no error"<<std::endl;
+    }
+    auto iterator = r_txn.simple_get_edges(vid1,1);
+    while(iterator.valid()){
+        auto v = iterator.dst_id();
+        if(v!=vid2){
+            std::cout<<"error"<<std::endl;
+        }
+        auto result2 = iterator.edge_delta_data();
+        if(result2.at(0)!='a'||result2.at(1)!='b'|result2.at(2)!='c'){
+            std::cout<<"error"<<std::endl;
+        }else{
+            std::cout<<"no error"<<std::endl;
+        }
+    }
+    r_txn.commit();
+
+    return 0;
+}
+```
