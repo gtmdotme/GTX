@@ -19,7 +19,7 @@ This is Bw-Graph, a main memory graph system that manages and queries dynamic gr
 ## Usage
 ### Include Bw-Graph in your own project
 - include library bwgraph in your project's CMakeLists.txt. 
-- copy bwgraph.hpp from /bind into your project. 
+- copy bind/bwgraph.hpp into your project. 
 - include bwgraph.hpp to use Bw-Graph
 ### API
 The full Bw-Graph APIs can be found in /bind/bwgraph.hpp.
