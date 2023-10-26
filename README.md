@@ -18,19 +18,7 @@ This is Bw-Graph, a main memory graph system that manages and queries dynamic gr
 ```
 ## Usage
 ### Include Bw-Graph in your own project
-- include library bwgraph in your project (e.g. CMakeLists.txt).
-```
-cmake_minimum_required(VERSION 3.24)
-project(BwGraph_Link_Test)
-set(CMAKE_CXX_STANDARD 20)
-list(APPEND CMAKE_MODULE_PATH "~/cmake_modules/FindTBB")
-set(CMAKE_CXX_FLAGS_DEBUG "-std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op")
-set(CMAKE_CXX_FLAGS_RELEASE "-std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -O3 -DNDEBUG")
-LINK_DIRECTORIES(/home/zhou822/BwGraph_Mono_Simple_Iterator/build/)
-add_executable(BwGraph_Link_Test main.cpp)
-
-TARGET_LINK_LIBRARIES(BwGraph_Link_Test bwgraph)
-```
+- include library bwgraph in your project's CMakeLists.txt and copy bwgraph.hpp from /bind into your project. The library can be accessed through the header.
 ### API
 The full Bw-Graph APIs can be found in /bind/bwgraph.hpp.
 Here we list the core APIs to manage and query a dynamic graph using Bw-Graph
@@ -91,6 +79,19 @@ The static iterator is used to scan a static graph after the graph is loaded.
 - std::string_view  edge_delta_data()
 
 ### Example
+```
+cmake_minimum_required(VERSION 3.24)
+project(BwGraph_Link_Test)
+set(CMAKE_CXX_STANDARD 20)
+list(APPEND CMAKE_MODULE_PATH "~/cmake_modules/FindTBB")
+set(CMAKE_CXX_FLAGS_DEBUG "-std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op")
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -O3 -DNDEBUG")
+LINK_DIRECTORIES(/home/zhou822/BwGraph_Mono_Simple_Iterator/build/)
+add_executable(BwGraph_Link_Test main.cpp)
+
+TARGET_LINK_LIBRARIES(BwGraph_Link_Test bwgraph)
+```
+
 ```
 #include <iostream>
 #include "Library/bwgraph.hpp"
