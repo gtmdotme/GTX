@@ -90,7 +90,6 @@ set(CMAKE_CXX_FLAGS_DEBUG "-std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -
 set(CMAKE_CXX_FLAGS_RELEASE "-std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -O3 -DNDEBUG")
 LINK_DIRECTORIES(/home/zhou822/BwGraph_Mono_Simple_Iterator/build/)
 add_executable(BwGraph_Link_Test main.cpp)
-
 TARGET_LINK_LIBRARIES(BwGraph_Link_Test bwgraph)
 ```
 
