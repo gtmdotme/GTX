@@ -99,23 +99,40 @@ TARGET_LINK_LIBRARIES(BwGraph_Link_Test bwgraph)
 using Bw_Graph = bg::Graph;
 int main() {
     Bw_Graph g;
+
+    //create a read-write transaction
     auto txn = g.begin_read_write_transaction();
+
     std::string data = "abc";
+
+    //create a new vertex, return its internal vertex id
     auto vid1 = txn.new_vertex();
     auto vid2 = txn.new_vertex();
+
+    //create a new version of the vertex the txn just created
     txn.put_vertex(vid1, data.c_str());
     txn.put_vertex(vid2, data.c_str());
+
+    //create/update a new version of the edge of label 1 and data.
     txn.checked_put_edge(vid1,1,vid2,data.c_str());
     txn.checked_put_edge(vid2,1,vid1,data.c_str());
     txn.commit();
+
+    //create a read-only transaction
     auto r_txn = g.begin_read_only_transaction();
+
+    //single edge read
     auto result = r_txn.get_edge(vid1,vid2,1);
     if(result.at(0)!='a'||result.at(1)!='b'||result.at(2)!='c'){
         std::cout<<"error"<<std::endl;
     }else{
         std::cout<<"no error"<<std::endl;
     }
+
+    //create an iterator to scan the adjacency list of a vertex
     auto iterator = r_txn.simple_get_edges(vid1,1);
+
+    //scan the adjacency list
     while(iterator.valid()){
         auto v = iterator.dst_id();
         if(v!=vid2){
