@@ -95,7 +95,7 @@ TARGET_LINK_LIBRARIES(BwGraph_Link_Test bwgraph)
 
 ```
 #include <iostream>
-#include "Library/bwgraph.hpp"
+#include "bwgraph.hpp"
 using Bw_Graph = bg::Graph;
 int main() {
     Bw_Graph g;
