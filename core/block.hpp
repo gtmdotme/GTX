@@ -1062,20 +1062,13 @@ namespace bwgraph {
                     //__builtin_prefetch((const void*)(current_delta+i),0,0);
                     _mm_prefetch((const void *) (current_delta + i), _MM_HINT_T2);
                 }
-                //__builtin_prefetch((const void*)(current_delta+1),0,0);
-                //__builtin_prefetch((const void*)(current_delta+2),0,0);
+
 
 #endif//prefetching
                 while (start_offset) {
                     //skip invalid deltas
                     uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
                     if (original_ts)[[likely]] {
-                        //prefetch
-#if USING_PREFETCH
-                        //__builtin_prefetch((const void*)(current_delta+1),0,0);
-                        //__builtin_prefetch((const void*)(current_delta+2),0,0);
-
-#endif//prefetching
                         //still do lazy update
                         if (original_ts != txn_id && is_txn_id(original_ts)) {
                             uint64_t status = 0;
