@@ -1,7 +1,7 @@
 # Bw-Graph
 
 ## Description
-This is Bw-Graph, a main memory graph system that manages and queries dynamic graphs. Bw-Graph supports concurrent read-write and read-only transactions with snapshot isolation. Bw-Graph supports graph analytics using its OpenMP-tailored read-only transactions and transaction adjacency list scan protocol. It has been evaluated against state-of-the-art transactional graphy systems using [GFE_Driver] (https://anonymous.4open.science/r/gfe_driver_bw-E688/README.md). We currently only leave the anonymouy version and will publish the public version later.
+This is Bw-Graph, a main memory graph system that manages and queries dynamic graphs. Bw-Graph supports concurrent read-write and read-only transactions with snapshot isolation. Bw-Graph supports graph analytics using its OpenMP-tailored read-only transactions and transaction adjacency list scan protocol. It has been evaluated against state-of-the-art transactional graphy systems using [GFE_Driver](https://anonymous.4open.science/r/gfe_driver_bw-E688/README.md). We currently only leave the anonymouy version and will publish the public version later.
 
 ## Build
 ### Prerequisites 
