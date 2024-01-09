@@ -390,6 +390,11 @@ namespace bwgraph{
         //std::pair<Txn_Operation_Response,EarlyStopEdgeDeltaIterator> early_stop_get_edges(vertex_t src, label_t label,uint8_t thread_id);
         std::string_view get_vertex(vertex_t src);
         std::string_view get_vertex(vertex_t src, uint8_t thread_id);
+        uint64_t get_neighborhood_size(vertex_t vid, label_t label, uint8_t thread_id);
+        EdgeDeltaBlockHeader* get_block_header(uint64_t vid, bwgraph::label_t label, uint8_t thread_id,uint32_t* current_delta_offset);
+        inline void unregister_thread_block_access(uint8_t thread_id){
+            BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+        }
         //uint64_t vertex_degree(vertex_t src, label_t label, std::unique_ptr<SimpleEdgeDeltaIterator>& edge_iterator);
         inline void commit(){
            /* batch_lazy_updates();
@@ -506,6 +511,7 @@ namespace bwgraph{
         //checked version
         Txn_Operation_Response checked_put_edge(vertex_t src, vertex_t dst, label_t label, std::string_view edge_data);
         Txn_Operation_Response checked_delete_edge(vertex_t src, vertex_t dst, label_t label);
+        Txn_Operation_Response checked_single_put_edge(vertex_t src, vertex_t dst, label_t label, std::string_view edge_data);
         //Txn_Operation_Response delete_vertex(vertex_t src);
         //Txn_Operation_Response delete(vertex_t src, vertex_t dst, label_t label);
         //transaction graph read operations

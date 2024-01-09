@@ -11,6 +11,8 @@
 #include <string>
 #include <stdexcept>
 #include <thread>
+#include <vector>
+
 namespace  bwgraph{
     class BwGraph;
     class RWTransaction;
@@ -21,6 +23,7 @@ namespace  bwgraph{
     class SimpleEdgeDeltaIterator;
     class StaticEdgeDeltaIterator;
     class EdgeDeltaBlockHeader;
+    class PageRank;
 }
 namespace bg {
     using label_t = uint16_t;
@@ -37,6 +40,7 @@ namespace bg {
     class SimpleEdgeDeltaIterator;
     //class SimpleObjectEdgeDeltaIterator;
     class StaticEdgeDeltaIterator;
+    class PageRankHandler;
     class Graph {
     public:
         Graph(std::string block_path = "",size_t _max_block_size = 1ul << 40,
@@ -72,6 +76,9 @@ namespace bg {
         //for debug
         bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
         void print_thread_id_allocation();
+
+        //algorithm implementation
+        PageRankHandler get_pagerank_handler(uint64_t num);
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
         std::thread commit_manager_worker;
@@ -148,6 +155,7 @@ namespace bg {
         void put_edge(vertex_t src, label_t label, vertex_t dst, std::string_view edge_data);
         void delete_edge(vertex_t src, label_t label, vertex_t dst);//right now just ensure final result does not contain this edge
         bool checked_put_edge(vertex_t src, label_t label, vertex_t dst, std::string_view edge_data);
+        bool checked_single_put_edge(vertex_t src, label_t label, vertex_t dst, std::string_view edge_data);
         bool checked_delete_edge(vertex_t src, label_t label, vertex_t dst);
     private:
         const std::unique_ptr<bwgraph::RWTransaction> txn;
@@ -203,6 +211,16 @@ namespace bg {
     private:
        
         bwgraph::BaseEdgeDelta* current_delta;
+    };
+    class PageRankHandler{
+    public:
+        PageRankHandler(std::unique_ptr<bwgraph::PageRank> _handler);
+        ~PageRankHandler();
+        void compute(uint64_t num_iterations, double damping_factor);
+        std::vector<double>* get_raw_result();
+        std::vector<std::pair<uint64_t,double>>* get_result();
+    private:
+        std::unique_ptr<bwgraph::PageRank> pagerank;
     };
    /* class SimpleObjectEdgeDeltaIterator{
         SimpleObjectEdgeDeltaIterator();

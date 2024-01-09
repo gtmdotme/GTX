@@ -4,6 +4,7 @@
 
 #include "bwgraph.hpp"
 #include "core/bwgraph_include.hpp"
+#include "core/algorithm.hpp"
 #include <omp.h>
 #include <charconv>
 
@@ -152,6 +153,11 @@ void Graph::configure_distinct_readers_and_writers(uint64_t reader_count, uint64
 void Graph::on_openmp_workloads_finish() {
     graph->on_openmp_workloads_finish();
 }
+
+PageRankHandler Graph::get_pagerank_handler(uint64_t num) {
+    return {std::make_unique<impl::PageRank>(graph.get(),num)};
+}
+
 //read only transactions
 ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}
 
@@ -387,6 +393,34 @@ RWTransaction::checked_put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_
 #endif
     }
 }
+
+ bool RWTransaction::checked_single_put_edge(vertex_t src, label_t label, vertex_t dst, std::string_view edge_data){
+    while(true){
+#if TRACK_EXECUTION_TIME
+        auto start = std::chrono::high_resolution_clock::now();
+#endif
+        auto result = txn->checked_single_put_edge(src,dst,label,edge_data);
+#if TRACK_EXECUTION_TIME
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        txn->get_graph().local_thread_edge_write_time.local()+= duration.count();
+#endif
+        if(result == bwgraph::Txn_Operation_Response::SUCCESS_NEW_DELTA){
+            return true;
+        }else if(result == bwgraph::Txn_Operation_Response::SUCCESS_EXISTING_DELTA){
+            return false;
+        }
+        else if(result ==bwgraph::Txn_Operation_Response::FAIL){
+#if TRACK_COMMIT_ABORT
+            txn->get_graph().register_abort();
+#endif
+            throw RollbackExcept("write write conflict edge");
+        }
+#if TRACK_COMMIT_ABORT
+        txn->get_graph().register_loop();
+#endif
+    }
+ }
 void RWTransaction::delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst) {
     while(true){
 #if TRACK_EXECUTION_TIME
@@ -575,4 +609,20 @@ uint32_t StaticEdgeDeltaIterator::vertex_degree(){
 }
 double StaticEdgeDeltaIterator::get_weight() {
     return *reinterpret_cast<double*>(current_delta->data);
+}
+
+PageRankHandler::PageRankHandler(std::unique_ptr<bwgraph::PageRank> _handler):pagerank(std::move(_handler)) {}
+
+PageRankHandler::~PageRankHandler() = default;
+
+void PageRankHandler::compute(uint64_t num_iterations, double damping_factor) {
+    pagerank->compute_pagerank(num_iterations,damping_factor);
+}
+
+std::vector<double> *PageRankHandler::get_raw_result() {
+    return pagerank->get_raw_result();
+}
+
+std::vector<std::pair<uint64_t, double>> *PageRankHandler::get_result() {
+    return pagerank->get_result();
 }

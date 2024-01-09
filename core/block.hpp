@@ -1201,6 +1201,61 @@ namespace bwgraph {
                 return 0;
             }
         }
+        /*
+         * if I have the lock, the delta chain must be stable already
+         */
+        uint32_t fetch_previous_version_offset_simple(vertex_t vid, uint32_t start_offset, uint64_t txn_id) {
+            if (order < index_lookup_order_threshold) {
+                auto current_delta = get_edge_delta(start_offset);
+#if USING_PREFETCH
+                auto num = start_offset / ENTRY_DELTA_SIZE;
+                for (uint32_t i = 0; i < num; i++) {
+                    //__builtin_prefetch((const void*)(current_delta+i),0,0);
+                    _mm_prefetch((const void *) (current_delta + i), _MM_HINT_T2);
+                }
+#endif//prefetching
+                while (start_offset) {
+                    //skip invalid deltas
+                    uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                    if (original_ts)[[likely]] {
+                        //still do lazy update
+
+                        if (current_delta->toID == vid) {
+                            current_delta->invalidate_ts.store(txn_id, std::memory_order_release);
+                            if (current_delta->delta_type != EdgeDeltaType::DELETE_DELTA) {
+                                return start_offset;
+                            } else {
+                                return 0;//for delete delta, just return 0 as if no previous version exist
+                            }
+                        }
+                    }
+                    start_offset -= ENTRY_DELTA_SIZE;
+                    current_delta++;
+                }
+                return 0;
+            }else{
+                while (start_offset) {
+                    auto current_delta = get_edge_delta(start_offset);
+
+#if EDGE_DELTA_TEST
+                    else if(original_ts == ABORT){
+                        throw EagerAbortException();//should not meet aborted delta in the chain
+                    }
+#endif
+                    if (current_delta->toID == vid) {
+                        current_delta->invalidate_ts.store(txn_id, std::memory_order_release);
+                        if (current_delta->delta_type != EdgeDeltaType::DELETE_DELTA) {
+                            return start_offset;
+                        } else {
+                            return 0;//for delete delta, just return 0 as if no previous version exist
+                        }
+                    }
+                    start_offset = current_delta->previous_offset;
+                }
+                return 0;
+            }
+
+        }
 
         inline bool is_overflow_offset(uint64_t current_offset) {
             uint32_t data_size = (uint32_t) (current_offset >> 32);
