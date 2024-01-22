@@ -14,6 +14,15 @@ namespace impl = bwgraph;
 Graph:: ~Graph(){
     commit_server_shutdown();
     commit_manager_worker.join();
+    if(bfs){
+        delete bfs;
+    }
+    if(pagerank){
+        delete pagerank;
+    }
+    if(sssp){
+        delete sssp;
+    }
 }
 Graph::Graph(std::string block_path, size_t _max_block_size, std::string wal_path) :graph(std::make_unique<impl::BwGraph>(block_path, _max_block_size, wal_path)){
     commit_manager_worker =std::thread(&Graph::commit_server_start, this);
@@ -154,8 +163,44 @@ void Graph::on_openmp_workloads_finish() {
     graph->on_openmp_workloads_finish();
 }
 
+
+//for algorithms
 PageRankHandler Graph::get_pagerank_handler(uint64_t num) {
     return {std::make_unique<impl::PageRank>(graph.get(),num)};
+}
+
+BFSHandler Graph::get_bfs_handler(uint64_t num) {
+    return {std::make_unique<impl::BFS>(graph.get(),num)};
+}
+
+SSSPHandler Graph::get_sssp_handler(uint64_t num) {
+    return {std::make_unique<bwgraph::SSSP>(graph.get(),num)};
+}
+
+std::vector<std::pair<uint64_t,int64_t>>* Graph::compute_bfs(uint64_t max_vid,uint64_t root, int alpha, int beta) {
+    if(!bfs)[[unlikely]]{
+        bfs = new impl::BFS(this->graph.get(),max_vid);
+    }
+    bfs->bfs(root,alpha,beta);
+    return bfs->get_result();
+}
+
+std::vector<std::pair<uint64_t,double>>* Graph::compute_pagerank(uint64_t max_vid, uint64_t num_iterations, double damping_factor) {
+    if(!pagerank)[[unlikely]]{
+        pagerank = new impl::PageRank(this->graph.get(),max_vid);
+    }
+    pagerank->compute_pagerank(num_iterations,damping_factor);
+    return pagerank->get_result();
+}
+
+std::vector<std::pair<uint64_t, double>>* Graph::compute_sssp(uint64_t max_vid, uint64_t source, double delta) {
+    if(sssp)[[likely]]{
+        sssp->reset();
+    }else[[unlikely]]{
+        sssp = new impl::SSSP(this->graph.get(),max_vid);
+    }
+    sssp->compute(source,delta);
+    return sssp->get_result();
 }
 
 //read only transactions
@@ -625,4 +670,32 @@ std::vector<double> *PageRankHandler::get_raw_result() {
 
 std::vector<std::pair<uint64_t, double>> *PageRankHandler::get_result() {
     return pagerank->get_result();
+}
+
+BFSHandler::BFSHandler(std::unique_ptr<bwgraph::BFS> _handler):bfs(std::move(_handler)) {}
+
+BFSHandler::~BFSHandler()=default;
+
+void BFSHandler::compute(uint64_t root, int alpha, int beta) {
+    bfs->bfs(root,alpha,beta);
+}
+
+std::vector<int64_t>*BFSHandler::get_raw_result() {
+    return bfs->get_raw_result();
+}
+
+std::vector<std::pair<uint64_t, int64_t>> *BFSHandler::get_result() {
+    return bfs->get_result();
+}
+
+SSSPHandler::SSSPHandler(std::unique_ptr<bwgraph::SSSP> _handler):sssp(std::move(_handler)) {}
+
+SSSPHandler::~SSSPHandler() = default;
+
+void SSSPHandler::compute(uint64_t source, double delta) {
+    sssp->compute(source,delta);
+}
+
+std::vector<std::pair<uint64_t, double>> *SSSPHandler::get_result() {
+    return sssp->get_result();
 }

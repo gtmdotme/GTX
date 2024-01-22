@@ -24,6 +24,8 @@ namespace  bwgraph{
     class StaticEdgeDeltaIterator;
     class EdgeDeltaBlockHeader;
     class PageRank;
+    class BFS;
+    class SSSP;
 }
 namespace bg {
     using label_t = uint16_t;
@@ -41,6 +43,8 @@ namespace bg {
     //class SimpleObjectEdgeDeltaIterator;
     class StaticEdgeDeltaIterator;
     class PageRankHandler;
+    class BFSHandler;
+    class SSSPHandler;
     class Graph {
     public:
         Graph(std::string block_path = "",size_t _max_block_size = 1ul << 40,
@@ -76,13 +80,19 @@ namespace bg {
         //for debug
         bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
         void print_thread_id_allocation();
-
+        std::vector<std::pair<uint64_t,int64_t>>* compute_bfs(uint64_t max_vid,uint64_t root,int alpha = 15, int beta = 18);
+        std::vector<std::pair<uint64_t,double>>*  compute_pagerank(uint64_t max_vid,uint64_t num_iterations, double damping_factor);
+        std::vector<std::pair<uint64_t, double>>* compute_sssp(uint64_t max_vid,uint64_t source, double delta);
         //algorithm implementation
         PageRankHandler get_pagerank_handler(uint64_t num);
+        BFSHandler get_bfs_handler(uint64_t num);
+        SSSPHandler get_sssp_handler(uint64_t num);
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
         std::thread commit_manager_worker;
-
+        bwgraph::BFS* bfs = nullptr;
+        bwgraph::PageRank* pagerank =nullptr;
+        bwgraph::SSSP* sssp = nullptr;
     };
 
     class ROTransaction{
@@ -221,6 +231,27 @@ namespace bg {
         std::vector<std::pair<uint64_t,double>>* get_result();
     private:
         std::unique_ptr<bwgraph::PageRank> pagerank;
+    };
+
+    class BFSHandler{
+    public:
+        BFSHandler(std::unique_ptr<bwgraph::BFS> _handler);
+        ~BFSHandler();
+        void compute(uint64_t root,int alpha = 15, int beta = 18);
+        std::vector<int64_t>* get_raw_result();
+        std::vector<std::pair<uint64_t,int64_t>>* get_result();
+    private:
+        std::unique_ptr<bwgraph::BFS> bfs;
+    };
+
+    class SSSPHandler{
+    public:
+        SSSPHandler(std::unique_ptr<bwgraph::SSSP> _handler);
+        ~SSSPHandler();
+        void compute(uint64_t source, double delta);
+        std::vector<std::pair<uint64_t, double>>* get_result();
+    private:
+        std::unique_ptr<bwgraph::SSSP> sssp;
     };
    /* class SimpleObjectEdgeDeltaIterator{
         SimpleObjectEdgeDeltaIterator();

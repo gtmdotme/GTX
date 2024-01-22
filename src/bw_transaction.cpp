@@ -168,7 +168,7 @@ Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bw
             //this step may create a 0 offset for a delta chain in the cache
             current_delta_chain_head_offset =  cached_delta_chain_access.first->second.ensure_delta_chain_cache(dst);//get the cached offset if there is a write already, otherwise stay at 0
         }
-        auto* delta_chains_index = target_label_entry->delta_chain_index;
+        //auto* delta_chains_index = target_label_entry->delta_chain_index;
         const char* data = edge_data.data();
         delta_chain_id_t target_delta_chain_id = calculate_owner_delta_chain_id(dst,total_delta_chain_num);
         //indicate the current txn does not have the lock
@@ -290,7 +290,7 @@ Txn_Operation_Response RWTransaction::checked_single_put_edge(vertex_t src, vert
         int32_t total_delta_chain_num = current_block->get_delta_chain_num();
        
         uint32_t current_delta_chain_head_offset = 0;
-        auto* delta_chains_index = target_label_entry->delta_chain_index;
+        //auto* delta_chains_index = target_label_entry->delta_chain_index;
         const char* data = edge_data.data();
         delta_chain_id_t target_delta_chain_id = calculate_owner_delta_chain_id(dst,total_delta_chain_num);
         //indicate the current txn does not have the lock
@@ -516,7 +516,7 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
             //this step may create a 0 offset for a delta chain in the cache
             current_delta_chain_head_offset =  cached_delta_chain_access.first->second.ensure_delta_chain_cache(dst);//get the cached offset if there is a write already, otherwise stay at 0
         }
-        auto* delta_chains_index = target_label_entry->delta_chain_index;
+        //auto* delta_chains_index = target_label_entry->delta_chain_index;
         delta_chain_id_t target_delta_chain_id = calculate_owner_delta_chain_id(dst,total_delta_chain_num);
         //indicate the current txn does not have the lock
         if(!current_delta_chain_head_offset){
@@ -3042,6 +3042,243 @@ uint64_t SharedROTransaction::get_neighborhood_size(bwgraph::vertex_t src, bwgra
         //do nothing
     }
     throw std::runtime_error("unreachable");
+}
+
+int64_t SharedROTransaction::get_neighborhood_size_signed(bwgraph::vertex_t src, bwgraph::label_t label,
+                                                           uint8_t thread_id) {
+    BwLabelEntry* target_label_entry = reader_access_label(src,label);
+    if(!target_label_entry)[[unlikely]]{
+        on_operation_finish(thread_id);
+        return std::numeric_limits<int64_t>::max();
+    }
+    auto block_id = generate_block_id(src, label);
+    int64_t result = 0;
+    while(true){
+        if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table))[[likely]]{
+            auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
+            on_operation_finish(thread_id);
+            //read current block
+            if(current_block->get_creation_time()<=read_timestamp)[[likely]]{
+                uint64_t current_combined_offset = current_block->get_current_offset();
+                if(current_block->is_overflow_offset(current_combined_offset))[[unlikely]]{
+                    BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                    on_operation_finish(thread_id);
+                    continue;
+                }
+                //start the scan
+                auto current_delta_offset = bwgraph::EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset);
+                auto current_delta = current_block->get_edge_delta(current_delta_offset);
+                while(current_delta_offset>0){
+                    //need lazy update
+                    auto original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                    if(original_ts==0)[[unlikely]]{
+                        current_delta_offset-=ENTRY_DELTA_SIZE;
+                        current_delta++;
+                        continue;
+                    }
+                    //lazy update
+                    if(is_txn_id(original_ts))[[unlikely]]{
+                        uint64_t status = 0;
+                        if(txn_tables.get_status(original_ts,status))[[likely]]{
+                            if(status == IN_PROGRESS){
+                                current_delta_offset -= ENTRY_DELTA_SIZE;
+                                current_delta++;
+                                continue;
+                            }else{
+                                if(status!=ABORT){
+                                    current_block->update_previous_delta_invalidate_ts(current_delta->toID,
+                                                                                       current_delta->previous_version_offset,
+                                                                                       status);
+                                    if (current_delta->lazy_update(original_ts, status)) {
+                                        //record lazy update
+                                        txn_tables.reduce_op_count(original_ts,1);
+                                    }
+                                }
+#if EDGE_DELTA_TEST
+                                if(current_delta->creation_ts.load(std::memory_order_acquire)!=status){
+                                    throw LazyUpdateException();
+                                }
+#endif
+                                original_ts = status;
+                            }
+                        }else{
+                            original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                        }
+                    }
+                    if(original_ts<=read_timestamp){
+                        if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                            auto invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
+                            if(invalidation_ts==0||invalidation_ts>read_timestamp){
+                                result++;
+                            }
+                        }
+                    }
+                    current_delta_offset -= ENTRY_DELTA_SIZE;
+                    current_delta++;
+                }
+                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+            }else{//read previous block
+                BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                bool found = false;
+                while (current_block->get_previous_ptr()) {
+                    current_block = block_manager.convert<EdgeDeltaBlockHeader>(
+                            current_block->get_previous_ptr());
+                    if (read_timestamp >= current_block->get_creation_time()) {
+                        found = true;
+                        break;
+                    }
+                }
+                if(found)[[likely]]{
+                    auto previous_block_offset = current_block->get_current_offset();
+                    auto current_delta_offset = static_cast<uint32_t>(previous_block_offset & SIZE2MASK);
+                    auto current_delta = current_block->get_edge_delta(current_delta_offset);
+                    while(current_delta_offset>0){
+                        if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                            auto original_ts = current_delta->creation_ts.load(std::memory_order_relaxed);
+                            if(original_ts<=read_timestamp){
+                                auto invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_relaxed);
+                                if(invalidation_ts==0||invalidation_ts>read_timestamp){
+                                    result++;
+                                }
+                            }
+                        }
+                        current_delta_offset -= ENTRY_DELTA_SIZE;
+                        current_delta++;
+                    }
+                }
+            }
+            //will return if we get the access
+            return result;
+        }
+        //do nothing
+    }
+    throw std::runtime_error("unreachable");
+}
+
+/*
+ * get total number of edges of a certain label
+ */
+uint64_t SharedROTransaction::get_total_edge_num(bwgraph::label_t label) {
+    std::atomic_uint64_t total_edge_num = 0;
+    const uint64_t max_vertex_id = graph.get_max_allocated_vid();
+#pragma omp parallel
+    {
+        uint8_t thread_id = graph.get_openmp_worker_thread_id();
+        uint64_t private_edge_num = 0;
+#pragma omp for
+        for (uint64_t src = 1; src <= max_vertex_id; src++) {
+            BwLabelEntry* target_label_entry = reader_access_label(src,label);
+            if(!target_label_entry)[[unlikely]]{
+                on_operation_finish(thread_id);
+                continue;
+            }
+            auto block_id = generate_block_id(src, label);
+            while(true){
+                if(BlockStateVersionProtectionScheme::reader_access_block(thread_id,block_id,target_label_entry,block_access_ts_table))[[likely]]{
+                    auto current_block = block_manager.convert<EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
+                    on_operation_finish(thread_id);
+                    //read current block
+                    if(current_block->get_creation_time()<=read_timestamp)[[likely]]{
+                        uint64_t current_combined_offset = current_block->get_current_offset();
+                        if(current_block->is_overflow_offset(current_combined_offset))[[unlikely]]{
+                            BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                            on_operation_finish(thread_id);
+                            continue;
+                        }
+                        //start the scan
+                        auto current_delta_offset = bwgraph::EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset);
+                        auto current_delta = current_block->get_edge_delta(current_delta_offset);
+                        while(current_delta_offset>0){
+                            //need lazy update
+                            auto original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                            if(original_ts==0)[[unlikely]]{
+                                current_delta_offset-=ENTRY_DELTA_SIZE;
+                                current_delta++;
+                                continue;
+                            }
+                            //lazy update
+                            if(is_txn_id(original_ts))[[unlikely]]{
+                                uint64_t status = 0;
+                                if(txn_tables.get_status(original_ts,status))[[likely]]{
+                                    if(status == IN_PROGRESS){
+                                        current_delta_offset -= ENTRY_DELTA_SIZE;
+                                        current_delta++;
+                                        continue;
+                                    }else{
+                                        if(status!=ABORT){
+                                            current_block->update_previous_delta_invalidate_ts(current_delta->toID,
+                                                                                               current_delta->previous_version_offset,
+                                                                                               status);
+                                            if (current_delta->lazy_update(original_ts, status)) {
+                                                //record lazy update
+                                                txn_tables.reduce_op_count(original_ts,1);
+                                            }
+                                        }
+#if EDGE_DELTA_TEST
+                                        if(current_delta->creation_ts.load(std::memory_order_acquire)!=status){
+                                    throw LazyUpdateException();
+                                }
+#endif
+                                        original_ts = status;
+                                    }
+                                }else{
+                                    original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                                }
+                            }
+                            if(original_ts<=read_timestamp){
+                                if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                                    auto invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_acquire);
+                                    if(invalidation_ts==0||invalidation_ts>read_timestamp){
+                                        private_edge_num++;
+                                    }
+                                }
+                            }
+                            current_delta_offset -= ENTRY_DELTA_SIZE;
+                            current_delta++;
+                        }
+                        BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                    }else{//read previous block
+                        BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
+                        bool found = false;
+                        while (current_block->get_previous_ptr()) {
+                            current_block = block_manager.convert<EdgeDeltaBlockHeader>(
+                                    current_block->get_previous_ptr());
+                            if (read_timestamp >= current_block->get_creation_time()) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if(found)[[likely]]{
+                            auto previous_block_offset = current_block->get_current_offset();
+                            auto current_delta_offset = static_cast<uint32_t>(previous_block_offset & SIZE2MASK);
+                            auto current_delta = current_block->get_edge_delta(current_delta_offset);
+                            while(current_delta_offset>0){
+                                if(current_delta->delta_type!=EdgeDeltaType::DELETE_DELTA){
+                                    auto original_ts = current_delta->creation_ts.load(std::memory_order_relaxed);
+                                    if(original_ts<=read_timestamp){
+                                        auto invalidation_ts = current_delta->invalidate_ts.load(std::memory_order_relaxed);
+                                        if(invalidation_ts==0||invalidation_ts>read_timestamp){
+                                            private_edge_num++;
+                                        }
+                                    }
+                                }
+                                current_delta_offset -= ENTRY_DELTA_SIZE;
+                                current_delta++;
+                            }
+                        }
+                    }
+                    break;
+                    //will return if we get the access
+                    //return result;
+                }
+                //do nothing
+            }
+        }
+        total_edge_num.fetch_add(private_edge_num,std::memory_order_acq_rel);
+        thread_on_openmp_section_finish(thread_id);
+    }
+    graph.on_openmp_parallel_session_finish();
+    return total_edge_num.load(std::memory_order_relaxed)/2;
 }
 
 EdgeDeltaBlockHeader *SharedROTransaction::get_block_header(uint64_t vid, bwgraph::label_t label, uint8_t thread_id,
