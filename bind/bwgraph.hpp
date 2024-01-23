@@ -81,7 +81,7 @@ namespace bg {
         bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
         void print_thread_id_allocation();
         std::vector<std::pair<uint64_t,int64_t>>* compute_bfs(uint64_t max_vid,uint64_t root,int alpha = 15, int beta = 18);
-        std::vector<std::pair<uint64_t,double>>*  compute_pagerank(uint64_t max_vid,uint64_t num_iterations, double damping_factor);
+        std::vector<std::pair<uint64_t,double>>*  compute_pagerank(uint64_t num_vertices,uint64_t num_iterations, double damping_factor);
         std::vector<std::pair<uint64_t, double>>* compute_sssp(uint64_t max_vid,uint64_t source, double delta);
         //algorithm implementation
         PageRankHandler get_pagerank_handler(uint64_t num);

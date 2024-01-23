@@ -185,9 +185,9 @@ std::vector<std::pair<uint64_t,int64_t>>* Graph::compute_bfs(uint64_t max_vid,ui
     return bfs->get_result();
 }
 
-std::vector<std::pair<uint64_t,double>>* Graph::compute_pagerank(uint64_t max_vid, uint64_t num_iterations, double damping_factor) {
+std::vector<std::pair<uint64_t,double>>* Graph::compute_pagerank(uint64_t num_vertices, uint64_t num_iterations, double damping_factor) {
     if(!pagerank)[[unlikely]]{
-        pagerank = new impl::PageRank(this->graph.get(),max_vid);
+        pagerank = new impl::PageRank(this->graph.get(),num_vertices);
     }
     pagerank->compute_pagerank(num_iterations,damping_factor);
     return pagerank->get_result();
