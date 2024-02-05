@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+#include <unordered_map>
 
 namespace  bwgraph{
     class BwGraph;
@@ -26,6 +27,7 @@ namespace  bwgraph{
     class PageRank;
     class BFS;
     class SSSP;
+    class TwoHopNeighbors;
 }
 namespace bg {
     using label_t = uint16_t;
@@ -45,6 +47,7 @@ namespace bg {
     class PageRankHandler;
     class BFSHandler;
     class SSSPHandler;
+    class TwoHopNeighborsHandler;
     class Graph {
     public:
         Graph(std::string block_path = "",size_t _max_block_size = 1ul << 40,
@@ -87,6 +90,7 @@ namespace bg {
         PageRankHandler get_pagerank_handler(uint64_t num);
         BFSHandler get_bfs_handler(uint64_t num);
         SSSPHandler get_sssp_handler(uint64_t num);
+        TwoHopNeighborsHandler get_two_hop_neighbors_handler();
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
         std::thread commit_manager_worker;
@@ -257,6 +261,16 @@ namespace bg {
         SimpleObjectEdgeDeltaIterator();
 
     };*/
+
+   class TwoHopNeighborsHandler{
+   public:
+       TwoHopNeighborsHandler(std::unique_ptr<bwgraph::TwoHopNeighbors>);
+       ~TwoHopNeighborsHandler();
+       void compute(std::vector<uint64_t>&vertices);
+       std::unordered_map<uint64_t, std::vector<uint64_t>>* get_result();
+   private:
+        std::unique_ptr<bwgraph::TwoHopNeighbors> thns;
+   };
 } // bg
 
 //#endif //BWGRAPH_LIB_BWGRAPH_HPP

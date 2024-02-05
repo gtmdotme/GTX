@@ -2600,17 +2600,17 @@ std::string_view SharedROTransaction::get_vertex(bwgraph::vertex_t src) {
 }
 std::string_view SharedROTransaction::get_vertex(bwgraph::vertex_t src, uint8_t thread_id) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
-    if(!vertex_index_entry.valid.load(std::memory_order_acquire)){
+    if(!vertex_index_entry.valid.load(std::memory_order_acquire))[[unlikely]]{
         return std::string_view ();
         //throw IllegalVertexAccessException();
     }
     uintptr_t current_vertex_delta_ptr = vertex_index_entry.vertex_delta_chain_head_ptr.load(std::memory_order_acquire);
-    if(!current_vertex_delta_ptr){
+    if(!current_vertex_delta_ptr)[[unlikely]]{
         return std::string_view ();
     }
     VertexDeltaHeader* current_vertex_delta = block_manager.convert<VertexDeltaHeader>(current_vertex_delta_ptr);
     uint64_t current_ts = current_vertex_delta->get_creation_ts();
-    if(is_txn_id(current_ts)){
+    if(is_txn_id(current_ts))[[unlikely]]{
         uint64_t status;
         if(txn_tables.get_status(current_ts,status)){
             if(status!=IN_PROGRESS){//ignore in progress ones
@@ -2634,7 +2634,7 @@ std::string_view SharedROTransaction::get_vertex(bwgraph::vertex_t src, uint8_t 
         }
     }
     while(current_vertex_delta_ptr){
-        if(current_vertex_delta->get_creation_ts()<=read_timestamp){
+        if(current_vertex_delta->get_creation_ts()<=read_timestamp)[[likely]]{
             char* data = current_vertex_delta->get_data();
             return std::string_view (data,current_vertex_delta->get_data_size());
         }
