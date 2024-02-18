@@ -27,6 +27,7 @@ namespace  bwgraph{
     class PageRank;
     class BFS;
     class SSSP;
+    class OneHopNeighbors;
     class TwoHopNeighbors;
 }
 namespace bg {
@@ -47,6 +48,7 @@ namespace bg {
     class PageRankHandler;
     class BFSHandler;
     class SSSPHandler;
+    class OneHopNeighborsHandler;
     class TwoHopNeighborsHandler;
     class Graph {
     public:
@@ -90,6 +92,7 @@ namespace bg {
         PageRankHandler get_pagerank_handler(uint64_t num);
         BFSHandler get_bfs_handler(uint64_t num);
         SSSPHandler get_sssp_handler(uint64_t num);
+        OneHopNeighborsHandler get_one_hop_neighbors_handler();
         TwoHopNeighborsHandler get_two_hop_neighbors_handler();
     private:
         const std::unique_ptr<bwgraph::BwGraph> graph;
@@ -261,7 +264,15 @@ namespace bg {
         SimpleObjectEdgeDeltaIterator();
 
     };*/
-
+   class OneHopNeighborsHandler{
+   public:
+       OneHopNeighborsHandler(std::unique_ptr<bwgraph::OneHopNeighbors>);
+       ~OneHopNeighborsHandler();
+       void compute(std::vector<uint64_t>&vertices);
+       std::unordered_map<uint64_t, std::vector<uint64_t>>* get_result();
+   private:
+       std::unique_ptr<bwgraph::OneHopNeighbors> ohns;
+   };
    class TwoHopNeighborsHandler{
    public:
        TwoHopNeighborsHandler(std::unique_ptr<bwgraph::TwoHopNeighbors>);

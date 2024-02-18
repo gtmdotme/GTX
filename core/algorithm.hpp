@@ -851,6 +851,157 @@ namespace bwgraph{
         size_t kMaxBin = std::numeric_limits<size_t>::max()/2;
         TxnTables * txn_tables;
     };
+
+    class OneHopNeighbors{
+    public:
+        OneHopNeighbors(BwGraph* input_graph):graph(input_graph),txn_tables(&graph->get_txn_tables()){}
+        void find_one_hop_neighbors(std::vector<uint64_t>&vertices){
+            vertex_one_hop_neighbors.reserve(vertices.size());
+            auto txn = graph->begin_shared_ro_transaction();
+            auto read_ts =txn.get_read_ts();
+            //initialize the entries
+            for(auto source : vertices){
+                vertex_one_hop_neighbors[source];
+            }
+#pragma omp parallel
+            {
+                uint8_t thread_id = graph->get_openmp_worker_thread_id();
+#pragma omp for
+                for(unsigned long source : vertices){
+                    uint32_t current_delta_offset = 0;
+                    auto current_block = txn.get_block_header(source,1,thread_id,&current_delta_offset);
+                    if(!current_block)[[unlikely]]{
+                        continue;
+                    }
+
+                    /*std::string_view payload = txn.get_vertex(source,thread_id);//they store external vid in the vertex data for experiments
+                    vertex_t physical_source_id = *(reinterpret_cast<const uint64_t*>(payload.data()));
+                    auto& neighbors = vertex_two_hop_neighbors[physical_source_id];*/
+                    auto& neighbors = vertex_one_hop_neighbors[source];
+                    std::vector<uint64_t> hop_1_neighbors;
+                    //determine which block to read
+                    if(current_block->get_creation_time()<=read_ts)[[likely]]{//read latest block
+                        BaseEdgeDelta* current_delta = current_block->get_edge_delta(current_delta_offset);
+                        while(current_delta_offset>0){
+                            //need lazy update
+                            auto original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                            if(!original_ts)[[unlikely]]{
+                                current_delta_offset -= ENTRY_DELTA_SIZE;
+                                current_delta++;
+                                continue;
+                            }
+                            if(is_txn_id(original_ts))[[unlikely]]{
+                                uint64_t status = 0;
+                                if (txn_tables->get_status(original_ts, status))[[likely]] {
+                                    if (status == IN_PROGRESS)[[likely]] {
+                                        current_delta_offset -= ENTRY_DELTA_SIZE;
+                                        current_delta++;
+                                        continue;
+                                    } else {
+                                        if (status != ABORT)[[likely]] {
+#if CHECKED_PUT_EDGE
+                                            current_block->update_previous_delta_invalidate_ts(current_delta->toID,
+                                                                                               current_delta->previous_version_offset,
+                                                                                               status);
+#else
+                                            current_delta_block->update_previous_delta_invalidate_ts(current_delta->toID,current_delta->previous_offset,status);
+#endif
+                                            if (current_delta->lazy_update(original_ts, status)) {
+#if LAZY_LOCKING
+                                                if(current_delta->is_last_delta.load(std::memory_order_acquire)){
+                                            current_delta_block-> release_protection(current_delta->toID);
+                                        }
+#endif
+                                                //record lazy update
+                                                txn_tables->reduce_op_count(original_ts,1);
+                                            }
+                                        }
+#if EDGE_DELTA_TEST
+                                        if(current_delta->creation_ts.load(std::memory_order_acquire)!=status){
+                                                throw LazyUpdateException();
+                                            }
+#endif
+                                        original_ts = status;
+                                    }
+                                } else {
+                                    original_ts = current_delta->creation_ts.load(std::memory_order_acquire);
+                                }
+                            }
+                            if (current_delta->delta_type != EdgeDeltaType::DELETE_DELTA) {
+                                uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(
+                                        std::memory_order_acquire);
+                                //found the visible edge
+                                if(original_ts<=read_ts&&(current_invalidation_ts==0||current_invalidation_ts>read_ts)){
+                                    neighbors.emplace_back(current_delta->toID);
+                                    //auto neighbor_payload = txn.get_vertex(current_delta->toID,thread_id);
+                                    //neighbors.emplace_back(*(reinterpret_cast<const uint64_t*>(neighbor_payload.data())));
+                                    hop_1_neighbors.emplace_back(current_delta->toID);
+                                }
+                            }
+#if USING_READER_PREFETCH
+                            //if(current_delta_offset>=prefetch_offset)
+                                _mm_prefetch((const void *) (current_delta + PREFETCH_STEP), _MM_HINT_T2);
+#endif
+                            current_delta_offset -= ENTRY_DELTA_SIZE;
+                            current_delta++;
+                        }
+                        txn.unregister_thread_block_access(thread_id);
+                    }else{//read previous block
+                        txn.unregister_thread_block_access(thread_id);
+                        bool found = false;
+                        while (current_block->get_previous_ptr()) {
+                            current_block = graph->get_block_manager().convert<EdgeDeltaBlockHeader>(
+                                    current_block->get_previous_ptr());
+                            if (read_ts >= current_block->get_creation_time())[[likely]] {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if(found)[[likely]]{
+                            auto previous_block_offset = current_block->get_current_offset();
+                            current_delta_offset = static_cast<uint32_t>(previous_block_offset & SIZE2MASK);
+                            auto current_delta = current_block->get_edge_delta(current_delta_offset);
+                            while(current_delta_offset> 0){
+                                if (current_delta->delta_type != EdgeDeltaType::DELETE_DELTA) {
+                                    uint64_t original_ts = current_delta->creation_ts.load(std::memory_order_relaxed);
+                                    uint64_t current_invalidation_ts = current_delta->invalidate_ts.load(
+                                            std::memory_order_acquire);
+
+                                    if (original_ts <= read_ts && (current_invalidation_ts == 0 ||
+                                                                   current_invalidation_ts >
+                                                                   read_ts)) {
+                                        neighbors.emplace_back(current_delta->toID);
+                                        //auto neighbor_payload = txn.get_vertex(current_delta->toID,thread_id);
+                                        //neighbors.emplace_back(*(reinterpret_cast<const uint64_t*>(neighbor_payload.data())));
+                                        hop_1_neighbors.emplace_back(current_delta->toID);
+                                    }
+                                }
+#if USING_READER_PREFETCH
+                                //if(current_delta_offset>=prefetch_offset)
+                                    _mm_prefetch((const void *) (current_delta + PREFETCH_STEP), _MM_HINT_T2);
+#endif
+                                current_delta_offset -= ENTRY_DELTA_SIZE;
+                                current_delta++;
+                            }
+                        }
+                    }
+                }
+                txn.thread_on_openmp_section_finish(thread_id);
+            }
+            graph->on_openmp_parallel_session_finish();
+        }
+        inline std::unordered_map<uint64_t, std::vector<uint64_t>>* get_result(){
+            return &vertex_one_hop_neighbors;
+        }
+
+    private:
+        BwGraph* graph;
+        //uint64_t max_vid;
+        TxnTables * txn_tables;
+        //std::unordered_map<uint64_t,std::vector<uint64_t>>results;
+        std::unordered_map<uint64_t, std::vector<uint64_t>>vertex_one_hop_neighbors;
+    };
+
     /*
      * give a set of vertices, find their two hop neighbors
      */

@@ -181,6 +181,10 @@ TwoHopNeighborsHandler Graph::get_two_hop_neighbors_handler() {
     return {std::make_unique<bwgraph::TwoHopNeighbors>(graph.get())};
 }
 
+OneHopNeighborsHandler Graph::get_one_hop_neighbors_handler() {
+    return {std::make_unique<bwgraph::OneHopNeighbors>(graph.get())};
+}
+
 std::vector<std::pair<uint64_t,int64_t>>* Graph::compute_bfs(uint64_t max_vid,uint64_t root, int alpha, int beta) {
     if(!bfs)[[unlikely]]{
         bfs = new impl::BFS(this->graph.get(),max_vid);
@@ -702,6 +706,18 @@ void SSSPHandler::compute(uint64_t source, double delta) {
 
 std::vector<std::pair<uint64_t, double>> *SSSPHandler::get_result() {
     return sssp->get_result();
+}
+
+OneHopNeighborsHandler::OneHopNeighborsHandler(std::unique_ptr<bwgraph::OneHopNeighbors> _handler):ohns(std::move(_handler)) {}
+
+OneHopNeighborsHandler::~OneHopNeighborsHandler() = default;
+
+void OneHopNeighborsHandler::compute(std::vector<uint64_t> &vertices) {
+    ohns->find_one_hop_neighbors(vertices);
+}
+
+std::unordered_map<uint64_t, std::vector<uint64_t>> *OneHopNeighborsHandler::get_result() {
+    return ohns->get_result();
 }
 
 TwoHopNeighborsHandler::TwoHopNeighborsHandler(std::unique_ptr<bwgraph::TwoHopNeighbors> _handler):thns(std::move(_handler)) {}
