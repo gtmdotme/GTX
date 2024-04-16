@@ -3,7 +3,7 @@
 //
 #include "core/cleanup_txn.hpp"
 #include "core/utils.hpp"
-using namespace bwgraph;
+using namespace GTX;
 /*
  * scans the corresponding edge delta block. It checks whether the block is quite full already
  */
@@ -75,8 +75,8 @@ bool Cleanup_Transaction::work_on_edge_block(uint64_t block_id, uint64_t block_v
 /*
  * consolidate the block if needed
  */
-void Cleanup_Transaction::consolidation(bwgraph::BwLabelEntry *current_label_entry,
-                                        bwgraph::EdgeDeltaBlockHeader *current_block, uint64_t block_id) {
+void Cleanup_Transaction::consolidation(GTX::BwLabelEntry *current_label_entry,
+                                        GTX::EdgeDeltaBlockHeader *current_block, uint64_t block_id) {
     BlockStateVersionProtectionScheme::install_exclusive_state(EdgeDeltaBlockState::OVERFLOW,thread_id,block_id,current_label_entry,block_access_ts_table);
     uint32_t original_delta_offset = current_delta_offset-ENTRY_DELTA_SIZE;
     uint32_t original_data_offset = current_data_offset;
@@ -483,8 +483,8 @@ void Cleanup_Transaction::force_to_work_on_edge_block(uint64_t block_id) {
     return;
 }
 
-void Cleanup_Transaction::force_to_consolidation(bwgraph::BwLabelEntry *current_label_entry,
-                                                 bwgraph::EdgeDeltaBlockHeader *current_block, uint64_t block_id) {
+void Cleanup_Transaction::force_to_consolidation(GTX::BwLabelEntry *current_label_entry,
+                                                 GTX::EdgeDeltaBlockHeader *current_block, uint64_t block_id) {
     BlockStateVersionProtectionScheme::install_exclusive_state(EdgeDeltaBlockState::OVERFLOW,thread_id,block_id,current_label_entry,block_access_ts_table);
     uint32_t original_delta_offset = current_delta_offset-ENTRY_DELTA_SIZE;
     uint32_t original_data_offset = current_data_offset;

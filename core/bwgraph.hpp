@@ -13,7 +13,7 @@
 #include "commit_manager.hpp"
 #include "worker_thread_manager.hpp"
 #include "previous_version_garbage_queue.hpp"
-namespace bwgraph{
+namespace GTX{
     class ROTransaction;
     class RWTransaction;
     class SharedROTransaction;

@@ -2,14 +2,14 @@
 // Created by zhou822 on 6/17/23.
 //
 
-#include "bwgraph.hpp"
+#include "GTX.hpp"
 #include "core/bwgraph_include.hpp"
 #include "core/algorithm.hpp"
 #include <omp.h>
 #include <charconv>
 
-using namespace bg;
-namespace impl = bwgraph;
+using namespace gt;
+namespace impl = GTX;
 
 Graph:: ~Graph(){
     commit_server_shutdown();
@@ -39,17 +39,17 @@ ROTransaction Graph::begin_read_only_transaction() {
     return std::make_unique<impl::ROTransaction>(graph->begin_read_only_transaction());
 }
 
-bg::SharedROTransaction Graph::begin_shared_read_only_transaction() {
+gt::SharedROTransaction Graph::begin_shared_read_only_transaction() {
     //graph->get_thread_manager().print_debug_stats();
     return {std::make_unique<impl::SharedROTransaction>(graph->begin_shared_ro_transaction()),this};
 }
 
-bwgraph::EdgeDeltaBlockHeader *Graph::get_edge_block(bg::vertex_t vid, bg::label_t l) {
+GTX::EdgeDeltaBlockHeader *Graph::get_edge_block(gt::vertex_t vid, gt::label_t l) {
     auto& index_entry = graph->get_vertex_index_entry(vid);
-    auto target_label_block = graph->get_block_manager().convert<bwgraph::EdgeLabelBlock>(index_entry.edge_label_block_ptr);
-    bwgraph::BwLabelEntry* target_label_entry;
+    auto target_label_block = graph->get_block_manager().convert<GTX::EdgeLabelBlock>(index_entry.edge_label_block_ptr);
+    GTX::BwLabelEntry* target_label_entry;
     auto result = target_label_block->reader_lookup_label(l,target_label_entry);
-    return graph->get_block_manager().convert<bwgraph::EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
+    return graph->get_block_manager().convert<GTX::EdgeDeltaBlockHeader>(target_label_entry->block_ptr);
 }
 void Graph::commit_server_start() {
     graph->get_commit_manager().server_loop();
@@ -65,7 +65,7 @@ uint8_t Graph::get_worker_thread_id() {
 void Graph::print_thread_id_allocation() {
     graph->get_thread_manager().print_debug_stats();
 }
-void Graph::execute_manual_checking(bg::vertex_t vid) {
+void Graph::execute_manual_checking(gt::vertex_t vid) {
     graph->execute_manual_delta_block_checking(vid);
 }
 bool Graph::is_txn_table_empty() {
@@ -145,7 +145,7 @@ void Graph::eager_consolidation_on_edge_delta_block(vertex_t vid, label_t label)
     graph->eager_consolidation_on_edge_delta_block(vid,label);
 }
 
-void Graph::whole_label_graph_eager_consolidation(bg::label_t label) {
+void Graph::whole_label_graph_eager_consolidation(gt::label_t label) {
     auto max_vid = graph->get_max_allocated_vid();
 #pragma omp parallel for
     for(vertex_t i=1; i<=max_vid;i++){
@@ -174,15 +174,15 @@ BFSHandler Graph::get_bfs_handler(uint64_t num) {
 }
 
 SSSPHandler Graph::get_sssp_handler(uint64_t num) {
-    return {std::make_unique<bwgraph::SSSP>(graph.get(),num)};
+    return {std::make_unique<GTX::SSSP>(graph.get(),num)};
 }
 
 TwoHopNeighborsHandler Graph::get_two_hop_neighbors_handler() {
-    return {std::make_unique<bwgraph::TwoHopNeighbors>(graph.get())};
+    return {std::make_unique<GTX::TwoHopNeighbors>(graph.get())};
 }
 
 OneHopNeighborsHandler Graph::get_one_hop_neighbors_handler() {
-    return {std::make_unique<bwgraph::OneHopNeighbors>(graph.get())};
+    return {std::make_unique<GTX::OneHopNeighbors>(graph.get())};
 }
 
 std::vector<std::pair<uint64_t,int64_t>>* Graph::compute_bfs(uint64_t max_vid,uint64_t root, int alpha, int beta) {
@@ -212,27 +212,27 @@ std::vector<std::pair<uint64_t, double>>* Graph::compute_sssp(uint64_t max_vid, 
 }
 
 //read only transactions
-ROTransaction::ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn) :txn(std::move(_txn)){}
+ROTransaction::ROTransaction(std::unique_ptr<GTX::ROTransaction> _txn) :txn(std::move(_txn)){}
 
 ROTransaction:: ~ROTransaction() = default;
 
-std::string_view ROTransaction::get_vertex(bg::vertex_t src) {return txn->get_vertex(src);}
+std::string_view ROTransaction::get_vertex(gt::vertex_t src) {return txn->get_vertex(src);}
 
-std::string_view ROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
+std::string_view ROTransaction::get_edge(gt::vertex_t src, gt::vertex_t dst, gt::label_t label) {
    // std::cout<<"ro"<<std::endl;
     while(true){
         auto result = txn->get_edge(src,dst,label);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
             return result.second;
         }
     }
 }
 
-double ROTransaction::get_edge_weight(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
+double ROTransaction::get_edge_weight(gt::vertex_t src, gt::vertex_t dst, gt::label_t label) {
     double* weight = nullptr;
     while(true){
         auto result = txn->get_edge_weight(src,label,dst,weight);
-        if(result == bwgraph::Txn_Operation_Response::SUCCESS)[[likely]]{
+        if(result == GTX::Txn_Operation_Response::SUCCESS)[[likely]]{
             if(weight)[[likely]]{
                 return *weight;
             }else{
@@ -242,20 +242,20 @@ double ROTransaction::get_edge_weight(bg::vertex_t src, bg::vertex_t dst, bg::la
     }
 }
 
-EdgeDeltaIterator ROTransaction::get_edges(bg::vertex_t src, bg::label_t label) {
+EdgeDeltaIterator ROTransaction::get_edges(gt::vertex_t src, gt::label_t label) {
    // std::cout<<"ro"<<std::endl;
     while(true){
         auto result = txn->get_edges(src,label);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
             return std::make_unique<impl::EdgeDeltaIterator>(result.second);
         }
     }
 }
 
-SimpleEdgeDeltaIterator ROTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label) {
+SimpleEdgeDeltaIterator ROTransaction::simple_get_edges(gt::vertex_t src, gt::label_t label) {
     while(true){
         auto result = txn->simple_get_edges(src,label);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
             return std::make_unique<impl::SimpleEdgeDeltaIterator>(result.second);
         }
     }
@@ -263,7 +263,7 @@ SimpleEdgeDeltaIterator ROTransaction::simple_get_edges(bg::vertex_t src, bg::la
 
 void ROTransaction::commit() {txn->commit();}
 
-SharedROTransaction::SharedROTransaction(std::unique_ptr<bwgraph::SharedROTransaction> _txn, Graph* source): txn(std::move(_txn)), graph(source) {}
+SharedROTransaction::SharedROTransaction(std::unique_ptr<GTX::SharedROTransaction> _txn, Graph* source): txn(std::move(_txn)), graph(source) {}
 
 SharedROTransaction::~SharedROTransaction() = default;
 
@@ -273,31 +273,31 @@ uint64_t SharedROTransaction::get_read_timestamp() {
     return txn->get_read_ts();
 }
 
-std::string_view SharedROTransaction::static_get_vertex(bg::vertex_t src) {
+std::string_view SharedROTransaction::static_get_vertex(gt::vertex_t src) {
     return txn->static_get_vertex(src);
 }
 
-std::string_view SharedROTransaction::static_get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
+std::string_view SharedROTransaction::static_get_edge(gt::vertex_t src, gt::vertex_t dst, gt::label_t label) {
     return txn->static_get_edge(src,dst,label);
 }
 
-StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(bg::vertex_t src, bg::label_t label) {
+StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(gt::vertex_t src, gt::label_t label) {
     return std::make_unique<impl::StaticEdgeDeltaIterator>(txn->static_get_edges(src,label));
 }
 void  SharedROTransaction::static_get_edges(vertex_t src, label_t label, StaticEdgeDeltaIterator& edge_iterator){
     edge_iterator.clear();
     txn->static_get_edges(src,label,edge_iterator.iterator);
 }
-std::string_view SharedROTransaction::get_vertex(bg::vertex_t src) {
+std::string_view SharedROTransaction::get_vertex(gt::vertex_t src) {
     return txn->get_vertex(src);
 }
-std::string_view SharedROTransaction::get_vertex(bg::vertex_t src, uint8_t thread_id) {
+std::string_view SharedROTransaction::get_vertex(gt::vertex_t src, uint8_t thread_id) {
     return txn->get_vertex(src,thread_id);
 }
-std::string_view SharedROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
+std::string_view SharedROTransaction::get_edge(gt::vertex_t src, gt::vertex_t dst, gt::label_t label) {
     while(true){
         auto result = txn->get_edge(src,dst,label);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
             return result.second;
         }
     }
@@ -307,10 +307,10 @@ void SharedROTransaction::thread_on_openmp_section_finish(uint8_t thread_id) {
     txn->thread_on_openmp_section_finish(thread_id);
 }
 std::string_view
-SharedROTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label, uint8_t thread_id) {
+SharedROTransaction::get_edge(gt::vertex_t src, gt::vertex_t dst, gt::label_t label, uint8_t thread_id) {
     while (true) {
         auto result = txn->get_edge(src, dst, label, thread_id);
-        if (result.first == bwgraph::Txn_Operation_Response::SUCCESS) {
+        if (result.first == GTX::Txn_Operation_Response::SUCCESS) {
             return result.second;
         }
     }
@@ -324,44 +324,44 @@ StaticEdgeDeltaIterator SharedROTransaction::generate_static_edge_delta_iterator
     return std::make_unique<impl::StaticEdgeDeltaIterator>(txn->generate_static_edge_iterator());
 }
 
-EdgeDeltaIterator SharedROTransaction::get_edges(bg::vertex_t src, bg::label_t label, uint8_t thread_id) {
+EdgeDeltaIterator SharedROTransaction::get_edges(gt::vertex_t src, gt::label_t label, uint8_t thread_id) {
     while(true){
         auto result = txn->get_edges(src,label, thread_id);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
             return std::make_unique<impl::EdgeDeltaIterator>(result.second);
         }
     }
 }
-EdgeDeltaIterator SharedROTransaction::get_edges(bg::vertex_t src, bg::label_t label) {
+EdgeDeltaIterator SharedROTransaction::get_edges(gt::vertex_t src, gt::label_t label) {
     while(true){
         auto result = txn->get_edges(src,label);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
             return std::make_unique<impl::EdgeDeltaIterator>(result.second);
         }
     }
 }
-SimpleEdgeDeltaIterator SharedROTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label) {
+SimpleEdgeDeltaIterator SharedROTransaction::simple_get_edges(gt::vertex_t src, gt::label_t label) {
     while(true){
         auto result = txn->simple_get_edges(src,label);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
             return std::make_unique<impl::SimpleEdgeDeltaIterator>(result.second);
         }
     }
 }
-SimpleEdgeDeltaIterator SharedROTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label, uint8_t thread_id) {
+SimpleEdgeDeltaIterator SharedROTransaction::simple_get_edges(gt::vertex_t src, gt::label_t label, uint8_t thread_id) {
     while(true){
         auto result = txn->simple_get_edges(src,label,thread_id);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
             return std::make_unique<impl::SimpleEdgeDeltaIterator>(result.second);
         }
     }
 }
 
-void SharedROTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label, uint8_t thread_id,
+void SharedROTransaction::simple_get_edges(gt::vertex_t src, gt::label_t label, uint8_t thread_id,
                                            SimpleEdgeDeltaIterator &edge_iterator) {
     while(true){
         auto result = txn->simple_get_edges(src,label,thread_id,edge_iterator.iterator);
-        if(result == bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result == GTX::Txn_Operation_Response::SUCCESS){
             return;
         }
     }
@@ -378,11 +378,11 @@ Graph *SharedROTransaction::get_graph() {
 //read-write transactions
 RWTransaction::~RWTransaction() = default;
 
-RWTransaction::RWTransaction(std::unique_ptr<bwgraph::RWTransaction> _txn):txn(std::move(_txn)) {}
+RWTransaction::RWTransaction(std::unique_ptr<GTX::RWTransaction> _txn):txn(std::move(_txn)) {}
 
 vertex_t RWTransaction::new_vertex() {return txn->create_vertex();}
 
-void RWTransaction::put_vertex(bg::vertex_t vertex_id, std::string_view data) {
+void RWTransaction::put_vertex(gt::vertex_t vertex_id, std::string_view data) {
 #if TRACK_EXECUTION_TIME
     auto start = std::chrono::high_resolution_clock::now();
 #endif
@@ -392,14 +392,14 @@ void RWTransaction::put_vertex(bg::vertex_t vertex_id, std::string_view data) {
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     txn->get_graph().local_thread_vertex_write_time.local()+= duration.count();
 #endif
-    if(result==bwgraph::Txn_Operation_Response::SUCCESS){
+    if(result==GTX::Txn_Operation_Response::SUCCESS){
         return;
     }else{
         throw RollbackExcept("write write conflict vertex");
     }
 }
 
-void RWTransaction::put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst, std::string_view edge_data) {
+void RWTransaction::put_edge(gt::vertex_t src, gt::label_t label, gt::vertex_t dst, std::string_view edge_data) {
     while(true){
 #if TRACK_EXECUTION_TIME
         auto start = std::chrono::high_resolution_clock::now();
@@ -410,16 +410,16 @@ void RWTransaction::put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t d
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         txn->get_graph().local_thread_edge_write_time.local()+= duration.count();
 #endif
-        if(result == bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result == GTX::Txn_Operation_Response::SUCCESS){
             return;
-        }else if(result ==bwgraph::Txn_Operation_Response::FAIL){
+        }else if(result ==GTX::Txn_Operation_Response::FAIL){
             throw RollbackExcept("write write conflict edge");
         }
     }
 }
 
 bool
-RWTransaction::checked_put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst, std::string_view edge_data) {
+RWTransaction::checked_put_edge(gt::vertex_t src, gt::label_t label, gt::vertex_t dst, std::string_view edge_data) {
     while(true){
 #if TRACK_EXECUTION_TIME
         auto start = std::chrono::high_resolution_clock::now();
@@ -430,12 +430,12 @@ RWTransaction::checked_put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         txn->get_graph().local_thread_edge_write_time.local()+= duration.count();
 #endif
-        if(result == bwgraph::Txn_Operation_Response::SUCCESS_NEW_DELTA){
+        if(result == GTX::Txn_Operation_Response::SUCCESS_NEW_DELTA){
             return true;
-        }else if(result == bwgraph::Txn_Operation_Response::SUCCESS_EXISTING_DELTA){
+        }else if(result == GTX::Txn_Operation_Response::SUCCESS_EXISTING_DELTA){
             return false;
         }
-        else if(result ==bwgraph::Txn_Operation_Response::FAIL){
+        else if(result ==GTX::Txn_Operation_Response::FAIL){
 #if TRACK_COMMIT_ABORT
             txn->get_graph().register_abort();
 #endif
@@ -458,12 +458,12 @@ RWTransaction::checked_put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         txn->get_graph().local_thread_edge_write_time.local()+= duration.count();
 #endif
-        if(result == bwgraph::Txn_Operation_Response::SUCCESS_NEW_DELTA){
+        if(result == GTX::Txn_Operation_Response::SUCCESS_NEW_DELTA){
             return true;
-        }else if(result == bwgraph::Txn_Operation_Response::SUCCESS_EXISTING_DELTA){
+        }else if(result == GTX::Txn_Operation_Response::SUCCESS_EXISTING_DELTA){
             return false;
         }
-        else if(result ==bwgraph::Txn_Operation_Response::FAIL){
+        else if(result ==GTX::Txn_Operation_Response::FAIL){
 #if TRACK_COMMIT_ABORT
             txn->get_graph().register_abort();
 #endif
@@ -474,7 +474,7 @@ RWTransaction::checked_put_edge(bg::vertex_t src, bg::label_t label, bg::vertex_
 #endif
     }
  }
-void RWTransaction::delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst) {
+void RWTransaction::delete_edge(gt::vertex_t src, gt::label_t label, gt::vertex_t dst) {
     while(true){
 #if TRACK_EXECUTION_TIME
         auto start = std::chrono::high_resolution_clock::now();
@@ -485,15 +485,15 @@ void RWTransaction::delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         txn->get_graph().local_thread_edge_write_time.local()+= duration.count();
 #endif
-        if(result == bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result == GTX::Txn_Operation_Response::SUCCESS){
             return;
-        }else if(result ==bwgraph::Txn_Operation_Response::FAIL){
+        }else if(result ==GTX::Txn_Operation_Response::FAIL){
             throw RollbackExcept("write write conflict edge");
         }
     }
 }
 
-bool RWTransaction::checked_delete_edge(bg::vertex_t src, bg::label_t label, bg::vertex_t dst) {
+bool RWTransaction::checked_delete_edge(gt::vertex_t src, gt::label_t label, gt::vertex_t dst) {
     while(true){
 #if TRACK_EXECUTION_TIME
         auto start = std::chrono::high_resolution_clock::now();
@@ -504,12 +504,12 @@ bool RWTransaction::checked_delete_edge(bg::vertex_t src, bg::label_t label, bg:
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         txn->get_graph().local_thread_edge_write_time.local()+= duration.count();
 #endif
-        if(result == bwgraph::Txn_Operation_Response::SUCCESS_EXISTING_DELTA){
+        if(result == GTX::Txn_Operation_Response::SUCCESS_EXISTING_DELTA){
             return true;
-        }else if(result == bwgraph::Txn_Operation_Response::SUCCESS_NEW_DELTA){
+        }else if(result == GTX::Txn_Operation_Response::SUCCESS_NEW_DELTA){
             return false;
         }
-        else if(result ==bwgraph::Txn_Operation_Response::FAIL){
+        else if(result ==GTX::Txn_Operation_Response::FAIL){
 #if TRACK_COMMIT_ABORT
             txn->get_graph().register_abort();
 #endif
@@ -517,38 +517,38 @@ bool RWTransaction::checked_delete_edge(bg::vertex_t src, bg::label_t label, bg:
         }
     }
 }
-std::string_view RWTransaction::get_vertex(bg::vertex_t src) {
+std::string_view RWTransaction::get_vertex(gt::vertex_t src) {
     return txn->get_vertex(src);
 }
 
-std::string_view RWTransaction::get_edge(bg::vertex_t src, bg::vertex_t dst, bg::label_t label) {
+std::string_view RWTransaction::get_edge(gt::vertex_t src, gt::vertex_t dst, gt::label_t label) {
     while(true){
         auto result = txn->get_edge(src,dst,label);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
             return result.second;
-        }else if(result.first == bwgraph::Txn_Operation_Response::FAIL){
+        }else if(result.first == GTX::Txn_Operation_Response::FAIL){
             throw RollbackExcept("found write write conflict on previous write when reading edge");
         }
     }
 }
 
-EdgeDeltaIterator RWTransaction::get_edges(bg::vertex_t src, bg::label_t label) {
+EdgeDeltaIterator RWTransaction::get_edges(gt::vertex_t src, gt::label_t label) {
     while(true){
         auto result = txn->get_edges(src,label);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
             return std::make_unique<impl::EdgeDeltaIterator>(result.second);
-        }else if(result.first == bwgraph::Txn_Operation_Response::FAIL){
+        }else if(result.first == GTX::Txn_Operation_Response::FAIL){
             throw RollbackExcept("found write write conflict on previous write when scanning edges");
         }
     }
 }
 
-SimpleEdgeDeltaIterator RWTransaction::simple_get_edges(bg::vertex_t src, bg::label_t label) {
+SimpleEdgeDeltaIterator RWTransaction::simple_get_edges(gt::vertex_t src, gt::label_t label) {
     while(true){
         auto result = txn->simple_get_edges(src,label);
-        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
             return std::make_unique<impl::SimpleEdgeDeltaIterator>(result.second);
-        }else if(result.first == bwgraph::Txn_Operation_Response::FAIL){
+        }else if(result.first == GTX::Txn_Operation_Response::FAIL){
             throw RollbackExcept("found write write conflict on previous write when scanning edges");
         }
     }
@@ -566,7 +566,7 @@ void RWTransaction::abort() {
     txn->abort();
 }
 
-EdgeDeltaIterator::EdgeDeltaIterator(std::unique_ptr<bwgraph::EdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
+EdgeDeltaIterator::EdgeDeltaIterator(std::unique_ptr<GTX::EdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
 
 EdgeDeltaIterator::~EdgeDeltaIterator() = default;
 
@@ -592,7 +592,7 @@ std::string_view EdgeDeltaIterator::edge_delta_data() const {
 }
 
 //simple edge iterator
-SimpleEdgeDeltaIterator::SimpleEdgeDeltaIterator(std::unique_ptr<bwgraph::SimpleEdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
+SimpleEdgeDeltaIterator::SimpleEdgeDeltaIterator(std::unique_ptr<GTX::SimpleEdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
 
 SimpleEdgeDeltaIterator::~SimpleEdgeDeltaIterator() = default;
 
@@ -632,7 +632,7 @@ double SimpleEdgeDeltaIterator::edge_delta_weight() const {
     return  *reinterpret_cast<double*>(current_delta->data);
 }
 
-StaticEdgeDeltaIterator::StaticEdgeDeltaIterator(std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
+StaticEdgeDeltaIterator::StaticEdgeDeltaIterator(std::unique_ptr<GTX::StaticEdgeDeltaIterator> _iter):iterator(std::move(_iter)) {}
 
 StaticEdgeDeltaIterator::~StaticEdgeDeltaIterator() = default;
 
@@ -664,7 +664,7 @@ double StaticEdgeDeltaIterator::get_weight() {
     return *reinterpret_cast<double*>(current_delta->data);
 }
 
-PageRankHandler::PageRankHandler(std::unique_ptr<bwgraph::PageRank> _handler):pagerank(std::move(_handler)) {}
+PageRankHandler::PageRankHandler(std::unique_ptr<GTX::PageRank> _handler):pagerank(std::move(_handler)) {}
 
 PageRankHandler::~PageRankHandler() = default;
 
@@ -680,7 +680,7 @@ std::vector<std::pair<uint64_t, double>> *PageRankHandler::get_result() {
     return pagerank->get_result();
 }
 
-BFSHandler::BFSHandler(std::unique_ptr<bwgraph::BFS> _handler):bfs(std::move(_handler)) {}
+BFSHandler::BFSHandler(std::unique_ptr<GTX::BFS> _handler):bfs(std::move(_handler)) {}
 
 BFSHandler::~BFSHandler()=default;
 
@@ -696,7 +696,7 @@ std::vector<std::pair<uint64_t, int64_t>> *BFSHandler::get_result() {
     return bfs->get_result();
 }
 
-SSSPHandler::SSSPHandler(std::unique_ptr<bwgraph::SSSP> _handler):sssp(std::move(_handler)) {}
+SSSPHandler::SSSPHandler(std::unique_ptr<GTX::SSSP> _handler):sssp(std::move(_handler)) {}
 
 SSSPHandler::~SSSPHandler() = default;
 
@@ -708,7 +708,7 @@ std::vector<std::pair<uint64_t, double>> *SSSPHandler::get_result() {
     return sssp->get_result();
 }
 
-OneHopNeighborsHandler::OneHopNeighborsHandler(std::unique_ptr<bwgraph::OneHopNeighbors> _handler):ohns(std::move(_handler)) {}
+OneHopNeighborsHandler::OneHopNeighborsHandler(std::unique_ptr<GTX::OneHopNeighbors> _handler):ohns(std::move(_handler)) {}
 
 OneHopNeighborsHandler::~OneHopNeighborsHandler() = default;
 
@@ -720,7 +720,7 @@ std::unordered_map<uint64_t, std::vector<uint64_t>> *OneHopNeighborsHandler::get
     return ohns->get_result();
 }
 
-TwoHopNeighborsHandler::TwoHopNeighborsHandler(std::unique_ptr<bwgraph::TwoHopNeighbors> _handler):thns(std::move(_handler)) {}
+TwoHopNeighborsHandler::TwoHopNeighborsHandler(std::unique_ptr<GTX::TwoHopNeighbors> _handler):thns(std::move(_handler)) {}
 
 TwoHopNeighborsHandler::~TwoHopNeighborsHandler() = default;
 

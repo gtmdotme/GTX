@@ -4,8 +4,8 @@
 #include <doctest/doctest/doctest.h>
 #include <core/bw_index.hpp>
 #include "core/bwgraph.hpp"
-#include "core/bw_transaction.hpp"
-using namespace bwgraph;
+#include "core/gtx_transaction.hpp"
+using namespace GTX;
 TEST_CASE("BwGraph txn read own test"){
     BwGraph graph;
     auto txn = graph.begin_read_write_transaction();

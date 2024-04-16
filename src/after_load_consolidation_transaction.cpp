@@ -3,9 +3,9 @@
 //
 #include "core/after_load_consolidation_transaction.hpp"
 
-using namespace bwgraph;
+using namespace GTX;
 
-void AfterLoadCleanupTransaction::consolidate_edge_delta_block(bwgraph::vertex_t vid, bwgraph::label_t label) {
+void AfterLoadCleanupTransaction::consolidate_edge_delta_block(GTX::vertex_t vid, GTX::label_t label) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(vid);
     if(!vertex_index_entry.valid.load())[[unlikely]]{
         return;

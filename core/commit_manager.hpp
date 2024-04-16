@@ -9,7 +9,7 @@
 #include "graph_global.hpp"
 #include <array>
 #include "transaction_tables.hpp"
-namespace bwgraph{
+namespace GTX{
 #if USING_WAL
 
 #else

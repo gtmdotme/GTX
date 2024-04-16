@@ -9,7 +9,7 @@
 #include <thread>
 #include <atomic>
 #include "tbb/concurrent_hash_map.h"
-namespace bwgraph{
+namespace GTX{
     using thread_id =  std::thread::id;
    /* using ThreadIDMap = phmap::parallel_flat_hash_map<
             thread_id,

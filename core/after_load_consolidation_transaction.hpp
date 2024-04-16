@@ -4,7 +4,7 @@
 
 #pragma once
 #include "bwgraph.hpp"
-namespace bwgraph{
+namespace GTX{
     //currently assume only used under eager commit mode
     class AfterLoadCleanupTransaction{
         AfterLoadCleanupTransaction(BwGraph& input_graph, BlockManager& input_block_manager):graph(input_graph),block_manager(input_block_manager){}

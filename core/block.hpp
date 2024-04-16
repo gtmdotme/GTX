@@ -19,7 +19,7 @@
 #include "transaction_tables.hpp"
 #include <immintrin.h>
 
-namespace bwgraph {
+namespace GTX {
 #define LAZY_LOCKING false
 #define ENTRY_DELTA_SIZE 64
 #define SIZE2MASK 0x00000000FFFFFFFF

@@ -9,7 +9,7 @@
 #include "block.hpp"
 #include "block_manager.hpp"
 #include "utils.hpp"
-namespace bwgraph {
+namespace GTX {
 #define BW_LABEL_BLOCK_SIZE 3
     class BlockManager;
     struct BwLabelEntry {

@@ -13,7 +13,7 @@
 #define TS_ID_MASK 0x8000000000000000
 #define Not_TS_ID_MASK 0x7FFFFFFFFFFFFFFF
 #define VERTEX_ID_MASK 0x0000FFFFFFFFFFFF
-namespace bwgraph{
+namespace GTX{
     inline order_t size_to_order(size_t size)
     {
         order_t order = (order_t)((size & (size - 1)) != 0);

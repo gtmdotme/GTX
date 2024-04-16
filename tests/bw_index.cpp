@@ -4,7 +4,7 @@
 #include <doctest/doctest/doctest.h>
 #include <core/bw_index.hpp>
 #include "core/bwgraph.hpp"
-using namespace bwgraph;
+using namespace GTX;
 
 TEST_CASE("Test DocTest"){
     int i=0;

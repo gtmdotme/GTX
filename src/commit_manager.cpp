@@ -3,7 +3,7 @@
 //
 #include "core/commit_manager.hpp"
 #include <random>
-namespace bwgraph{
+namespace GTX{
 #if USING_WAL
 #else
     /*

@@ -2,8 +2,7 @@
 // Created by zhou822 on 6/17/23.
 //
 
-//#ifndef BWGRAPH_LIB_BWGRAPH_HPP
-//#define BWGRAPH_LIB_BWGRAPH_HPP
+
 #pragma once
 #include <cstddef>
 #include <cstdint>
@@ -14,7 +13,7 @@
 #include <vector>
 #include <unordered_map>
 
-namespace  bwgraph{
+namespace  GTX{
     class BwGraph;
     class RWTransaction;
     class ROTransaction;
@@ -30,7 +29,7 @@ namespace  bwgraph{
     class OneHopNeighbors;
     class TwoHopNeighbors;
 }
-namespace bg {
+namespace gt {
     using label_t = uint16_t;
     using vertex_t = uint64_t;
     using order_t = uint8_t;
@@ -83,7 +82,7 @@ namespace bg {
         void on_openmp_workloads_finish();
         void print_and_clear_txn_stats();
         //for debug
-        bwgraph::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
+        GTX::EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l);
         void print_thread_id_allocation();
         std::vector<std::pair<uint64_t,int64_t>>* compute_bfs(uint64_t max_vid,uint64_t root,int alpha = 15, int beta = 18);
         std::vector<std::pair<uint64_t,double>>*  compute_pagerank(uint64_t num_vertices,uint64_t num_iterations, double damping_factor);
@@ -95,16 +94,16 @@ namespace bg {
         OneHopNeighborsHandler get_one_hop_neighbors_handler();
         TwoHopNeighborsHandler get_two_hop_neighbors_handler();
     private:
-        const std::unique_ptr<bwgraph::BwGraph> graph;
+        const std::unique_ptr<GTX::BwGraph> graph;
         std::thread commit_manager_worker;
-        bwgraph::BFS* bfs = nullptr;
-        bwgraph::PageRank* pagerank =nullptr;
-        bwgraph::SSSP* sssp = nullptr;
+        GTX::BFS* bfs = nullptr;
+        GTX::PageRank* pagerank =nullptr;
+        GTX::SSSP* sssp = nullptr;
     };
 
     class ROTransaction{
     public:
-        ROTransaction(std::unique_ptr<bwgraph::ROTransaction> _txn);
+        ROTransaction(std::unique_ptr<GTX::ROTransaction> _txn);
         ~ROTransaction();
         void commit();
         //read operations:
@@ -114,7 +113,7 @@ namespace bg {
         EdgeDeltaIterator get_edges(vertex_t src, label_t label);
         SimpleEdgeDeltaIterator simple_get_edges(vertex_t src, label_t label);
     private:
-        const std::unique_ptr<bwgraph::ROTransaction> txn;
+        const std::unique_ptr<GTX::ROTransaction> txn;
     };
 
     class RollbackExcept : public std::runtime_error
@@ -126,7 +125,7 @@ namespace bg {
 
     class SharedROTransaction{
     public:
-        SharedROTransaction(std::unique_ptr<bwgraph::SharedROTransaction> _txn, Graph* source_graph);
+        SharedROTransaction(std::unique_ptr<GTX::SharedROTransaction> _txn, Graph* source_graph);
         ~SharedROTransaction();
         void commit();
         //read operations:
@@ -150,12 +149,12 @@ namespace bg {
         void thread_on_openmp_section_finish(uint8_t thread_id);
         Graph* get_graph();
     private:
-        const std::unique_ptr<bwgraph::SharedROTransaction> txn;
+        const std::unique_ptr<GTX::SharedROTransaction> txn;
         Graph* graph;
     };
     class RWTransaction{
     public:
-        RWTransaction(std::unique_ptr<bwgraph::RWTransaction> _txn);
+        RWTransaction(std::unique_ptr<GTX::RWTransaction> _txn);
         ~RWTransaction();
         bool commit();
         void abort();
@@ -175,11 +174,11 @@ namespace bg {
         bool checked_single_put_edge(vertex_t src, label_t label, vertex_t dst, std::string_view edge_data);
         bool checked_delete_edge(vertex_t src, label_t label, vertex_t dst);
     private:
-        const std::unique_ptr<bwgraph::RWTransaction> txn;
+        const std::unique_ptr<GTX::RWTransaction> txn;
     };
     class EdgeDeltaIterator{
     public:
-        EdgeDeltaIterator(std::unique_ptr<bwgraph::EdgeDeltaIterator> _iter);
+        EdgeDeltaIterator(std::unique_ptr<GTX::EdgeDeltaIterator> _iter);
         ~EdgeDeltaIterator();
 
         //bool valid() const;
@@ -189,12 +188,12 @@ namespace bg {
         vertex_t dst_id() const;
         std::string_view  edge_delta_data() const;
     private:
-        const std::unique_ptr<bwgraph::EdgeDeltaIterator> iterator;
-        bwgraph::BaseEdgeDelta* current_delta;
+        const std::unique_ptr<GTX::EdgeDeltaIterator> iterator;
+        GTX::BaseEdgeDelta* current_delta;
     };
     class SimpleEdgeDeltaIterator{
     public:
-        SimpleEdgeDeltaIterator(std::unique_ptr<bwgraph::SimpleEdgeDeltaIterator> _iter);
+        SimpleEdgeDeltaIterator(std::unique_ptr<GTX::SimpleEdgeDeltaIterator> _iter);
         ~SimpleEdgeDeltaIterator();
 
         bool valid();
@@ -206,13 +205,13 @@ namespace bg {
         std::string_view  edge_delta_data() const;
         double edge_delta_weight() const;
         uint64_t get_vertex_degree();
-        std::unique_ptr<bwgraph::SimpleEdgeDeltaIterator> iterator;
+        std::unique_ptr<GTX::SimpleEdgeDeltaIterator> iterator;
     private:
-        bwgraph::BaseEdgeDelta* current_delta;
+        GTX::BaseEdgeDelta* current_delta;
     };
     class StaticEdgeDeltaIterator{
     public:
-        StaticEdgeDeltaIterator(std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> _iter);
+        StaticEdgeDeltaIterator(std::unique_ptr<GTX::StaticEdgeDeltaIterator> _iter);
         ~StaticEdgeDeltaIterator();
         void clear(){
             current_delta = nullptr;
@@ -224,41 +223,41 @@ namespace bg {
         vertex_t dst_id() const;
         std::string_view  edge_delta_data() const;
         double get_weight();
-        std::unique_ptr<bwgraph::StaticEdgeDeltaIterator> iterator;
+        std::unique_ptr<GTX::StaticEdgeDeltaIterator> iterator;
     private:
        
-        bwgraph::BaseEdgeDelta* current_delta;
+        GTX::BaseEdgeDelta* current_delta;
     };
     class PageRankHandler{
     public:
-        PageRankHandler(std::unique_ptr<bwgraph::PageRank> _handler);
+        PageRankHandler(std::unique_ptr<GTX::PageRank> _handler);
         ~PageRankHandler();
         void compute(uint64_t num_iterations, double damping_factor);
         std::vector<double>* get_raw_result();
         std::vector<std::pair<uint64_t,double>>* get_result();
     private:
-        std::unique_ptr<bwgraph::PageRank> pagerank;
+        std::unique_ptr<GTX::PageRank> pagerank;
     };
 
     class BFSHandler{
     public:
-        BFSHandler(std::unique_ptr<bwgraph::BFS> _handler);
+        BFSHandler(std::unique_ptr<GTX::BFS> _handler);
         ~BFSHandler();
         void compute(uint64_t root,int alpha = 15, int beta = 18);
         std::vector<int64_t>* get_raw_result();
         std::vector<std::pair<uint64_t,int64_t>>* get_result();
     private:
-        std::unique_ptr<bwgraph::BFS> bfs;
+        std::unique_ptr<GTX::BFS> bfs;
     };
 
     class SSSPHandler{
     public:
-        SSSPHandler(std::unique_ptr<bwgraph::SSSP> _handler);
+        SSSPHandler(std::unique_ptr<GTX::SSSP> _handler);
         ~SSSPHandler();
         void compute(uint64_t source, double delta);
         std::vector<std::pair<uint64_t, double>>* get_result();
     private:
-        std::unique_ptr<bwgraph::SSSP> sssp;
+        std::unique_ptr<GTX::SSSP> sssp;
     };
    /* class SimpleObjectEdgeDeltaIterator{
         SimpleObjectEdgeDeltaIterator();
@@ -266,22 +265,21 @@ namespace bg {
     };*/
    class OneHopNeighborsHandler{
    public:
-       OneHopNeighborsHandler(std::unique_ptr<bwgraph::OneHopNeighbors>);
+       OneHopNeighborsHandler(std::unique_ptr<GTX::OneHopNeighbors>);
        ~OneHopNeighborsHandler();
        void compute(std::vector<uint64_t>&vertices);
        std::unordered_map<uint64_t, std::vector<uint64_t>>* get_result();
    private:
-       std::unique_ptr<bwgraph::OneHopNeighbors> ohns;
+       std::unique_ptr<GTX::OneHopNeighbors> ohns;
    };
    class TwoHopNeighborsHandler{
    public:
-       TwoHopNeighborsHandler(std::unique_ptr<bwgraph::TwoHopNeighbors>);
+       TwoHopNeighborsHandler(std::unique_ptr<GTX::TwoHopNeighbors>);
        ~TwoHopNeighborsHandler();
        void compute(std::vector<uint64_t>&vertices);
        std::unordered_map<uint64_t, std::vector<uint64_t>>* get_result();
    private:
-        std::unique_ptr<bwgraph::TwoHopNeighbors> thns;
+        std::unique_ptr<GTX::TwoHopNeighbors> thns;
    };
 } // bg
 
-//#endif //BWGRAPH_LIB_BWGRAPH_HPP

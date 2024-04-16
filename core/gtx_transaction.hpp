@@ -14,7 +14,7 @@
 #include "types.hpp"
 #include "edge_delta_block_state_protection.hpp"
 #include <set>
-namespace bwgraph{
+namespace GTX{
 #define CONSOLIDATION_TEST false
 #define TXN_TEST false
     struct LockOffsetCache{
@@ -393,7 +393,7 @@ namespace bwgraph{
         uint64_t get_neighborhood_size(vertex_t vid, label_t label, uint8_t thread_id);
         int64_t get_neighborhood_size_signed(vertex_t vid, label_t label, uint8_t thread_id);
         uint64_t get_total_edge_num(label_t label);
-        EdgeDeltaBlockHeader* get_block_header(uint64_t vid, bwgraph::label_t label, uint8_t thread_id,uint32_t* current_delta_offset);
+        EdgeDeltaBlockHeader* get_block_header(uint64_t vid, GTX::label_t label, uint8_t thread_id,uint32_t* current_delta_offset);
         inline void unregister_thread_block_access(uint8_t thread_id){
             BlockStateVersionProtectionScheme::release_protection(thread_id,block_access_ts_table);
         }

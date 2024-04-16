@@ -7,7 +7,7 @@
 #include "core/bwgraph.hpp"
 #include "core/exceptions.hpp"
 #include "core/previous_version_garbage_queue.hpp"
-namespace bwgraph{
+namespace GTX{
     inline bool lazy_update(VertexDeltaHeader* vertex_delta, uint64_t txn_id, uint64_t status){
         return vertex_delta->lazy_update(txn_id,status);
     }

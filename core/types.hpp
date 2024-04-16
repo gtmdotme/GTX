@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <atomic>
 #include <unordered_map>
-namespace bwgraph
+namespace GTX
 {
     using label_t = uint16_t;
     using vertex_t = uint64_t;

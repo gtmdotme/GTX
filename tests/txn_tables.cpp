@@ -6,7 +6,7 @@
 #include <core/bw_index.hpp>
 #include "core/bwgraph.hpp"
 #include "core/transaction_tables.hpp"
-using namespace bwgraph;
+using namespace GTX;
 
 TEST_CASE("Array Txn Table Test 1"){
     BwGraph graph;

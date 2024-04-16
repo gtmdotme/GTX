@@ -8,7 +8,7 @@
 #include <atomic>
 #include "graph_global.hpp"
 #include "types.hpp"
-namespace bwgraph{
+namespace GTX{
     struct alignas(64) BlockAccessTSEntry{
         BlockAccessTSEntry():accessed_block_id(0),current_ts(0){}
         BlockAccessTSEntry(const BlockAccessTSEntry& other):accessed_block_id(other.accessed_block_id.load()), current_ts(other.current_ts.load()){}

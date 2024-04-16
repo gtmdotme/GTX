@@ -7,7 +7,7 @@
 #include "types.hpp"
 #include "block_manager.hpp"
 #include <queue>
-namespace bwgraph{
+namespace GTX{
     struct PreviousVersionBlockEntry{
         PreviousVersionBlockEntry(){}
         PreviousVersionBlockEntry( const PreviousVersionBlockEntry& other){

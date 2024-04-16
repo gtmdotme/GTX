@@ -5,7 +5,7 @@
 #include "core/block_manager.hpp"
 #include "core/utils.hpp"
 #include "core/block.hpp"
-namespace bwgraph{
+namespace GTX{
     void EdgeLabelBlock::deallocate_all_delta_chains_indices() {
         uint8_t current_offset = offset.load(std::memory_order_acquire);
         for(uint8_t i=0; i<current_offset;i++){
@@ -17,7 +17,7 @@ namespace bwgraph{
             next_block->deallocate_all_delta_chains_indices();
         }
     }
-    bool EdgeLabelBlock::reader_lookup_label(bwgraph::label_t target_label, bwgraph::BwLabelEntry *&target_entry) {
+    bool EdgeLabelBlock::reader_lookup_label(GTX::label_t target_label, GTX::BwLabelEntry *&target_entry) {
         uint8_t current_offset=0;
         do{
             current_offset = offset.load(std::memory_order_acquire);
@@ -45,7 +45,7 @@ namespace bwgraph{
     //todo: double check this function
     //todo:: modify to add consolidation time?
     //will always succeed
-    BwLabelEntry *EdgeLabelBlock::writer_lookup_label(bwgraph::label_t target_label, TxnTables* txn_tables,timestamp_t txn_read_ts) {
+    BwLabelEntry *EdgeLabelBlock::writer_lookup_label(GTX::label_t target_label, TxnTables* txn_tables,timestamp_t txn_read_ts) {
         //loop until we observe concurrent updates
         EdgeLabelBlock* current_label_block = this;
         while(true){

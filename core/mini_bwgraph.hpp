@@ -6,12 +6,12 @@
 //#define BWGRAPH_V2_MINI_BWGRAPH_HPP
 #include"../core/bwgraph.hpp"
 #include "../core/previous_version_garbage_queue.hpp"
-#include "../core/bw_transaction.hpp"
+#include "../core/gtx_transaction.hpp"
 #include <queue>
 #include <random>
 #include "../core/exceptions.hpp"
 #include "../core/graph_global.hpp"
-using namespace bwgraph;
+using namespace GTX;
 constexpr vertex_t vertex_id_range = 1000000;
 constexpr vertex_t dst_id_range = 1000000;
 constexpr int32_t total_txn_count = 100000;
@@ -154,7 +154,7 @@ public:
             }
             for(label_t l=1; l<=3; l++){
                 auto scan_response = cleanup_txn.get_edges(i,l);
-                if(scan_response.first!=bwgraph::Txn_Operation_Response::SUCCESS){
+                if(scan_response.first!=GTX::Txn_Operation_Response::SUCCESS){
                     throw TransactionReadException();
                 }
                 auto& edge_delta_iterator = scan_response.second;
@@ -186,7 +186,7 @@ public:
             }
             for(label_t l=1; l<=3; l++){
                 auto scan_response = cleanup_txn.get_edges(i,l);
-                if(scan_response.first!=bwgraph::Txn_Operation_Response::SUCCESS){
+                if(scan_response.first!=GTX::Txn_Operation_Response::SUCCESS){
                     throw TransactionReadException();
                 }
                 auto& edge_delta_iterator = scan_response.second;
@@ -500,10 +500,10 @@ public:
                     std::string edge_data = generate_string_random_length(static_cast<char>(dst%32),write_size);
                     while(true){
                         auto op_response = txn.put_edge(src,dst,1,edge_data);
-                        if(op_response==bwgraph::Txn_Operation_Response::FAIL){
+                        if(op_response==GTX::Txn_Operation_Response::FAIL){
                             to_abort=true;
                             break;
-                        }else if(op_response==bwgraph::Txn_Operation_Response::SUCCESS){
+                        }else if(op_response==GTX::Txn_Operation_Response::SUCCESS){
                             break;
                         }
                     }
@@ -512,10 +512,10 @@ public:
                         vertex_t dst = dst_dist(gen);
                         while(true){
                             auto op_response = txn.get_edge(src,dst,1);
-                            if(op_response.first==bwgraph::Txn_Operation_Response::FAIL){
+                            if(op_response.first==GTX::Txn_Operation_Response::FAIL){
                                 to_abort=true;
                                 break;
-                            }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                            }else if(op_response.first==GTX::Txn_Operation_Response::SUCCESS){
                                 for(size_t z=0; z<op_response.second.size();z++){
                                     if(op_response.second.at(z)!=static_cast<char>(dst%32)){
                                         throw TransactionReadException();
@@ -527,10 +527,10 @@ public:
                     }else{
                         while(true){
                             auto op_response = txn.get_edges(src,1);
-                            if(op_response.first==bwgraph::Txn_Operation_Response::FAIL){
+                            if(op_response.first==GTX::Txn_Operation_Response::FAIL){
                                 to_abort=true;
                                 break;
-                            }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                            }else if(op_response.first==GTX::Txn_Operation_Response::SUCCESS){
                                 auto& edge_delta_iterator = op_response.second;
                                 BaseEdgeDelta* current_delta;
                                 while((current_delta=edge_delta_iterator.next_delta())!= nullptr){
@@ -619,13 +619,13 @@ public:
                     int32_t counter =0;
                     while(true){
                         auto op_response = txn.checked_put_edge(src,dst,1,edge_data);
-                        if(op_response==bwgraph::Txn_Operation_Response::FAIL){
+                        if(op_response==GTX::Txn_Operation_Response::FAIL){
                             to_abort=true;
                             break;
-                        }else if(op_response==bwgraph::Txn_Operation_Response::SUCCESS_NEW_DELTA){
+                        }else if(op_response==GTX::Txn_Operation_Response::SUCCESS_NEW_DELTA){
                             local_new_delta++;
                             break;
-                        }else if(op_response==bwgraph::Txn_Operation_Response::SUCCESS_EXISTING_DELTA){
+                        }else if(op_response==GTX::Txn_Operation_Response::SUCCESS_EXISTING_DELTA){
                             local_existing_delta++;
                             break;
                         }
@@ -636,10 +636,10 @@ public:
                         vertex_t dst = dst_dist(gen);
                         while(true){
                             auto op_response = txn.get_edge(src,dst,1);
-                            if(op_response.first==bwgraph::Txn_Operation_Response::FAIL){
+                            if(op_response.first==GTX::Txn_Operation_Response::FAIL){
                                 to_abort=true;
                                 break;
-                            }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                            }else if(op_response.first==GTX::Txn_Operation_Response::SUCCESS){
                                 for(size_t z=0; z<op_response.second.size();z++){
                                     if(op_response.second.at(z)!=static_cast<char>(dst%32)){
                                         throw TransactionReadException();
@@ -651,10 +651,10 @@ public:
                     }else{
                         while(true){
                             auto op_response = txn.get_edges(src,1);
-                            if(op_response.first==bwgraph::Txn_Operation_Response::FAIL){
+                            if(op_response.first==GTX::Txn_Operation_Response::FAIL){
                                 to_abort=true;
                                 break;
-                            }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                            }else if(op_response.first==GTX::Txn_Operation_Response::SUCCESS){
                                 auto& edge_delta_iterator = op_response.second;
                                 BaseEdgeDelta* current_delta;
                                 while((current_delta=edge_delta_iterator.next_delta())!= nullptr){
@@ -736,9 +736,9 @@ public:
                         auto& vertex_write_op = workload.vertex_write_op.at(z);
                         while(1){
                             auto response = txn.update_vertex(vertex_write_op.src,vertex_write_op.data);
-                            if(response==bwgraph::Txn_Operation_Response::SUCCESS){
+                            if(response==GTX::Txn_Operation_Response::SUCCESS){
                                 break;
-                            }else if(response==bwgraph::Txn_Operation_Response::FAIL){
+                            }else if(response==GTX::Txn_Operation_Response::FAIL){
                                 to_abort=true;
                                 break;
                             }
@@ -752,9 +752,9 @@ public:
                         auto& edge_write_op = workload.edge_write_op.at(z);
                         while(1){
                             auto response = txn.put_edge(edge_write_op.src,edge_write_op.dst,edge_write_op.label,edge_write_op.data);
-                            if(response==bwgraph::Txn_Operation_Response::SUCCESS){
+                            if(response==GTX::Txn_Operation_Response::SUCCESS){
                                 break;
-                            }else if(response==bwgraph::Txn_Operation_Response::FAIL){
+                            }else if(response==GTX::Txn_Operation_Response::FAIL){
                                 to_abort=true;
                                 break;
                             }
@@ -828,7 +828,7 @@ public:
                     for(size_t z=0; z<workload.edge_read_op.size();){
                         auto& edge_read_op = workload.edge_read_op.at(z);
                         auto result = txn.get_edge(edge_read_op.src,edge_read_op.dst,edge_read_op.label);
-                        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
                             auto& data = result.second;
                             for(size_t t=0; t<data.size();t++){
                                 if(data.at(t)!=static_cast<char>((edge_read_op.dst)%32)){
@@ -841,7 +841,7 @@ public:
                     for(size_t z=0; z<workload.edge_scan_op.size();){
                         auto& edge_scan_op = workload.edge_scan_op.at(z);
                         auto result = txn.get_edges(edge_scan_op.src,edge_scan_op.label);
-                        if(result.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                        if(result.first==GTX::Txn_Operation_Response::SUCCESS){
                             auto& iterator = result.second;
                             BaseEdgeDelta* current_delta = nullptr;
                             while(current_delta=iterator.next_delta()){
@@ -867,9 +867,9 @@ public:
                         auto& vertex_write_op = workload.vertex_write_op.at(z);
                         while(1){
                             auto response = txn.update_vertex(vertex_write_op.src,vertex_write_op.data);
-                            if(response==bwgraph::Txn_Operation_Response::SUCCESS){
+                            if(response==GTX::Txn_Operation_Response::SUCCESS){
                                 break;
-                            }else if(response==bwgraph::Txn_Operation_Response::FAIL){
+                            }else if(response==GTX::Txn_Operation_Response::FAIL){
                                 to_abort=true;
                                 break;
                             }
@@ -885,9 +885,9 @@ public:
                         auto& edge_write_op = workload.edge_write_op.at(z);
                         while(1){
                             auto response = txn.put_edge(edge_write_op.src,edge_write_op.dst,edge_write_op.label,edge_write_op.data);
-                            if(response==bwgraph::Txn_Operation_Response::SUCCESS){
+                            if(response==GTX::Txn_Operation_Response::SUCCESS){
                                 break;
-                            }else if(response==bwgraph::Txn_Operation_Response::FAIL){
+                            }else if(response==GTX::Txn_Operation_Response::FAIL){
                                 to_abort=true;
                                 break;
                             }
@@ -926,9 +926,9 @@ public:
                 vertex_t dst = dst_dist(gen);
                 while(true){
                     auto op_response = txn.get_edge(src,dst,1);
-                    if(op_response.first==bwgraph::Txn_Operation_Response::FAIL){
+                    if(op_response.first==GTX::Txn_Operation_Response::FAIL){
                         throw TransactionReadException();
-                    }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                    }else if(op_response.first==GTX::Txn_Operation_Response::SUCCESS){
                         for(size_t z=0; z<op_response.second.size();z++){
                             if(op_response.second.at(z)!=static_cast<char>(dst%32)){
                                 throw TransactionReadException();
@@ -940,9 +940,9 @@ public:
             }else{
                 while(true){
                     auto op_response = txn.get_edges(src,1);
-                    if(op_response.first==bwgraph::Txn_Operation_Response::FAIL){
+                    if(op_response.first==GTX::Txn_Operation_Response::FAIL){
                         throw TransactionReadException();
-                    }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                    }else if(op_response.first==GTX::Txn_Operation_Response::SUCCESS){
                         auto& edge_delta_iterator = op_response.second;
                         BaseEdgeDelta* current_delta;
                         while((current_delta=edge_delta_iterator.next_delta())!= nullptr){
@@ -1029,7 +1029,7 @@ public:
                         int32_t write_size = write_size_dist(gen);
                         std::string vertex_data = generate_string_random_length(static_cast<char>(src%32),write_size);
                         auto op_response = txn.update_vertex(src,vertex_data);
-                        if(op_response==bwgraph::Txn_Operation_Response::FAIL){
+                        if(op_response==GTX::Txn_Operation_Response::FAIL){
                             to_abort=true;
                             break;
                         }
@@ -1049,10 +1049,10 @@ public:
                         std::string edge_data = generate_string_random_length(static_cast<char>(dst%32),write_size);
                         while(true){
                             auto op_response = txn.put_edge(src,dst,1,edge_data);
-                            if(op_response==bwgraph::Txn_Operation_Response::FAIL){
+                            if(op_response==GTX::Txn_Operation_Response::FAIL){
                                 to_abort=true;
                                 break;
-                            }else if(op_response==bwgraph::Txn_Operation_Response::SUCCESS){
+                            }else if(op_response==GTX::Txn_Operation_Response::SUCCESS){
                                 break;
                             }
                         }
@@ -1061,10 +1061,10 @@ public:
                             vertex_t dst = dst_dist(gen);
                             while(true){
                                 auto op_response = txn.get_edge(src,dst,1);
-                                if(op_response.first==bwgraph::Txn_Operation_Response::FAIL){
+                                if(op_response.first==GTX::Txn_Operation_Response::FAIL){
                                     to_abort=true;
                                     break;
-                                }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                                }else if(op_response.first==GTX::Txn_Operation_Response::SUCCESS){
                                     for(size_t z=0; z<op_response.second.size();z++){
                                         if(op_response.second.at(z)!=static_cast<char>(dst%32)){
                                             throw TransactionReadException();
@@ -1076,10 +1076,10 @@ public:
                         }else{
                             while(true){
                                 auto op_response = txn.get_edges(src,1);
-                                if(op_response.first==bwgraph::Txn_Operation_Response::FAIL){
+                                if(op_response.first==GTX::Txn_Operation_Response::FAIL){
                                     to_abort=true;
                                     break;
-                                }else if(op_response.first==bwgraph::Txn_Operation_Response::SUCCESS){
+                                }else if(op_response.first==GTX::Txn_Operation_Response::SUCCESS){
                                     auto& edge_delta_iterator = op_response.second;
                                     BaseEdgeDelta* current_delta;
                                     while((current_delta=edge_delta_iterator.next_delta())!= nullptr){

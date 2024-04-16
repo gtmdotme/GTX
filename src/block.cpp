@@ -3,7 +3,7 @@
 //
 #include "core/block.hpp"
 #include "core/exceptions.hpp"
-using namespace bwgraph;
+using namespace GTX;
 
 Delta_Chain_Lock_Response EdgeDeltaBlockHeader::lock_inheritance(vertex_t vid,
                                                                  std::unordered_map<uint64_t, int32_t> *lazy_update_map_ptr,
@@ -62,7 +62,7 @@ Delta_Chain_Lock_Response EdgeDeltaBlockHeader::lock_inheritance(vertex_t vid,
 }
 
 Delta_Chain_Lock_Response
-EdgeDeltaBlockHeader::lock_inheritance_on_delta_chain(bwgraph::delta_chain_id_t delta_chain_id,
+EdgeDeltaBlockHeader::lock_inheritance_on_delta_chain(GTX::delta_chain_id_t delta_chain_id,
                                                       std::unordered_map<uint64_t, int32_t> *lazy_update_map_ptr,
                                                       uint64_t txn_read_ts, uint32_t current_offset,
                                                       uint64_t original_ts) {

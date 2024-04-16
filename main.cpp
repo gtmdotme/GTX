@@ -5,9 +5,9 @@
 #include "core/bw_index.hpp"
 #include "core/commit_manager.hpp"
 #include "core/block_access_ts_table.hpp"
-using namespace bwgraph;
+using namespace GTX;
 int main() {
-    bwgraph::BlockManager manager("", 1e+11);
+    GTX::BlockManager manager("", 1e+11);
     auto ptr = manager.alloc(5);
     std::cout << "Hello, World! " <<ptr<< std::endl;
     std::cout<<sizeof(ArrayTransactionTables)<<std::endl;

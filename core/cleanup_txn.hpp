@@ -11,7 +11,7 @@
 #include "edge_delta_block_state_protection.hpp"
 #include <set>
 //we separate cleanup transactions from general transactions
-namespace bwgraph{
+namespace GTX{
     class Cleanup_Transaction{
     public:
         Cleanup_Transaction(BwGraph& input_graph, timestamp_t input_ts, TxnTables& input_txn_table, uint8_t input_thread_id):graph(input_graph),read_timestamp(input_ts),txn_tables(input_txn_table),

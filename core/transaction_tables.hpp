@@ -15,7 +15,7 @@
 #include "../Libraries/parallel_hashmap/phmap.h"
 #include "utils.hpp"
 
-namespace bwgraph {
+namespace GTX {
 #define TXN_TABLE_TEST false
     class BwGraph;
     class GarbageBlockQueue;
@@ -360,7 +360,7 @@ namespace bwgraph {
             if(local_table[index].op_count.load(std::memory_order_acquire)){
                 eager_clean(index);
             }
-            uint64_t new_txn_id = bwgraph::generate_txnID(thread_id,offset);
+            uint64_t new_txn_id = GTX::generate_txnID(thread_id,offset);
             offset++;
             return new_txn_id;
         }
@@ -386,7 +386,7 @@ namespace bwgraph {
           /*  if(local_table[index].op_count.load()){
                 eager_clean(index);
             }*/
-            uint64_t new_txn_id = bwgraph::generate_txnID(thread_id,offset);
+            uint64_t new_txn_id = GTX::generate_txnID(thread_id,offset);
             offset++;
             return new_txn_id;
         }
@@ -419,14 +419,14 @@ namespace bwgraph {
           /*  if(!(txn_id&TS_ID_MASK)){
                 std::cout<<txn_id<<std::endl;
             }*/
-            uint8_t thread_id = bwgraph::get_threadID(txn_id);
+            uint8_t thread_id = GTX::get_threadID(txn_id);
             return tables[thread_id].get_status(txn_id,status_result);
         }
         inline void reduce_op_count(uint64_t txn_id,int64_t op_count){
             if(!(txn_id&TS_ID_MASK)){
                 throw LazyUpdateException();
             }
-            uint8_t thread_id = bwgraph::get_threadID(txn_id);
+            uint8_t thread_id = GTX::get_threadID(txn_id);
             tables[thread_id].reduce_op_count(txn_id, op_count);
         }
         inline void commit_txn(entry_ptr ptr, int64_t op_count, uint64_t commit_ts){

@@ -13,7 +13,7 @@
 #include "utils.hpp"
 #include "exceptions.hpp"
 
-namespace bwgraph {
+namespace GTX {
     //We abandoned this design
     //only at rare occasions txn needs to read 2 blocks
     /*

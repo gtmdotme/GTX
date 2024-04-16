@@ -3,9 +3,9 @@
 //
 
 #include "core/bwgraph.hpp"
-#include "core/bw_transaction.hpp"
+#include "core/gtx_transaction.hpp"
 #include "core/cleanup_txn.hpp"
-using namespace bwgraph;
+using namespace GTX;
 
 /*BwGraph::~BwGraph(){
     auto max_vid = vertex_index.get_current_allocated_vid();
@@ -127,7 +127,7 @@ SharedROTransaction BwGraph::begin_shared_ro_transaction() {
    return SharedROTransaction(*this, read_ts, txn_tables, block_manager, block_access_ts_table);
 }
 
-void BwGraph::execute_manual_delta_block_checking(bwgraph::vertex_t vid) {
+void BwGraph::execute_manual_delta_block_checking(GTX::vertex_t vid) {
     auto& vertex_index_entry = get_vertex_index_entry(vid);
     auto label_block = get_block_manager().convert<EdgeLabelBlock>(vertex_index_entry.edge_label_block_ptr);
     BwLabelEntry* current_label_entry;
@@ -249,7 +249,7 @@ void BwGraph::eager_consolidation_clean() {
     cleanup_txn.commit();
     thread_local_update_count.local()=0;
 }
-void BwGraph::eager_consolidation_on_edge_delta_block(bwgraph::vertex_t vid, bwgraph::label_t label) {
+void BwGraph::eager_consolidation_on_edge_delta_block(GTX::vertex_t vid, GTX::label_t label) {
     auto& vertex_index_entry = get_vertex_index_entry(vid);
     if(!vertex_index_entry.valid.load())[[unlikely]]{
         return;

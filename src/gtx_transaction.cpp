@@ -1,11 +1,11 @@
 //
 // Created by zhou822 on 6/1/23.
 //
-#include "../core/bw_transaction.hpp"
+#include "../core/gtx_transaction.hpp"
 #include "../core/edge_delta_block_state_protection.hpp"
 #include "core/commit_manager.hpp"
 #include <immintrin.h>
-using namespace bwgraph;
+using namespace GTX;
 //pessimistic mode
 #if USING_PESSIMISTIC_MODE
 //fixme:: we should not use this function. this is unchecked operation
@@ -121,8 +121,8 @@ Txn_Operation_Response RWTransaction::put_edge(vertex_t src, vertex_t dst, label
 /*
  * create an edge delta as either insert or update
  */
-Txn_Operation_Response RWTransaction::checked_put_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
-                                                       bwgraph::label_t label, std::string_view edge_data) {
+Txn_Operation_Response RWTransaction::checked_put_edge(GTX::vertex_t src, GTX::vertex_t dst,
+                                                       GTX::label_t label, std::string_view edge_data) {
     BwLabelEntry* target_label_entry =writer_access_label(src,label);
     if(!target_label_entry)[[unlikely]]{
         //todo:: this should not happen?
@@ -359,7 +359,7 @@ Txn_Operation_Response RWTransaction::checked_single_put_edge(vertex_t src, vert
 
 //fixme:: unchecked functions should not be called
 Txn_Operation_Response
-RWTransaction::delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
+RWTransaction::delete_edge(GTX::vertex_t src, GTX::vertex_t dst, GTX::label_t label) {
     BwLabelEntry* target_label_entry =writer_access_label(src,label);
     if(!target_label_entry){
         return Txn_Operation_Response::FAIL;
@@ -471,7 +471,7 @@ RWTransaction::delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph
  * create an edge deletion delta if the edge exists. Otherwise do nothing.
  */
 Txn_Operation_Response
-RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
+RWTransaction::checked_delete_edge(GTX::vertex_t src, GTX::vertex_t dst, GTX::label_t label) {
     BwLabelEntry* target_label_entry =writer_access_label(src,label);
     if(!target_label_entry){
         return Txn_Operation_Response::FAIL;
@@ -612,7 +612,7 @@ RWTransaction::checked_delete_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst,
     }
 }
 //fixme:: unchecked functions should not be called
-void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, EdgeDeltaBlockHeader* current_block, uint64_t block_id) {
+void RWTransaction::consolidation(GTX::BwLabelEntry *current_label_entry, EdgeDeltaBlockHeader* current_block, uint64_t block_id) {
     //std::cout<<"consolidation starts"<<std::endl;
     BlockStateVersionProtectionScheme::install_exclusive_state(EdgeDeltaBlockState::OVERFLOW,thread_id,block_id,current_label_entry,block_access_ts_table);
     uint32_t original_delta_offset = current_delta_offset-ENTRY_DELTA_SIZE;
@@ -930,8 +930,8 @@ void RWTransaction::consolidation(bwgraph::BwLabelEntry *current_label_entry, Ed
 /*
  * consolidate the overflow block, and allocate a new block version.
  */
-void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_entry,
-                                          bwgraph::EdgeDeltaBlockHeader *current_block, uint64_t block_id) {
+void RWTransaction::checked_consolidation(GTX::BwLabelEntry *current_label_entry,
+                                          GTX::EdgeDeltaBlockHeader *current_block, uint64_t block_id) {
     BlockStateVersionProtectionScheme::install_exclusive_state(EdgeDeltaBlockState::OVERFLOW,thread_id,block_id,current_label_entry,block_access_ts_table);
     uint32_t original_delta_offset = current_delta_offset-ENTRY_DELTA_SIZE;
     uint32_t original_data_offset = current_data_offset;
@@ -1328,7 +1328,7 @@ void RWTransaction::checked_consolidation(bwgraph::BwLabelEntry *current_label_e
  * scan the previous block to locate an edge
  */
 std::string_view
-RWTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *previous_block, bwgraph::vertex_t vid) {
+RWTransaction::scan_previous_block_find_edge(GTX::EdgeDeltaBlockHeader *previous_block, GTX::vertex_t vid) {
     uint64_t combined_offset = previous_block->get_current_offset();
     current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(combined_offset);
     BaseEdgeDelta* current_delta = previous_block->get_edge_delta(current_delta_offset);
@@ -1352,7 +1352,7 @@ RWTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *prev
 }
 
 std::pair<Txn_Operation_Response, std::string_view>
-RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
+RWTransaction::get_edge(GTX::vertex_t src, GTX::vertex_t dst, GTX::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry)[[unlikely]]{
         return std::pair<Txn_Operation_Response, std::string_view>(Txn_Operation_Response::SUCCESS,std::string_view());
@@ -1464,7 +1464,7 @@ RWTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
  * should not use this, it overcomplicates read-write transaction scanning adjacency list
  */
 std::pair<Txn_Operation_Response, EdgeDeltaIterator>
-RWTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
+RWTransaction::get_edges(GTX::vertex_t src, GTX::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
         return std::pair<Txn_Operation_Response, EdgeDeltaIterator>(Txn_Operation_Response::SUCCESS,EdgeDeltaIterator());
@@ -1506,7 +1506,7 @@ RWTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
  * scan the neighborhood of a vertex of a label
  */
 std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>
-RWTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
+RWTransaction::simple_get_edges(GTX::vertex_t src, GTX::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
         return std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>(Txn_Operation_Response::SUCCESS,SimpleEdgeDeltaIterator());
@@ -1846,7 +1846,7 @@ bool RWTransaction::commit() {
     return true;
 }
 
-void RWTransaction::eager_clean_edge_block(uint64_t block_id, bwgraph::LockOffsetCache &validated_offsets) {
+void RWTransaction::eager_clean_edge_block(uint64_t block_id, GTX::LockOffsetCache &validated_offsets) {
    timestamp_t commit_ts = self_entry->status.load(std::memory_order_acquire);
    auto target_label_entry = get_label_entry(block_id);
    //if we can access the block, we will do it and eager commit
@@ -1882,7 +1882,7 @@ void RWTransaction::eager_clean_edge_block(uint64_t block_id, bwgraph::LockOffse
    }
 }
 
-void RWTransaction::eager_clean_vertex_chain(bwgraph::vertex_t vid) {
+void RWTransaction::eager_clean_vertex_chain(GTX::vertex_t vid) {
     timestamp_t commit_ts = self_entry->status.load(std::memory_order_acquire);
     auto& index_entry = graph.get_vertex_index_entry(vid);//get vertex index entry
     auto vertex_delta = block_manager.convert<VertexDeltaHeader>(index_entry.vertex_delta_chain_head_ptr);
@@ -2021,7 +2021,7 @@ vertex_t RWTransaction::create_vertex() {
 }
 
 //can be updating a new version or delete
-Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::string_view vertex_data) {
+Txn_Operation_Response RWTransaction::update_vertex(GTX::vertex_t src, std::string_view vertex_data) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load(std::memory_order_acquire)){
         throw IllegalVertexAccessException();
@@ -2153,7 +2153,7 @@ Txn_Operation_Response RWTransaction::update_vertex(bwgraph::vertex_t src, std::
 
 }
 
-std::string_view RWTransaction::get_vertex(bwgraph::vertex_t src) {
+std::string_view RWTransaction::get_vertex(GTX::vertex_t src) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load(std::memory_order_acquire)){
         return std::string_view ();
@@ -2212,7 +2212,7 @@ RWTransaction::~RWTransaction()=default;/*{
 }*/
 
 std::pair<Txn_Operation_Response, std::string_view>
-ROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
+ROTransaction::get_edge(GTX::vertex_t src, GTX::vertex_t dst, GTX::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry)[[unlikely]]{
         return std::pair<Txn_Operation_Response, std::string_view>(Txn_Operation_Response::SUCCESS,std::string_view());
@@ -2277,7 +2277,7 @@ ROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::l
 }
 
 Txn_Operation_Response
-ROTransaction::get_edge_weight(bwgraph::vertex_t src, bwgraph::label_t label, bwgraph::vertex_t dst, double *&weight) {
+ROTransaction::get_edge_weight(GTX::vertex_t src, GTX::label_t label, GTX::vertex_t dst, double *&weight) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry)[[unlikely]]{
         return Txn_Operation_Response::SUCCESS;
@@ -2336,7 +2336,7 @@ ROTransaction::get_edge_weight(bwgraph::vertex_t src, bwgraph::label_t label, bw
 }
 
 std::pair<Txn_Operation_Response, EdgeDeltaIterator>
-ROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
+ROTransaction::get_edges(GTX::vertex_t src, GTX::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
         return std::pair<Txn_Operation_Response, EdgeDeltaIterator>(Txn_Operation_Response::SUCCESS,EdgeDeltaIterator());
@@ -2358,7 +2358,7 @@ ROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
 }
 
 std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>
-ROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
+ROTransaction::simple_get_edges(GTX::vertex_t src, GTX::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
         return std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>(Txn_Operation_Response::SUCCESS,SimpleEdgeDeltaIterator());
@@ -2379,7 +2379,7 @@ ROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
     }
 }
 
-std::string_view ROTransaction::get_vertex(bwgraph::vertex_t src) {
+std::string_view ROTransaction::get_vertex(GTX::vertex_t src) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load(std::memory_order_acquire)){
         return std::string_view ();
@@ -2426,7 +2426,7 @@ std::string_view ROTransaction::get_vertex(bwgraph::vertex_t src) {
 }
 //executed with no block state protection
 std::string_view
-ROTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *previous_block, bwgraph::vertex_t vid) {
+ROTransaction::scan_previous_block_find_edge(GTX::EdgeDeltaBlockHeader *previous_block, GTX::vertex_t vid) {
     uint64_t combined_offset = previous_block->get_current_offset();
     uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(combined_offset);
     BaseEdgeDelta* current_delta = previous_block->get_edge_delta(current_delta_offset);
@@ -2449,7 +2449,7 @@ ROTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *prev
 }
 
 void
-ROTransaction::scan_previous_block_find_weight(bwgraph::EdgeDeltaBlockHeader *previous_block, bwgraph::vertex_t vid,
+ROTransaction::scan_previous_block_find_weight(GTX::EdgeDeltaBlockHeader *previous_block, GTX::vertex_t vid,
                                                double *&weight) {
     uint64_t combined_offset = previous_block->get_current_offset();
     uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(combined_offset);
@@ -2473,7 +2473,7 @@ ROTransaction::~ROTransaction() = default;
 SharedROTransaction::~SharedROTransaction() = default;
 
 std::string_view
-SharedROTransaction::static_get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
+SharedROTransaction::static_get_edge(GTX::vertex_t src, GTX::vertex_t dst, GTX::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
         return std::string_view();
@@ -2509,7 +2509,7 @@ StaticEdgeDeltaIterator SharedROTransaction::generate_static_edge_iterator() {
     return {};
 }
 //read operations for static graph
-StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
+StaticEdgeDeltaIterator SharedROTransaction::static_get_edges(GTX::vertex_t src, GTX::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry)[[unlikely]]{
         return StaticEdgeDeltaIterator();
@@ -2535,7 +2535,7 @@ void SharedROTransaction::static_get_edges(vertex_t src, label_t label, std::uni
     uint64_t current_combined_offset = current_block->get_current_offset();
     edge_iterator.get()->fill_information(current_block,EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset));
 }
-std::string_view SharedROTransaction::static_get_vertex(bwgraph::vertex_t src) {
+std::string_view SharedROTransaction::static_get_vertex(GTX::vertex_t src) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load(std::memory_order_acquire))[[unlikely]]{
         return std::string_view ();
@@ -2552,7 +2552,7 @@ std::string_view SharedROTransaction::static_get_vertex(bwgraph::vertex_t src) {
 /*
  * its usage should be limited. We'd like openmp thread to know its ID before invoking the function
  */
-std::string_view SharedROTransaction::get_vertex(bwgraph::vertex_t src) {
+std::string_view SharedROTransaction::get_vertex(GTX::vertex_t src) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load(std::memory_order_acquire)){
         return std::string_view ();
@@ -2598,7 +2598,7 @@ std::string_view SharedROTransaction::get_vertex(bwgraph::vertex_t src) {
     }
     return std::string_view();
 }
-std::string_view SharedROTransaction::get_vertex(bwgraph::vertex_t src, uint8_t thread_id) {
+std::string_view SharedROTransaction::get_vertex(GTX::vertex_t src, uint8_t thread_id) {
     auto& vertex_index_entry = graph.get_vertex_index_entry(src);
     if(!vertex_index_entry.valid.load(std::memory_order_acquire))[[unlikely]]{
         return std::string_view ();
@@ -2647,7 +2647,7 @@ std::string_view SharedROTransaction::get_vertex(bwgraph::vertex_t src, uint8_t 
  * its usage should be limited. We'd like openmp thread to know its ID before invoking the function
  */
 std::pair<Txn_Operation_Response, std::string_view>
-SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label) {
+SharedROTransaction::get_edge(GTX::vertex_t src, GTX::vertex_t dst, GTX::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
         on_operation_finish();
@@ -2708,7 +2708,7 @@ SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgr
 }
 
 std::pair<Txn_Operation_Response, std::string_view>
-SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgraph::label_t label, uint8_t thread_id) {
+SharedROTransaction::get_edge(GTX::vertex_t src, GTX::vertex_t dst, GTX::label_t label, uint8_t thread_id) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
         on_operation_finish(thread_id);
@@ -2770,7 +2770,7 @@ SharedROTransaction::get_edge(bwgraph::vertex_t src, bwgraph::vertex_t dst, bwgr
  * should not be used, not the simple version
  */
 std::pair<Txn_Operation_Response, EdgeDeltaIterator>
-SharedROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
+SharedROTransaction::get_edges(GTX::vertex_t src, GTX::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
         on_operation_finish();
@@ -2799,7 +2799,7 @@ SharedROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
  * should not be used, not the simple version
  */
 std::pair<Txn_Operation_Response, EdgeDeltaIterator>
-SharedROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label, uint8_t thread_id) {
+SharedROTransaction::get_edges(GTX::vertex_t src, GTX::label_t label, uint8_t thread_id) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
         on_operation_finish(thread_id);
@@ -2827,7 +2827,7 @@ SharedROTransaction::get_edges(bwgraph::vertex_t src, bwgraph::label_t label, ui
  * its usage should be limited. We'd like openmp thread to know its ID before invoking the function
  */
 std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>
-SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label) {
+SharedROTransaction::simple_get_edges(GTX::vertex_t src, GTX::label_t label) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
         on_operation_finish();
@@ -2858,7 +2858,7 @@ SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t la
  * use this version, use the simplified iterator and pass thread id as an argument
  */
 std::pair<Txn_Operation_Response, SimpleEdgeDeltaIterator>
-SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label, uint8_t thread_id) {
+SharedROTransaction::simple_get_edges(GTX::vertex_t src, GTX::label_t label, uint8_t thread_id) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry){
         on_operation_finish(thread_id);
@@ -2886,8 +2886,8 @@ SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t la
  * this function passes edge iterator as an argument to reused the object
  */
 Txn_Operation_Response
-SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t label, uint8_t thread_id,
-                                      std::unique_ptr<bwgraph::SimpleEdgeDeltaIterator> &edge_iterator) {
+SharedROTransaction::simple_get_edges(GTX::vertex_t src, GTX::label_t label, uint8_t thread_id,
+                                      std::unique_ptr<GTX::SimpleEdgeDeltaIterator> &edge_iterator) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry)[[unlikely]]{
         on_operation_finish(thread_id);
@@ -2911,8 +2911,8 @@ SharedROTransaction::simple_get_edges(bwgraph::vertex_t src, bwgraph::label_t la
     }
 }
 
-std::string_view SharedROTransaction::scan_previous_block_find_edge(bwgraph::EdgeDeltaBlockHeader *previous_block,
-                                                                    bwgraph::vertex_t vid) {
+std::string_view SharedROTransaction::scan_previous_block_find_edge(GTX::EdgeDeltaBlockHeader *previous_block,
+                                                                    GTX::vertex_t vid) {
     uint64_t combined_offset = previous_block->get_current_offset();
     uint32_t current_delta_offset = EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(combined_offset);
     BaseEdgeDelta* current_delta = previous_block->get_edge_delta(current_delta_offset);
@@ -2934,7 +2934,7 @@ std::string_view SharedROTransaction::scan_previous_block_find_edge(bwgraph::Edg
     return std::string_view();
 }
 
-uint64_t SharedROTransaction::get_neighborhood_size(bwgraph::vertex_t src, bwgraph::label_t label, uint8_t thread_id) {
+uint64_t SharedROTransaction::get_neighborhood_size(GTX::vertex_t src, GTX::label_t label, uint8_t thread_id) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry)[[unlikely]]{
         on_operation_finish(thread_id);
@@ -2955,7 +2955,7 @@ uint64_t SharedROTransaction::get_neighborhood_size(bwgraph::vertex_t src, bwgra
                     continue;
                 }
                 //start the scan
-                auto current_delta_offset = bwgraph::EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset);
+                auto current_delta_offset = GTX::EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset);
                 auto current_delta = current_block->get_edge_delta(current_delta_offset);
                 while(current_delta_offset>0){
                     //need lazy update
@@ -3044,7 +3044,7 @@ uint64_t SharedROTransaction::get_neighborhood_size(bwgraph::vertex_t src, bwgra
     throw std::runtime_error("unreachable");
 }
 
-int64_t SharedROTransaction::get_neighborhood_size_signed(bwgraph::vertex_t src, bwgraph::label_t label,
+int64_t SharedROTransaction::get_neighborhood_size_signed(GTX::vertex_t src, GTX::label_t label,
                                                            uint8_t thread_id) {
     BwLabelEntry* target_label_entry = reader_access_label(src,label);
     if(!target_label_entry)[[unlikely]]{
@@ -3066,7 +3066,7 @@ int64_t SharedROTransaction::get_neighborhood_size_signed(bwgraph::vertex_t src,
                     continue;
                 }
                 //start the scan
-                auto current_delta_offset = bwgraph::EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset);
+                auto current_delta_offset = GTX::EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset);
                 auto current_delta = current_block->get_edge_delta(current_delta_offset);
                 while(current_delta_offset>0){
                     //need lazy update
@@ -3158,7 +3158,7 @@ int64_t SharedROTransaction::get_neighborhood_size_signed(bwgraph::vertex_t src,
 /*
  * get total number of edges of a certain label
  */
-uint64_t SharedROTransaction::get_total_edge_num(bwgraph::label_t label) {
+uint64_t SharedROTransaction::get_total_edge_num(GTX::label_t label) {
     std::atomic_uint64_t total_edge_num = 0;
     const uint64_t max_vertex_id = graph.get_max_allocated_vid();
 #pragma omp parallel
@@ -3186,7 +3186,7 @@ uint64_t SharedROTransaction::get_total_edge_num(bwgraph::label_t label) {
                             continue;
                         }
                         //start the scan
-                        auto current_delta_offset = bwgraph::EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset);
+                        auto current_delta_offset = GTX::EdgeDeltaBlockHeader::get_delta_offset_from_combined_offset(current_combined_offset);
                         auto current_delta = current_block->get_edge_delta(current_delta_offset);
                         while(current_delta_offset>0){
                             //need lazy update
@@ -3281,7 +3281,7 @@ uint64_t SharedROTransaction::get_total_edge_num(bwgraph::label_t label) {
     return total_edge_num.load(std::memory_order_relaxed)/2;
 }
 
-EdgeDeltaBlockHeader *SharedROTransaction::get_block_header(uint64_t vid, bwgraph::label_t label, uint8_t thread_id,
+EdgeDeltaBlockHeader *SharedROTransaction::get_block_header(uint64_t vid, GTX::label_t label, uint8_t thread_id,
                                                             uint32_t *current_delta_offset) {
     BwLabelEntry *target_label_entry = reader_access_label(vid, label);
     if (!target_label_entry)[[unlikely]] {

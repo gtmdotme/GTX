@@ -7,7 +7,7 @@
 #pragma once
 #include <atomic>
 
-namespace bwgraph{
+namespace GTX{
     struct spinlock {
         std::atomic<bool> lock_ = {0};
 

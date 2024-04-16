@@ -6,5 +6,5 @@
 //#define BWGRAPH_V2_BWGRAPH_INCLUDE_HPP
 #include "edge_iterator.hpp"
 #include "bwgraph.hpp"
-#include "bw_transaction.hpp"
+#include "gtx_transaction.hpp"
 //#endif //BWGRAPH_V2_BWGRAPH_INCLUDE_HPP

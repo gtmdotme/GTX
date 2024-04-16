@@ -5,7 +5,7 @@
 #include <core/bw_index.hpp>
 #include "core/bwgraph.hpp"
 #include "core/mini_bwgraph.hpp"
-using namespace bwgraph;
+using namespace GTX;
 
 TEST_CASE("BwGraph allocation test"){
     BwGraph bwGraph;

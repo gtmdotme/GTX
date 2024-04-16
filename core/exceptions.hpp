@@ -8,7 +8,7 @@
 #include <iostream>
 #include <exception>
 
-namespace bwgraph {
+namespace GTX {
     class DeltaLockException : public std::exception {
         virtual const char *what() const throw() {
             return "Under mutual exclusion lock only current transaction should be able to modify the offset";

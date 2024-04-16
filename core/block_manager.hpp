@@ -20,7 +20,7 @@
 
 #include "types.hpp"
 #include "graph_global.hpp"
-namespace bwgraph
+namespace GTX
 {
     class BlockManager
     {

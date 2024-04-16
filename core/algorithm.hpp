@@ -4,7 +4,7 @@
 
 #pragma once
 #include "bw_index.hpp"
-#include "bw_transaction.hpp"
+#include "gtx_transaction.hpp"
 #include "transaction_tables.hpp"
 #include "edge_iterator.hpp"
 #include "previous_version_garbage_queue.hpp"
@@ -13,7 +13,7 @@
 #include <set>
 #include "Libraries/gapbs.hpp"
 
-namespace bwgraph{
+namespace GTX{
 
     class BFS{
     public:

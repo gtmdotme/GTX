@@ -8,7 +8,7 @@
 #include "types.hpp"
 //#include "bwgraph.hpp"
 #include "block_access_ts_table.hpp"
-namespace bwgraph{
+namespace GTX{
 #define STATE_PROTECTION_TEST false
     //protects blocks to always be in consistent states
     class BlockStateVersionProtectionScheme{
