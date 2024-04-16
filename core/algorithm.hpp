@@ -878,7 +878,7 @@ namespace bwgraph{
                     vertex_t physical_source_id = *(reinterpret_cast<const uint64_t*>(payload.data()));
                     auto& neighbors = vertex_two_hop_neighbors[physical_source_id];*/
                     auto& neighbors = vertex_one_hop_neighbors[source];
-                    std::vector<uint64_t> hop_1_neighbors;
+                    //std::vector<uint64_t> hop_1_neighbors;
                     //determine which block to read
                     if(current_block->get_creation_time()<=read_ts)[[likely]]{//read latest block
                         BaseEdgeDelta* current_delta = current_block->get_edge_delta(current_delta_offset);
@@ -935,7 +935,7 @@ namespace bwgraph{
                                     neighbors.emplace_back(current_delta->toID);
                                     //auto neighbor_payload = txn.get_vertex(current_delta->toID,thread_id);
                                     //neighbors.emplace_back(*(reinterpret_cast<const uint64_t*>(neighbor_payload.data())));
-                                    hop_1_neighbors.emplace_back(current_delta->toID);
+                                    //hop_1_neighbors.emplace_back(current_delta->toID);
                                 }
                             }
 #if USING_READER_PREFETCH
@@ -973,7 +973,7 @@ namespace bwgraph{
                                         neighbors.emplace_back(current_delta->toID);
                                         //auto neighbor_payload = txn.get_vertex(current_delta->toID,thread_id);
                                         //neighbors.emplace_back(*(reinterpret_cast<const uint64_t*>(neighbor_payload.data())));
-                                        hop_1_neighbors.emplace_back(current_delta->toID);
+                                        //hop_1_neighbors.emplace_back(current_delta->toID);
                                     }
                                 }
 #if USING_READER_PREFETCH

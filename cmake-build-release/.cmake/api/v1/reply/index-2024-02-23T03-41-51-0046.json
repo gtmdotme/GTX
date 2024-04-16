@@ -8,25 +8,25 @@
 		},
 		"paths" : 
 		{
-			"cmake" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/69f6ce9329a28_CLion-233.11799.171/bin/cmake/linux/x64/bin/cmake",
-			"cpack" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/69f6ce9329a28_CLion-233.11799.171/bin/cmake/linux/x64/bin/cpack",
-			"ctest" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/69f6ce9329a28_CLion-233.11799.171/bin/cmake/linux/x64/bin/ctest",
-			"root" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/69f6ce9329a28_CLion-233.11799.171/bin/cmake/linux/x64/share/cmake-3.27"
+			"cmake" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/050648728c51d_CLion-241.12662.59/bin/cmake/linux/x64/bin/cmake",
+			"cpack" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/050648728c51d_CLion-241.12662.59/bin/cmake/linux/x64/bin/cpack",
+			"ctest" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/050648728c51d_CLion-241.12662.59/bin/cmake/linux/x64/bin/ctest",
+			"root" : "/home/zhou822/.cache/JetBrains/RemoteDev/dist/050648728c51d_CLion-241.12662.59/bin/cmake/linux/x64/share/cmake-3.28"
 		},
 		"version" : 
 		{
 			"isDirty" : false,
 			"major" : 3,
-			"minor" : 27,
-			"patch" : 0,
-			"string" : "3.27.0",
+			"minor" : 28,
+			"patch" : 1,
+			"string" : "3.28.1",
 			"suffix" : ""
 		}
 	},
 	"objects" : 
 	[
 		{
-			"jsonFile" : "codemodel-v2-e94a722ae80c6b318c09.json",
+			"jsonFile" : "codemodel-v2-959c85fe648b8c36cc84.json",
 			"kind" : "codemodel",
 			"version" : 
 			{
@@ -35,7 +35,7 @@
 			}
 		},
 		{
-			"jsonFile" : "cache-v2-b7c3f89e1648a2cb418f.json",
+			"jsonFile" : "cache-v2-957c26316163f5228150.json",
 			"kind" : "cache",
 			"version" : 
 			{
@@ -44,7 +44,7 @@
 			}
 		},
 		{
-			"jsonFile" : "cmakeFiles-v1-d9980b0d8b9010b411a9.json",
+			"jsonFile" : "cmakeFiles-v1-91a9dc06fb91879a68fd.json",
 			"kind" : "cmakeFiles",
 			"version" : 
 			{
@@ -66,7 +66,7 @@
 	{
 		"cache-v2" : 
 		{
-			"jsonFile" : "cache-v2-b7c3f89e1648a2cb418f.json",
+			"jsonFile" : "cache-v2-957c26316163f5228150.json",
 			"kind" : "cache",
 			"version" : 
 			{
@@ -76,7 +76,7 @@
 		},
 		"cmakeFiles-v1" : 
 		{
-			"jsonFile" : "cmakeFiles-v1-d9980b0d8b9010b411a9.json",
+			"jsonFile" : "cmakeFiles-v1-91a9dc06fb91879a68fd.json",
 			"kind" : "cmakeFiles",
 			"version" : 
 			{
@@ -86,7 +86,7 @@
 		},
 		"codemodel-v2" : 
 		{
-			"jsonFile" : "codemodel-v2-e94a722ae80c6b318c09.json",
+			"jsonFile" : "codemodel-v2-959c85fe648b8c36cc84.json",
 			"kind" : "codemodel",
 			"version" : 
 			{

@@ -43,6 +43,17 @@
 			"type" : "target"
 		},
 		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"cxxModuleBmiTarget" : 
+			{
+				"id" : "bwgraph::@6890427a1f51a3e7e1df",
+				"index" : 0
+			},
+			"destination" : "lib",
+			"type" : "cxxModuleBmi"
+		},
+		{
 			"backtrace" : 2,
 			"component" : "Unspecified",
 			"destination" : "include",

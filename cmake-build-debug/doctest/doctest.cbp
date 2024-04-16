@@ -11,10 +11,10 @@
 				<Option working_dir="/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest"/>
 				<Option type="4"/>
 				<MakeCommands>
-					<Build command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 all"/>
-					<CompileFile command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="doctest_with_main">
@@ -36,10 +36,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 doctest_with_main"/>
-					<CompileFile command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 doctest_with_main"/>
+					<CompileFile command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="doctest_with_main/fast">
@@ -61,10 +61,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 doctest_with_main/fast"/>
-					<CompileFile command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/usr/bin/gmake -j130 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 doctest_with_main/fast"/>
+					<CompileFile command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j152 -f &quot;/home/zhou822/BwGraph_Mono_Simple_Iterator/cmake-build-debug/doctest/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 		</Build>

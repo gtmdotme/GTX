@@ -11,7 +11,7 @@
 						1
 					],
 					"hasInstallRule" : true,
-					"jsonFile" : "directory-.-Debug-9020aaf60ada989a759c.json",
+					"jsonFile" : "directory-.-Debug-6ee638ce94877c5c136b.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.24"
@@ -82,7 +82,7 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "bwgraph::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-bwgraph-Debug-d59b6acf440fb42ca285.json",
+					"jsonFile" : "target-bwgraph-Debug-56d68c9315ee74005c30.json",
 					"name" : "bwgraph",
 					"projectIndex" : 0
 				},
