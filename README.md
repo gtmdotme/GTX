@@ -95,9 +95,9 @@ TARGET_LINK_LIBRARIES(GTX_Link_Test GTX)
 ```
 #include <iostream>
 #include "GTX.hpp"
-using Bw_Graph = bg::Graph;
+using GTX = gt::Graph;
 int main() {
-    Bw_Graph g;
+    GTX g;
 
     //create a read-write transaction
     auto txn = g.begin_read_write_transaction();
