@@ -146,6 +146,17 @@ int main() {
     }
     r_txn.commit();
 
+    //do analytics:
+    vertex_t root =8;//start algorithm from vertex with id =8
+    int32_t num_iterations = 10;
+    double damping_factor = 0.5;
+    auto bfs_handler =  g.get_bfs_handler(num_vertices);
+    bfs_handler.compute(root);
+    auto pr_handler = g.get_pagerank_handler(num_vertices);
+    pr_handlercompute(num_iterations,damping_factor);
+    auto handler = g.get_sssp_handler(max_vertex_id);
+    double delta = 2.0;
+    handler.compute(root,delta);
     return 0;
 }
 ```
