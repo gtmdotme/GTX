@@ -1,7 +1,7 @@
-# Bw-Graph
+# GTX
 
 ## Description
-This is Bw-Graph, a main memory graph system that manages and queries dynamic graphs. Bw-Graph supports concurrent read-write and read-only transactions with snapshot isolation. Bw-Graph supports graph analytics using its OpenMP-tailored read-only transactions and transaction adjacency list scan protocol. It has been evaluated against state-of-the-art transactional graphy systems using [GFE_Driver](https://anonymous.4open.science/r/gfe_driver_bw-9427/README.md). Currently we only show the anonymized version but we aim to publish the final experiment framework with full dataset when the paper decision is finalized.
+This is GTX, a main memory graph system that manages and queries dynamic graphs. GTX supports concurrent read-write and read-only transactions with snapshot isolation. GTX supports graph analytics using its OpenMP-tailored read-only transactions and transaction adjacency list scan protocol. It has been evaluated against state-of-the-art transactional graphy systems using [GFE_Driver](https://anonymous.4open.science/r/gfe_driver_bw-9427/README.md). Currently we only show the anonymized version but we aim to publish the final experiment framework with full dataset when the paper decision is finalized.
 ## Build
 ### Prerequisites 
 - We only tested it on Linux.
@@ -16,16 +16,16 @@ This is Bw-Graph, a main memory graph system that manages and queries dynamic gr
 - make -j
 ```
 ## Usage
-### Include Bw-Graph in your own project
-- include library bwgraph in your project's CMakeLists.txt. 
-- copy bind/bwgraph.hpp into your project. 
-- include bwgraph.hpp to use Bw-Graph
+### Include GTX in your own project
+- include library GTX in your project's CMakeLists.txt. 
+- copy bind/GTX.hpp into your project. 
+- include GTX.hpp to use GTX
 ### API
-The full Bw-Graph APIs can be found in /bind/bwgraph.hpp.
-Here we list the core APIs to manage and query a dynamic graph using Bw-Graph
+The full GTX APIs can be found in /bind/GTX.hpp.
+Here we list the core APIs to manage and query a dynamic graph using GTX
 
-#### BwGraph
-- public BwGraph() 
+#### GTX
+- public GTX() 
 - ROTransaction begin_read_only_transaction()
 - SharedROTransaction begin_shared_read_only_transaction()
 - RWTransaction begin_read_write_transaction()
@@ -82,19 +82,19 @@ The static iterator is used to scan a static graph after the graph is loaded.
 ### Example
 ```
 cmake_minimum_required(VERSION 3.24)
-project(BwGraph_Link_Test)
+project(GTX_Link_Test)
 set(CMAKE_CXX_STANDARD 20)
 list(APPEND CMAKE_MODULE_PATH "~/cmake_modules/FindTBB")
 set(CMAKE_CXX_FLAGS_DEBUG "-std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op")
 set(CMAKE_CXX_FLAGS_RELEASE "-std=c++20 -g -fno-omit-frame-pointer -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wconversion -Wlogical-op -O3 -DNDEBUG")
-LINK_DIRECTORIES(/home/zhou822/BwGraph_Mono_Simple_Iterator/build/)
-add_executable(BwGraph_Link_Test main.cpp)
-TARGET_LINK_LIBRARIES(BwGraph_Link_Test bwgraph)
+LINK_DIRECTORIES(/home/zhou822/GTX_Mono_Simple_Iterator/build/)
+add_executable(GTX_Link_Test main.cpp)
+TARGET_LINK_LIBRARIES(GTX_Link_Test GTX)
 ```
 
 ```
 #include <iostream>
-#include "bwgraph.hpp"
+#include "GTX.hpp"
 using Bw_Graph = bg::Graph;
 int main() {
     Bw_Graph g;
