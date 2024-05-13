@@ -35,6 +35,11 @@ Here we list the core APIs to manage and query a dynamic graph using GTX
 - void whole_label_graph_eager_consolidation(label_t label)
 - EdgeDeltaBlockHeader* get_edge_block(vertex_t vid, label_t l)
 - uint8_t get_openmp_worker_thread_id()
+- PageRankHandler get_pagerank_handler(uint64_t num);
+- BFSHandler get_bfs_handler(uint64_t num);
+- SSSPHandler get_sssp_handler(uint64_t num);
+- OneHopNeighborsHandler get_one_hop_neighbors_handler();
+- TwoHopNeighborsHandler get_two_hop_neighbors_handler();
 
 #### ROTransaction
 - std::string_view get_vertex(vertex_t src)
@@ -78,6 +83,21 @@ The static iterator is used to scan a static graph after the graph is loaded.
 - uint32_t vertex_degree()
 - vertex_t dst_id() 
 - std::string_view  edge_delta_data()
+
+#### BFSHandlers
+- void compute(uint64_t root,int alpha = 15, int beta = 18);
+
+#### PageRankHandler
+- void compute(uint64_t num_iterations, double damping_factor);
+
+#### SSSPHandler
+- void compute(uint64_t source, double delta);
+
+#### OneHopNeighborsHandler
+- void compute(std::vector<uint64_t>&vertices);
+
+#### TwoHopNeighborsHandler
+- void compute(std::vector<uint64_t>&vertices);
 
 ### Example
 ```
