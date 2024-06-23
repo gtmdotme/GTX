@@ -180,3 +180,8 @@ int main() {
     return 0;
 }
 ```
+
+## Suggestions
+* git repo is >300MB
+* add instruction for gitmodule `doctest`
+* containerization using docker image?
