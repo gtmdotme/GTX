@@ -1,6 +1,8 @@
 # USAGE:
-# BUILD: $ docker build --tag gtx-base --platform linux/amd64 .
-# RUN: $ docker run -it --volume ~/gautamc/ubuntu:/root --name test --rm gtx-base
+# Option 1: use vscode devcontainer
+# Option 2: use docker commands
+    # BUILD: $ docker build --tag gtx-base --platform linux/amd64 .
+    # RUN: $ docker run -it --volume ~/gautamc/ubuntu:/root --name test --rm gtx-base
 # NOTE: Currently, the image is built for amd64 architecture only.
 
 # Base image
@@ -72,5 +74,8 @@ RUN cd /tmp \
 #     && rm libtorch-shared-with-deps-latest.zip \
 #     && echo "Extracted libtorch successfully!"
 
-WORKDIR /root
+# Define .bashrc
+RUN echo 'PS1="\e[0;32m[\\u@\h]\e[0m\e[0;36m[\\w]\\$ \e[0m"' >> ~/.bashrc
+
+WORKDIR /home
 CMD ["/bin/bash"]
