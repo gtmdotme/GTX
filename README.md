@@ -9,6 +9,12 @@ This is GTX, a main memory graph system that manages and queries dynamic graphs.
 - [TBB](https://github.com/oneapi-src/oneTBB) 
 - C++20 is preferred although it can run with C++17 
 
+## Steps
+- $ git clone url/to/GTX
+- $ cd GTX
+- $ git submodule init
+- $ git submodule update
+
 ### Build instructions 
 ```
 - mkdir build && cd build
@@ -180,3 +186,7 @@ int main() {
     return 0;
 }
 ```
+
+## Improvements
+* size of git too large
+* dockerfile / devcontainers
