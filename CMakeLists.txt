@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(GTX)
+project(GTX VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 20)
 list(APPEND CMAKE_MODULE_PATH "~/cmake_modules/FindTBB")
@@ -30,8 +30,7 @@ set_property(TARGET gtx_lib PROPERTY POSITION_INDEPENDENT_CODE ON)
 #target_include_directories(bwgraph_lib PUBLIC public core)
 add_library(gtx SHARED bind/GTX.cpp src/block.cpp src/bw_index.cpp src/gtx_transaction.cpp src/bwgraph.cpp src/commit_manager.cpp src/transaction_tables.cpp src/cleanup_txn.cpp src/after_load_consolidation_transaction.cpp)
 target_link_libraries(gtx gtx_lib OpenMP::OpenMP_CXX TBB::tbb)
-install(TARGETS gtx DESTINATION lib)
-install(FILES bind/gtx.hpp DESTINATION include)
+
 set(PROJECT_DEPS_DIR ${PROJECT_SOURCE_DIR}/doctest)
 option(BUILD_TESTING "Build the testing tree." ON)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
@@ -50,3 +49,41 @@ endif()
 #add_executable(BwGraph_v2 main.cpp ) #core/types.hpp core/block_manager.hpp core/utils.hpp core/block.hpp core/exceptions.hpp core/transaction_tables.cpp core/transaction_tables.hpp core/graph_global.hpp Libraries/parallel_hashmap/something.cpp
 #target_link_directories(BwGraph_v2 PUBLIC core/ )
 #target_link_libraries(BwGraph_v2 TBB::tbb parallel_hashmap_lib bwgraph_lib)
+
+
+
+## INSTALLATION
+
+set(GTX_CMAKECONFIG_INSTALL_DIR "share/cmake/gtx" CACHE STRING "install path for gtxConfig.cmake")
+# Configuration file for the package
+include(CMakePackageConfigHelpers)
+
+# Configure the config file
+configure_package_config_file(
+    cmake/gtxConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/gtxConfig.cmake
+    INSTALL_DESTINATION ${GTX_CMAKECONFIG_INSTALL_DIR}
+)
+
+# Install the config files
+install(FILES 
+    ${CMAKE_CURRENT_BINARY_DIR}/gtxConfig.cmake
+    DESTINATION ${GTX_CMAKECONFIG_INSTALL_DIR}
+)
+
+# Install the library and the headers
+install(TARGETS gtx gtx_lib
+    EXPORT gtxTargets 
+    DESTINATION lib
+    )
+install(FILES 
+    bind/GTX.hpp
+    DESTINATION include
+    )
+
+# Install the export set
+install(EXPORT gtxTargets
+    FILE gtxTargets.cmake
+    NAMESPACE gtx::
+    DESTINATION ${GTX_CMAKECONFIG_INSTALL_DIR}
+)

@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(OpenMP)
+find_dependency(TBB)
+find_dependency(Threads)
+
+include(${CMAKE_CURRENT_LIST_DIR}/gtxTargets.cmake)
+
+check_required_components(gtx)
