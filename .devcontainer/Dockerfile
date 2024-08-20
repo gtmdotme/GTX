@@ -1,8 +1,8 @@
 # USAGE:
 # Option 1: use vscode devcontainer
 # Option 2: use docker commands
-    # BUILD: $ docker build --tag gtx-base --platform linux/amd64 .
-    # RUN: $ docker run -it --volume ~/gautamc/ubuntu:/root --name test --rm gtx-base
+    # BUILD: $ docker build --tag gtx-base --platform linux/amd64 .devcontainer/
+    # RUN: $ docker run -it --volume ~/gautamc/ubuntu/GTX:/home/GTX --name test --rm gtx-base
 # NOTE: Currently, the image is built for amd64 architecture only.
 
 # Base image
@@ -103,22 +103,22 @@ RUN cd /tmp \
     && rm -rf /tmp/pytorch_sparse \
     && echo "Installed pytorch_sparse successfully!"
 
-# Build GTX (from source)
-# ref: https://github.com/gtmdotme/GTX
-RUN cd /tmp \
-    && echo "Cloning GTX..." \
-    && git clone --branch dev --single-branch --recurse-submodule https://github.com/gtmdotme/GTX \
-    && cd GTX \
-    && echo "Building GTX..." \
-    && mkdir build && cd build \
-    && cmake -DCMAKE_BUILD_TYPE=Release .. \
-    && make \
-    && echo "Installing GTX..." \
-    && make install \
-    && ldconfig \
-    && echo "Cleaning up..." \
-    && rm -rf /tmp/GTX \
-    && echo "Installed GTX successfully!"
+# # Build GTX (from source)
+# # ref: https://github.com/gtmdotme/GTX
+# RUN cd /tmp \
+#     && echo "Cloning GTX..." \
+#     && git clone --branch dev --single-branch --recurse-submodule https://github.com/gtmdotme/GTX \
+#     && cd GTX \
+#     && echo "Building GTX..." \
+#     && mkdir build && cd build \
+#     && cmake -DCMAKE_BUILD_TYPE=Release .. \
+#     && make \
+#     && echo "Installing GTX..." \
+#     && make install \
+#     && ldconfig \
+#     && echo "Cleaning up..." \
+#     && rm -rf /tmp/GTX \
+#     && echo "Installed GTX successfully!"
 
 # Define .bashrc
 RUN echo 'PS1="\e[0;32m[\\u@\h]\e[0m\e[0;36m[\\w]\\$ \e[0m"' >> ~/.bashrc
