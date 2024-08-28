@@ -11,7 +11,6 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(Torch REQUIRED)
 
 add_executable(${PROJECT_NAME} example-app.cpp)
-# print out the torch libraries
+
 message(STATUS "TORCH_LIBRARIES: ${TORCH_LIBRARIES}")
 target_link_libraries(${PROJECT_NAME} "${TORCH_LIBRARIES}")
-# set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
